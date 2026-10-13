@@ -1,0 +1,5 @@
+# Godot 4+ Engine Cache & Exports
+.godot/
+*.translation
+*.import.tmp
+export_presets.cfg

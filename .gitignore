@@ -1,9 +1,11 @@
-# Miscellaneous
+# Miscellaneous & System
 *.class
 *.log
 *.pyc
+*.pyo
 *.swp
 .DS_Store
+Thumbs.db
 .atom/
 .build/
 .buildlog/
@@ -11,19 +13,17 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+__pycache__/
+**/__pycache__/
 
-# IntelliJ related
+# IDEs & Editors
 *.iml
 *.ipr
 *.iws
 .idea/
+.vscode/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
+# Flutter / Dart
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
@@ -33,24 +33,21 @@ migrate_working_dir/
 /build/
 /coverage/
 
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
+# Android build outputs
 /android/app/debug
 /android/app/profile
 /android/app/release
 
-# Widget Preview related
-.widget_preview/
-
-# Desktop ephemeral
+# Flutter Desktop Ephemeral
 **/linux/flutter/ephemeral/
 **/windows/flutter/ephemeral/
 **/macos/Flutter/ephemeral/
 
+# Widget Preview
+.widget_preview/
+
 # Godot 4+
 .godot/
+**/.godot/
+*.translation
+*.import.tmp
