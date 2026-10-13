@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://ypup58n7mis6"
+path="res://.godot/imported/bowl.obj-4a81456458a87805441eafc5d0df2fe2.mesh"
+
+[deps]
+
+files=["res://.godot/imported/bowl.obj-4a81456458a87805441eafc5d0df2fe2.mesh"]
+
+source_file="res://assets/kaykit_restaurant/obj/bowl.obj"
+dest_files=["res://.godot/imported/bowl.obj-4a81456458a87805441eafc5d0df2fe2.mesh", "res://.godot/imported/bowl.obj-4a81456458a87805441eafc5d0df2fe2.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false

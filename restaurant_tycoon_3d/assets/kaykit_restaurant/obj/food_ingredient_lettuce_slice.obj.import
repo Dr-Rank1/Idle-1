@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://dh3jd8jqgy6rp"
+path="res://.godot/imported/food_ingredient_lettuce_slice.obj-a11c2206f7b54851852e0ff823a45b7b.mesh"
+
+[deps]
+
+files=["res://.godot/imported/food_ingredient_lettuce_slice.obj-a11c2206f7b54851852e0ff823a45b7b.mesh"]
+
+source_file="res://assets/kaykit_restaurant/obj/food_ingredient_lettuce_slice.obj"
+dest_files=["res://.godot/imported/food_ingredient_lettuce_slice.obj-a11c2206f7b54851852e0ff823a45b7b.mesh", "res://.godot/imported/food_ingredient_lettuce_slice.obj-a11c2206f7b54851852e0ff823a45b7b.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false

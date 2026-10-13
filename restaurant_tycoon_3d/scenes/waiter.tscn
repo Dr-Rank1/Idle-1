@@ -1,0 +1,38 @@
+[gd_scene load_steps=6 format=3 uid="uid://waiter12345"]
+
+[ext_resource type="Script" path="res://scripts/waiter.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/models/characters/character-male-c.glb" id="2_mesh"]
+[ext_resource type="PackedScene" path="res://assets/models/food/plate.glb" id="3_plate"]
+[ext_resource type="PackedScene" path="res://assets/models/food/burger-cheese.glb" id="4_burger"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_w"]
+radius = 0.22
+height = 1.1
+
+[node name="Waiter" type="CharacterBody3D"]
+script = ExtResource("1_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+shape = SubResource("CapsuleShape3D_w")
+
+[node name="MeshRoot" type="Node3D" parent="."]
+transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, 0, 0, 0)
+
+[node name="Model" parent="MeshRoot" instance=ExtResource("2_mesh")]
+
+[node name="ServingTray" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.48, 0.3)
+
+[node name="Plate" parent="ServingTray" instance=ExtResource("3_plate")]
+transform = Transform3D(0.65, 0, 0, 0, 0.65, 0, 0, 0, 0.65, 0, 0, 0)
+
+[node name="Burger" parent="ServingTray" instance=ExtResource("4_burger")]
+transform = Transform3D(0.45, 0, 0, 0, 0.45, 0, 0, 0, 0.45, 0, 0.04, 0)
+
+[node name="StatusLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+visible = false
+billboard = 1
+text = "🤵"
+font_size = 26

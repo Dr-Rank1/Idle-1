@@ -1,0 +1,58 @@
+[gd_scene load_steps=7 format=3 uid="uid://cust12345"]
+
+[ext_resource type="Script" path="res://scripts/customer.gd" id="1_script"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_c"]
+radius = 0.22
+height = 1.1
+
+[sub_resource type="StandardMaterial3D" id="Material_bar_bg"]
+shading_mode = 0
+albedo_color = Color(0.08, 0.1, 0.14, 0.92)
+
+[sub_resource type="QuadMesh" id="QuadMesh_bar_bg"]
+material = SubResource("Material_bar_bg")
+size = Vector2(0.54, 0.08)
+
+[sub_resource type="StandardMaterial3D" id="Material_bar_fill"]
+shading_mode = 0
+albedo_color = Color(0.25, 0.92, 0.45, 1)
+
+[sub_resource type="QuadMesh" id="QuadMesh_bar_fill"]
+material = SubResource("Material_bar_fill")
+size = Vector2(0.50, 0.055)
+
+[node name="Customer" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+shape = SubResource("CapsuleShape3D_c")
+
+[node name="MeshRoot" type="Node3D" parent="."]
+transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, 0, 0, 0)
+
+[node name="PatienceRoot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, 0)
+visible = false
+
+[node name="PatienceBg" type="MeshInstance3D" parent="PatienceRoot"]
+mesh = SubResource("QuadMesh_bar_bg")
+
+[node name="PatienceFill" type="MeshInstance3D" parent="PatienceRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.005)
+mesh = SubResource("QuadMesh_bar_fill")
+
+[node name="StatusBubble" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.06, 0)
+
+[node name="BubbleLabel" type="Label3D" parent="StatusBubble"]
+billboard = 1
+double_sided = false
+text = "💭"
+font_size = 20
+outline_size = 5
+outline_modulate = Color(0.08, 0.1, 0.15, 0.95)
+modulate = Color(1, 0.95, 0.85, 1)

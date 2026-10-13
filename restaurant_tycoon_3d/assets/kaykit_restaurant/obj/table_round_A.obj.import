@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://do02xj0wmsqvl"
+path="res://.godot/imported/table_round_A.obj-6fc78231cae2feef3ce2f6776b9e03bd.mesh"
+
+[deps]
+
+files=["res://.godot/imported/table_round_A.obj-6fc78231cae2feef3ce2f6776b9e03bd.mesh"]
+
+source_file="res://assets/kaykit_restaurant/obj/table_round_A.obj"
+dest_files=["res://.godot/imported/table_round_A.obj-6fc78231cae2feef3ce2f6776b9e03bd.mesh", "res://.godot/imported/table_round_A.obj-6fc78231cae2feef3ce2f6776b9e03bd.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false

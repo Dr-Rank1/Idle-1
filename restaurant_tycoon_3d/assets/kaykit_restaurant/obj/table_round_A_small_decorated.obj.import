@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://vuvt7qa1w22r"
+path="res://.godot/imported/table_round_A_small_decorated.obj-62150db4a9f44698d7c4a74804108af6.mesh"
+
+[deps]
+
+files=["res://.godot/imported/table_round_A_small_decorated.obj-62150db4a9f44698d7c4a74804108af6.mesh"]
+
+source_file="res://assets/kaykit_restaurant/obj/table_round_A_small_decorated.obj"
+dest_files=["res://.godot/imported/table_round_A_small_decorated.obj-62150db4a9f44698d7c4a74804108af6.mesh", "res://.godot/imported/table_round_A_small_decorated.obj-62150db4a9f44698d7c4a74804108af6.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false

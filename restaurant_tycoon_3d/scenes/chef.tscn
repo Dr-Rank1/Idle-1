@@ -1,0 +1,94 @@
+[gd_scene load_steps=10 format=3 uid="uid://chef12345"]
+
+[ext_resource type="Script" path="res://scripts/chef.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/models/characters/character-male-d.glb" id="2_mesh"]
+[ext_resource type="PackedScene" path="res://assets/kaykit_restaurant/gltf/pan_A.gltf" id="3_pan"]
+
+[sub_resource type="StandardMaterial3D" id="Material_chefhat"]
+albedo_color = Color(0.98, 0.98, 0.98, 1)
+roughness = 0.4
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_brim"]
+material = SubResource("Material_chefhat")
+top_radius = 0.11
+bottom_radius = 0.11
+height = 0.05
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_crown"]
+material = SubResource("Material_chefhat")
+top_radius = 0.16
+bottom_radius = 0.11
+height = 0.14
+
+[sub_resource type="StandardMaterial3D" id="Material_steam"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(1, 1, 1, 0.35)
+
+[sub_resource type="SphereMesh" id="SphereMesh_steam"]
+material = SubResource("Material_steam")
+radius = 0.05
+height = 0.1
+
+[sub_resource type="StandardMaterial3D" id="Material_sizzle"]
+albedo_color = Color(1, 0.65, 0.1, 1)
+emission_enabled = true
+emission = Color(1, 0.55, 0.05, 1)
+emission_energy_multiplier = 3.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_sizzle"]
+material = SubResource("Material_sizzle")
+size = Vector3(0.025, 0.025, 0.025)
+
+[node name="Chef" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="MeshRoot" type="Node3D" parent="."]
+transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, 0, 0, 0)
+
+[node name="Model" parent="MeshRoot" instance=ExtResource("2_mesh")]
+
+[node name="ChefHat" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.74, 0)
+
+[node name="Brim" type="MeshInstance3D" parent="ChefHat"]
+mesh = SubResource("CylinderMesh_brim")
+
+[node name="Crown" type="MeshInstance3D" parent="ChefHat"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09, 0)
+mesh = SubResource("CylinderMesh_crown")
+
+[node name="Pan" parent="." instance=ExtResource("3_pan")]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0.12, 0.56, 0.48)
+
+[node name="SteamParticles" type="CPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.64, 0.48)
+amount = 10
+lifetime = 1.1
+mesh = SubResource("SphereMesh_steam")
+emission_shape = 1
+emission_sphere_radius = 0.08
+direction = Vector3(0, 1, 0)
+spread = 18.0
+gravity = Vector3(0, 0.4, 0)
+initial_velocity_min = 0.25
+initial_velocity_max = 0.55
+
+[node name="StoveFlameGlow" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.48, 0.48)
+light_color = Color(1, 0.52, 0.12, 1)
+light_energy = 0.9
+omni_range = 1.8
+
+[node name="SizzleSparks" type="CPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.58, 0.48)
+amount = 8
+lifetime = 0.45
+mesh = SubResource("BoxMesh_sizzle")
+emission_shape = 1
+emission_sphere_radius = 0.09
+direction = Vector3(0, 1, 0)
+spread = 65.0
+gravity = Vector3(0, -2.5, 0)
+initial_velocity_min = 0.8
+initial_velocity_max = 1.4

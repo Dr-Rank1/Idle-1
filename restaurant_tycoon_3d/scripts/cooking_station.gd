@@ -1,0 +1,86 @@
+extends StaticBody3D
+
+signal station_clicked(station_id: String, station_name: String, level: int)
+
+@export var station_id: String = "stove"
+@export var station_name: String = "Master Chef Range"
+
+@onready var badge_root: Node3D = $BadgeRoot
+@onready var level_label: Label3D = $BadgeRoot/LevelLabel
+
+@onready var upgrade_particles: CPUParticles3D = get_node_or_null("UpgradeParticles")
+
+var time_passed: float = 0.0
+var initial_badge_y: float = 2.4
+
+func _ready() -> void:
+	if badge_root != null:
+		initial_badge_y = badge_root.position.y
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null:
+		gm.station_upgraded.connect(_on_station_upgraded)
+		update_level_display(gm.get_station_level(station_id))
+
+func _process(delta: float) -> void:
+	time_passed += delta
+	if badge_root != null:
+		badge_root.position.y = initial_badge_y + sin(time_passed * 3.5 + 1.0) * 0.06
+
+func update_level_display(lvl: int) -> void:
+	if level_label != null:
+		if lvl >= 10:
+			level_label.text = "👑 Master Range Lv. %d" % lvl
+			level_label.modulate = Color(1.0, 0.45, 0.2, 1)
+		elif lvl >= 5:
+			level_label.text = "★ Chef Range Lv. %d" % lvl
+			level_label.modulate = Color(1.0, 0.85, 0.25, 1)
+		else:
+			level_label.text = "▲ Lv. %d" % lvl
+			level_label.modulate = Color(0.35, 1.0, 0.55, 1)
+
+func _on_station_upgraded(id: String, new_lvl: int) -> void:
+	if id == station_id:
+		update_level_display(new_lvl)
+		
+		if upgrade_particles != null:
+			upgrade_particles.restart()
+			
+		_spawn_upgrade_text(new_lvl)
+		
+		var bounce_scale = Vector3(1.22, 1.22, 1.22) if (new_lvl == 5 or new_lvl == 10) else Vector3(1.14, 1.14, 1.14)
+		var tween: Tween = create_tween()
+		tween.tween_property(self, "scale", bounce_scale, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(self, "scale", Vector3.ONE, 0.16)
+
+func _spawn_upgrade_text(new_lvl: int) -> void:
+	var label = Label3D.new()
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.double_sided = false
+	label.font_size = 24
+	label.outline_size = 6
+	label.position = Vector3(0, 1.4, 0)
+	
+	if new_lvl == 5:
+		label.text = "★ TIER UNLOCKED: COMMERCIAL DOUBLE RANGE! ★"
+		label.modulate = Color(1.0, 0.88, 0.2, 1.0)
+		label.outline_modulate = Color(0.2, 0.1, 0.0, 0.9)
+	elif new_lvl == 10:
+		label.text = "👑 MASTER CULINARY SUITE UNLOCKED! 👑"
+		label.modulate = Color(1.0, 0.45, 0.2, 1.0)
+		label.outline_modulate = Color(0.2, 0.05, 0.0, 0.9)
+	else:
+		label.text = "+15% Cooking Speed! ⚡"
+		label.modulate = Color(1.0, 0.85, 0.25, 1.0)
+		label.outline_modulate = Color(0.18, 0.1, 0.02, 0.9)
+		
+	add_child(label)
+	var tw = create_tween()
+	tw.tween_property(label, "position:y", 2.3, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(label, "modulate:a", 0.0, 0.8).set_delay(0.3)
+	tw.tween_callback(label.queue_free)
+
+func _on_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		var gm = get_node_or_null("/root/GameManager")
+		var lvl: int = gm.get_station_level(station_id) if gm != null else 1
+		station_clicked.emit(station_id, station_name, lvl)

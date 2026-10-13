@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://blo0mtigon5em"
+path="res://.godot/imported/mustard.obj-2dcd7767cc943307048029533073f917.mesh"
+
+[deps]
+
+files=["res://.godot/imported/mustard.obj-2dcd7767cc943307048029533073f917.mesh"]
+
+source_file="res://assets/kaykit_restaurant/obj/mustard.obj"
+dest_files=["res://.godot/imported/mustard.obj-2dcd7767cc943307048029533073f917.mesh", "res://.godot/imported/mustard.obj-2dcd7767cc943307048029533073f917.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false

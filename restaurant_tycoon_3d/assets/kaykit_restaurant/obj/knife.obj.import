@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://0tcr1s28ukh8"
+path="res://.godot/imported/knife.obj-78c6e2d50c21a948489b2b025e200163.mesh"
+
+[deps]
+
+files=["res://.godot/imported/knife.obj-78c6e2d50c21a948489b2b025e200163.mesh"]
+
+source_file="res://assets/kaykit_restaurant/obj/knife.obj"
+dest_files=["res://.godot/imported/knife.obj-78c6e2d50c21a948489b2b025e200163.mesh", "res://.godot/imported/knife.obj-78c6e2d50c21a948489b2b025e200163.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false

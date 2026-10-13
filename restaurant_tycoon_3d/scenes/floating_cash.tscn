@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3 uid="uid://c3q4r8p0x5m1"]
+
+[ext_resource type="Script" path="res://scripts/floating_cash.gd" id="1_script"]
+
+[node name="FloatingCash" type="Label3D"]
+billboard = 1
+double_sided = false
+modulate = Color(0.2, 0.95, 0.3, 1)
+outline_modulate = Color(0, 0.25, 0.05, 0.8)
+text = "+$50"
+font_size = 48
+outline_size = 14
+script = ExtResource("1_script")

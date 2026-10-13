@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://dbkof31sjlf3f"
+path="res://.godot/imported/stew_bowl.obj-eeb024c2392e39ad7013784f6ebba26e.mesh"
+
+[deps]
+
+files=["res://.godot/imported/stew_bowl.obj-eeb024c2392e39ad7013784f6ebba26e.mesh"]
+
+source_file="res://assets/kaykit_restaurant/obj/stew_bowl.obj"
+dest_files=["res://.godot/imported/stew_bowl.obj-eeb024c2392e39ad7013784f6ebba26e.mesh", "res://.godot/imported/stew_bowl.obj-eeb024c2392e39ad7013784f6ebba26e.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false

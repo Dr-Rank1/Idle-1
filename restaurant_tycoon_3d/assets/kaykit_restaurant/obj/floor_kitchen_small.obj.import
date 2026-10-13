@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bqhxad0q7qbva"
+path="res://.godot/imported/floor_kitchen_small.obj-a291bab21e79fdc4d2e1770c1d2cb3e4.mesh"
+
+[deps]
+
+files=["res://.godot/imported/floor_kitchen_small.obj-a291bab21e79fdc4d2e1770c1d2cb3e4.mesh"]
+
+source_file="res://assets/kaykit_restaurant/obj/floor_kitchen_small.obj"
+dest_files=["res://.godot/imported/floor_kitchen_small.obj-a291bab21e79fdc4d2e1770c1d2cb3e4.mesh", "res://.godot/imported/floor_kitchen_small.obj-a291bab21e79fdc4d2e1770c1d2cb3e4.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false

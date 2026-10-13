@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://cj8t5mqkotgiw"
+path="res://.godot/imported/kitchencounter_innercorner.obj-7106e4a7c092b8c845de9f9e323b2b76.mesh"
+
+[deps]
+
+files=["res://.godot/imported/kitchencounter_innercorner.obj-7106e4a7c092b8c845de9f9e323b2b76.mesh"]
+
+source_file="res://assets/kaykit_restaurant/obj/kitchencounter_innercorner.obj"
+dest_files=["res://.godot/imported/kitchencounter_innercorner.obj-7106e4a7c092b8c845de9f9e323b2b76.mesh", "res://.godot/imported/kitchencounter_innercorner.obj-7106e4a7c092b8c845de9f9e323b2b76.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false

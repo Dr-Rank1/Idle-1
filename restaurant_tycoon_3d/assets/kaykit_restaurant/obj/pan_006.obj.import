@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://b0068vbt1onqu"
+path="res://.godot/imported/pan_006.obj-f7d312364b7dd0693105b77d3d052215.mesh"
+
+[deps]
+
+files=["res://.godot/imported/pan_006.obj-f7d312364b7dd0693105b77d3d052215.mesh"]
+
+source_file="res://assets/kaykit_restaurant/obj/pan_006.obj"
+dest_files=["res://.godot/imported/pan_006.obj-f7d312364b7dd0693105b77d3d052215.mesh", "res://.godot/imported/pan_006.obj-f7d312364b7dd0693105b77d3d052215.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false

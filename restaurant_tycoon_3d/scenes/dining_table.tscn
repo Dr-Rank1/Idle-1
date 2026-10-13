@@ -1,0 +1,148 @@
+[gd_scene load_steps=11 format=3 uid="uid://dtable12345"]
+
+[ext_resource type="Script" path="res://scripts/dining_table.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/kaykit_restaurant/gltf/table_round_A_small.gltf" id="2_table"]
+[ext_resource type="PackedScene" path="res://assets/kaykit_restaurant/gltf/chair_A.gltf" id="3_chair"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/rugRounded.glb" id="4_rug"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/lampSquareCeiling.glb" id="5_lamp"]
+[ext_resource type="PackedScene" path="res://assets/models/food/burger-cheese.glb" id="6_food"]
+[ext_resource type="PackedScene" path="res://assets/kaykit_restaurant/gltf/menu.gltf" id="7_menu"]
+[ext_resource type="PackedScene" path="res://assets/models/food/shaker-salt.glb" id="8_salt"]
+[ext_resource type="PackedScene" path="res://assets/models/food/shaker-pepper.glb" id="9_pepper"]
+[ext_resource type="PackedScene" path="res://assets/models/food/glass-wine.glb" id="10_wine"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/plantSmall2.glb" id="11_vase"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/lampRoundTable.glb" id="12_candle"]
+[ext_resource type="PackedScene" path="res://assets/kaykit_restaurant/gltf/plate_dirty.gltf" id="13_dirty_dish"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_click"]
+height = 1.0
+radius = 0.65
+
+[sub_resource type="StandardMaterial3D" id="Material_cloth"]
+albedo_color = Color(0.97, 0.95, 0.91, 1)
+roughness = 0.82
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_cloth"]
+material = SubResource("Material_cloth")
+top_radius = 0.44
+bottom_radius = 0.48
+height = 0.035
+
+[sub_resource type="StandardMaterial3D" id="Material_sparkle"]
+albedo_color = Color(1, 0.88, 0.25, 1)
+emission_enabled = true
+emission = Color(1, 0.85, 0.2, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_sparkle"]
+material = SubResource("Material_sparkle")
+size = Vector3(0.06, 0.06, 0.06)
+
+[node name="DiningTable" type="StaticBody3D"]
+collision_layer = 4
+collision_mask = 0
+input_ray_pickable = true
+script = ExtResource("1_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("CylinderShape3D_click")
+
+[node name="Rug" parent="." instance=ExtResource("4_rug")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 0, 0.015, 0)
+
+[node name="TableMesh" parent="." instance=ExtResource("2_table")]
+transform = Transform3D(0.56, 0, 0, 0, 0.56, 0, 0, 0, 0.56, 0, 0, 0)
+
+[node name="ChairLeft" parent="." instance=ExtResource("3_chair")]
+transform = Transform3D(0, 0, 0.55, 0, 0.55, 0, -0.55, 0, 0, -0.68, 0, 0)
+
+[node name="ChairRight" parent="." instance=ExtResource("3_chair")]
+transform = Transform3D(0, 0, -0.55, 0, 0.55, 0, 0.55, 0, 0, 0.68, 0, 0)
+
+[node name="TableMenu" parent="." instance=ExtResource("7_menu")]
+transform = Transform3D(0.38, 0, 0, 0, 0.38, 0, 0, 0, 0.38, 0.06, 0.56, -0.1)
+
+[node name="SaltShaker" parent="." instance=ExtResource("8_salt")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, -0.05, 0.56, -0.08)
+
+[node name="PepperShaker" parent="." instance=ExtResource("9_pepper")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, -0.1, 0.56, -0.08)
+
+[node name="FoodDish" parent="." instance=ExtResource("6_food")]
+transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, 0, 0.56, 0)
+visible = false
+
+[node name="DirtyDishes" parent="." instance=ExtResource("13_dirty_dish")]
+transform = Transform3D(0.44, 0, 0, 0, 0.44, 0, 0, 0, 0.44, 0, 0.56, 0)
+visible = false
+
+[node name="SeatMarker" type="Marker3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -0.68, 0.15, 0)
+
+[node name="PendantLamp" parent="." instance=ExtResource("5_lamp")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 2.5, 0)
+
+[node name="TableOmniLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
+light_color = Color(1, 0.88, 0.65, 1)
+light_energy = 0.25
+omni_range = 2.4
+
+[node name="Tier2Decor" type="Node3D" parent="."]
+visible = false
+
+[node name="TableCloth" type="MeshInstance3D" parent="Tier2Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.555, 0)
+mesh = SubResource("CylinderMesh_cloth")
+
+[node name="FlowerVase" parent="Tier2Decor" instance=ExtResource("11_vase")]
+transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, 0.12, 0.56, 0.12)
+
+[node name="WineGlassLeft" parent="Tier2Decor" instance=ExtResource("10_wine")]
+transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, -0.22, 0.56, 0.12)
+
+[node name="WineGlassRight" parent="Tier2Decor" instance=ExtResource("10_wine")]
+transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, 0.22, 0.56, 0.12)
+
+[node name="Tier3Decor" type="Node3D" parent="."]
+visible = false
+
+[node name="CandleLantern" parent="Tier3Decor" instance=ExtResource("12_candle")]
+transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, 0, 0.56, -0.06)
+
+[node name="CandleLight" type="OmniLight3D" parent="Tier3Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.72, -0.06)
+light_color = Color(1, 0.72, 0.35, 1)
+light_energy = 0.45
+omni_range = 1.8
+
+[node name="UpgradeParticles" type="CPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+emitting = false
+one_shot = true
+explosiveness = 0.95
+amount = 22
+lifetime = 0.75
+emission_shape = 1
+emission_sphere_radius = 0.3
+direction = Vector3(0, 1, 0)
+spread = 60.0
+initial_velocity_min = 2.0
+initial_velocity_max = 3.6
+gravity = Vector3(0, -5.0, 0)
+mesh = SubResource("BoxMesh_sparkle")
+
+[node name="BadgeRoot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+
+[node name="LevelLabel" type="Label3D" parent="BadgeRoot"]
+billboard = 1
+double_sided = false
+modulate = Color(0.35, 1, 0.55, 1)
+outline_modulate = Color(0.04, 0.16, 0.08, 0.9)
+text = "▲ Lv. 1"
+font_size = 20
+outline_size = 5
+
+[connection signal="input_event" from="." to="." method="_on_input_event"]
