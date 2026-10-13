@@ -1,0 +1,3 @@
+@echo off
+echo Starting Restaurant Tycoon 3D (Godot)...
+"%~dp0godot.exe" --path restaurant_tycoon_3d %*
