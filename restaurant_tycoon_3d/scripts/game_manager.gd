@@ -157,10 +157,77 @@ var staff_roster: Dictionary = {
 	}
 }
 
+const SAVE_PATH: String = "user://restaurant_save.json"
+var autosave_timer: float = 0.0
+
 func _ready() -> void:
-	pass
+	load_game()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
+		save_game()
+
+func save_game() -> void:
+	var data = {
+		"cash": cash,
+		"gems": gems,
+		"total_earned": total_earned,
+		"star_rating": star_rating,
+		"restaurant_name": restaurant_name,
+		"unlocked_tables": unlocked_tables,
+		"station_levels": station_levels,
+		"menu_items": menu_items,
+		"staff_roster": staff_roster
+	}
+	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify(data, "\t"))
+		file.close()
+
+func load_game() -> void:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
+	var file = FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if file == null:
+		return
+	var content = file.get_as_text()
+	file.close()
+	var parsed = JSON.parse_string(content)
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+	
+	cash = parsed.get("cash", cash)
+	gems = parsed.get("gems", gems)
+	total_earned = parsed.get("total_earned", total_earned)
+	star_rating = parsed.get("star_rating", star_rating)
+	restaurant_name = parsed.get("restaurant_name", restaurant_name)
+	
+	if parsed.has("unlocked_tables") and typeof(parsed["unlocked_tables"]) == TYPE_DICTIONARY:
+		for k in parsed["unlocked_tables"].keys():
+			unlocked_tables[k] = parsed["unlocked_tables"][k]
+			
+	if parsed.has("station_levels") and typeof(parsed["station_levels"]) == TYPE_DICTIONARY:
+		for k in parsed["station_levels"].keys():
+			station_levels[k] = int(parsed["station_levels"][k])
+			
+	if parsed.has("menu_items") and typeof(parsed["menu_items"]) == TYPE_DICTIONARY:
+		for k in parsed["menu_items"].keys():
+			if menu_items.has(k) and typeof(parsed["menu_items"][k]) == TYPE_DICTIONARY:
+				for prop in parsed["menu_items"][k].keys():
+					menu_items[k][prop] = parsed["menu_items"][k][prop]
+					
+	if parsed.has("staff_roster") and typeof(parsed["staff_roster"]) == TYPE_DICTIONARY:
+		for k in parsed["staff_roster"].keys():
+			if staff_roster.has(k) and typeof(parsed["staff_roster"][k]) == TYPE_DICTIONARY:
+				for prop in parsed["staff_roster"][k].keys():
+					staff_roster[k][prop] = parsed["staff_roster"][k][prop]
 
 func _process(delta: float) -> void:
+	autosave_timer += delta
+	if autosave_timer >= 20.0:
+		autosave_timer = 0.0
+		save_game()
+
 	if is_boosted:
 		boost_timer -= delta
 		if boost_timer <= 0.0:
@@ -223,6 +290,7 @@ func upgrade_station(station_id: String) -> bool:
 		var current_lvl: int = get_station_level(station_id)
 		station_levels[station_id] = current_lvl + 1
 		station_upgraded.emit(station_id, station_levels[station_id])
+		save_game()
 		
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
@@ -243,6 +311,7 @@ func unlock_table(table_id: String) -> bool:
 	if spend_cash(cost):
 		unlocked_tables[table_id] = true
 		table_unlocked.emit(table_id)
+		save_game()
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
 			am.play_sfx("upgrade", 0.0, 3.0)
@@ -260,6 +329,7 @@ func award_critic_review(is_positive: bool, bounty: float = 0.0) -> void:
 		star_rating = max(3.5, star_rating - 0.1)
 		reputation_changed.emit(round(star_rating * 10))
 		critic_review_awarded.emit(star_rating, false)
+	save_game()
 
 func get_station_tier_title(station_id: String, lvl: int) -> String:
 	if station_id.begins_with("table"):
@@ -319,6 +389,7 @@ func unlock_dish(dish_id: String) -> bool:
 	if spend_cash(cost):
 		item["unlocked"] = true
 		menu_updated.emit()
+		save_game()
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
 			am.play_sfx("upgrade", 0.0, 3.0)
@@ -353,6 +424,7 @@ func hire_staff(staff_id: String) -> bool:
 	if spend_cash(cost):
 		st["hired"] = true
 		staff_updated.emit(staff_id)
+		save_game()
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
 			am.play_sfx("upgrade", 0.0, 2.0)
@@ -369,6 +441,7 @@ func upgrade_staff(staff_id: String) -> bool:
 	if spend_cash(cost):
 		st["level"] = st.get("level", 1) + 1
 		staff_updated.emit(staff_id)
+		save_game()
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
 			am.play_sfx("upgrade")

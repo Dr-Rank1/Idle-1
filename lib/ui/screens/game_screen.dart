@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../logic/game_state.dart';
 import '../../models/station.dart';
@@ -29,6 +30,14 @@ class _GameScreenState extends State<GameScreen>
   // Touch / gesture state
   Offset _lastFocalPoint = Offset.zero;
   double _baseZoom = 1.0;
+  Timer? _autosaveTimer;
+  late GameState _gameState;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _gameState = context.read<GameState>();
+  }
 
   @override
   void initState() {
@@ -42,7 +51,7 @@ class _GameScreenState extends State<GameScreen>
     // Load save & show offline earnings
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      final gs = context.read<GameState>();
+      final gs = _gameState;
       await SaveService.load(gs);
 
       // Default camera centered on the resort
@@ -60,24 +69,22 @@ class _GameScreenState extends State<GameScreen>
     });
 
     // Autosave every 30 seconds
-    Timer.periodic(const Duration(seconds: 30), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      SaveService.save(context.read<GameState>());
+    _autosaveTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      SaveService.save(_gameState);
     });
   }
 
   @override
   void dispose() {
+    _autosaveTimer?.cancel();
     _ticker.dispose();
-    SaveService.save(context.read<GameState>());
+    SaveService.save(_gameState);
     super.dispose();
   }
 
   void _onTick() {
-    final gs = context.read<GameState>();
+    final gs = _gameState;
     final now = _ticker.value * (const Duration(days: 999).inMilliseconds / 1000);
     final dt = (now - _lastTime).clamp(0, 0.1).toDouble();
     _lastTime = now;
@@ -111,9 +118,24 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void _onTapUp(TapUpDetails details, GameState gs) {
+    HapticFeedback.lightImpact();
+    final local = (details.localPosition - gs.cameraOffset) / gs.cameraZoom;
+    final grid = IsoMath.screenToGrid(local.dx, local.dy);
+
+    // 1. Try interactive rush action (tapping stoves to cook faster, maids to clean, guests to cheer up)
+    final rushed = gs.rushActionAt(grid);
+    if (rushed) {
+      HapticFeedback.mediumImpact();
+      return;
+    }
+
+    // 2. Hit-test station to open upgrade sheet
     final station = _stationAtScreenPos(details.localPosition, gs);
     if (station != null) {
       _showUpgradeSheet(station);
+    } else {
+      // 3. Tap on open ground: spawn quick sparkle particle
+      gs.spawnTapParticle(details.localPosition);
     }
   }
 

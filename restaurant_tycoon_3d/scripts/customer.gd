@@ -1,9 +1,13 @@
 extends CharacterBody3D
 
+signal order_placed(table_node: Node3D, customer_node: Node3D)
+signal lobby_wait_timeout(customer_node: Node3D)
+
 enum State {
 	SPAWNING,
 	WALKING_TO_HOST,
 	AT_HOST,
+	WAITING_IN_LOBBY,
 	WALKING_TO_TABLE,
 	SEATED_ORDERING,
 	EATING,
@@ -169,7 +173,7 @@ func _physics_process(delta: float) -> void:
 			mesh_root.position.y = move_toward(mesh_root.position.y, 0.0, delta * 0.2)
 			mesh_root.rotation.z = move_toward(mesh_root.rotation.z, 0.0, delta * 0.5)
 
-	if current_state != State.SEATED_ORDERING and current_state != State.EATING and current_state != State.CHEERING:
+	if current_state != State.SEATED_ORDERING and current_state != State.EATING and current_state != State.CHEERING and current_state != State.WAITING_IN_LOBBY:
 		move_and_slide()
 	
 	if state_timer > 0.0:
@@ -210,6 +214,9 @@ func _handle_customer_walkout() -> void:
 	is_waiting_for_food = false
 	if patience_root != null:
 		patience_root.visible = false
+		
+	if current_state == State.WAITING_IN_LOBBY:
+		lobby_wait_timeout.emit(self)
 		
 	current_state = State.WALKING_TO_EXIT
 	set_bubble_text("😡 Too Slow!", true)
@@ -300,9 +307,41 @@ func _on_all_waypoints_reached() -> void:
 				mesh_root.position = Vector3.ZERO
 				mesh_root.rotation = Vector3.ZERO
 			_play_anim("sit")
+			order_placed.emit(table_ref, self)
+
+		State.WAITING_IN_LOBBY:
+			velocity = Vector3.ZERO
+			_play_anim("sit")
+			set_bubble_text("⏳ Waiting...")
 				
 		State.WALKING_TO_EXIT:
 			queue_free()
+
+func set_as_waiting_in_lobby(spot: Vector3) -> void:
+	current_state = State.WAITING_IN_LOBBY
+	max_patience = 28.0
+	current_patience = 28.0
+	is_waiting_for_food = true
+	set_bubble_text("⏳ Waiting...")
+	set_waypoints([DOOR_POS, spot])
+
+func assign_table_from_lobby(target_table: Node3D) -> void:
+	if current_state != State.WAITING_IN_LOBBY and current_state != State.AT_HOST:
+		return
+	is_waiting_for_food = false
+	if patience_root != null:
+		patience_root.visible = false
+	table_ref = target_table
+	assigned_table_id = target_table.table_id
+	if target_table.has_method("occupy"):
+		target_table.occupy(self)
+	else:
+		target_table.is_occupied = true
+	var seat_pos: Vector3 = target_table.get_seat_position()
+	current_state = State.WALKING_TO_TABLE
+	set_bubble_text("💭")
+	var aisle_waypoint = Vector3(0.0, 0.0, seat_pos.z)
+	set_waypoints([ARCH_POS, aisle_waypoint, seat_pos])
 
 func _on_timer_complete() -> void:
 	match current_state:

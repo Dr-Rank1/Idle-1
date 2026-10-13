@@ -15,7 +15,17 @@ class GameState extends ChangeNotifier {
   double cash = 500.0;
   double totalEarned = 0.0;
   int reputation = 1;          // prestige multiplier level
+  int prestigeStars = 0;       // permanent prestige stars earned
   String hotelName = 'Sunny Palms Resort';
+
+  double get prestigeMultiplier => 1.0 + (prestigeStars * 0.25);
+  double get totalRevenueMultiplier => revenueMultiplier * prestigeMultiplier;
+  bool get canPrestige => totalEarned >= 15000.0;
+
+  int get starsToEarnOnPrestige {
+    final potential = (sqrt(totalEarned / 4000.0)).floor();
+    return max(1, potential - prestigeStars);
+  }
 
   // ─── Characters ──────────────────────────────────────────────────────────
   final List<Character> characters = [];
@@ -295,25 +305,46 @@ class GameState extends ChangeNotifier {
   }
 
   // ─── Routing helpers ─────────────────────────────────────────────────────
+  void _setWaypointsAndWalk(Character c, List<Offset> points) {
+    if (points.isEmpty) return;
+    c.waypoints.clear();
+    final first = points.first;
+    _walkTo(c, first.dx, first.dy);
+    if (points.length > 1) {
+      c.waypoints.addAll(points.sublist(1));
+    }
+  }
+
   void _routeGuestToReception(Character g, Station s) {
     g.state = CharacterState.walkingToReception;
     g.assignedStationId = s.id;
     s.occupiedByCharacterId = g.id;
-    _walkTo(g, s.queuePoint.dx, s.queuePoint.dy);
+    _setWaypointsAndWalk(g, [
+      const Offset(2.0, 2.5),
+      s.queuePoint,
+    ]);
   }
 
   void _routeGuestToDining(Character g, Station s) {
     g.state = CharacterState.walkingToDining;
     g.assignedStationId = s.id;
     s.occupiedByCharacterId = g.id;
-    _walkTo(g, s.centerGrid.dx, s.centerGrid.dy);
+    _setWaypointsAndWalk(g, [
+      const Offset(5.5, 4.5),
+      Offset(s.centerGrid.dx, 5.5),
+      s.centerGrid,
+    ]);
   }
 
   void _routeGuestToRoom(Character g, Station s) {
     g.state = CharacterState.walkingToRoom;
     g.assignedStationId = s.id;
     s.occupiedByCharacterId = g.id;
-    _walkTo(g, s.centerGrid.dx, s.centerGrid.dy);
+    _setWaypointsAndWalk(g, [
+      const Offset(3.5, 6.5),
+      Offset(s.centerGrid.dx, 8.5),
+      s.centerGrid,
+    ]);
   }
 
   void _walkTo(Character c, double tx, double ty) {
@@ -370,7 +401,12 @@ class GameState extends ChangeNotifier {
         case CharacterState.walkingToDining:
         case CharacterState.walkingToRoom:
           if (!c.isMoving) {
-            _onArrived(c);
+            if (c.waypoints.isNotEmpty) {
+              final next = c.waypoints.removeAt(0);
+              _walkTo(c, next.dx, next.dy);
+            } else {
+              _onArrived(c);
+            }
           } else {
             // Patience drain while walking
             if (c.isGuest) {
@@ -414,7 +450,10 @@ class GameState extends ChangeNotifier {
 
         case CharacterState.leaving:
           if (!c.isMoving) {
-            if (c.isGuest) {
+            if (c.waypoints.isNotEmpty) {
+              final next = c.waypoints.removeAt(0);
+              _walkTo(c, next.dx, next.dy);
+            } else if (c.isGuest) {
               toRemove.add(c);
             }
           }
@@ -517,7 +556,7 @@ class GameState extends ChangeNotifier {
     }
     c.assignedStationId = null;
 
-    final checkInIncome = (s?.income ?? 25.0) * revenueMultiplier * (c.isVip ? 2.0 : 1.0);
+    final checkInIncome = (s?.income ?? 25.0) * totalRevenueMultiplier * (c.isVip ? 2.0 : 1.0);
     _earnCash(checkInIncome, c.gx, c.gy);
 
     // After check-in: 50% go eat, 50% go to room
@@ -544,7 +583,7 @@ class GameState extends ChangeNotifier {
     c.assignedStationId = null;
 
     // Collect meal payment
-    final mealIncome = (s?.income ?? 60.0) * revenueMultiplier * (c.isVip ? 1.5 : 1.0);
+    final mealIncome = (s?.income ?? 60.0) * totalRevenueMultiplier * (c.isVip ? 1.5 : 1.0);
     _earnCash(mealIncome, c.gx, c.gy);
 
     // After dining: go rest or leave
@@ -568,7 +607,7 @@ class GameState extends ChangeNotifier {
     }
     c.assignedStationId = null;
 
-    final roomIncome = (s?.income ?? 120.0) * revenueMultiplier * (c.isVip ? 2.0 : 1.0);
+    final roomIncome = (s?.income ?? 120.0) * totalRevenueMultiplier * (c.isVip ? 2.0 : 1.0);
     _earnCash(roomIncome, c.gx, c.gy);
 
     _guestLeaves(c);
@@ -584,7 +623,11 @@ class GameState extends ChangeNotifier {
       c.assignedStationId = null;
     }
     c.state = CharacterState.leaving;
-    _walkTo(c, -2.0, c.gy);
+    _setWaypointsAndWalk(c, [
+      const Offset(3.5, 4.5),
+      const Offset(1.0, 2.5),
+      const Offset(-2.0, 2.5),
+    ]);
   }
 
   // ─── Staff idle AI ────────────────────────────────────────────────────────
@@ -842,6 +885,18 @@ class GameState extends ChangeNotifier {
     }
   }
 
+  void spawnTapParticle(Offset screenPos) {
+    particles.add(Particle(
+      id: 'tap_${_nextParticleId++}',
+      pos: screenPos,
+      velocity: const Offset(0, -25),
+      color: const Color(0xFF81D4FA),
+      size: 5,
+      life: 0.6,
+    ));
+    notifyListeners();
+  }
+
   // ─── Camera transform ─────────────────────────────────────────────────────
   Offset _gridToViewport(double gx, double gy) {
     final iso = IsoMath.gridToScreen(gx, gy);
@@ -960,5 +1015,114 @@ class GameState extends ChangeNotifier {
     cameraOffset = const Offset(400, 200);
     cameraZoom = 1.0;
     notifyListeners();
+  }
+
+  /// Prestige / Franchise Reset:
+  /// Resets cash and stations in exchange for permanent prestige stars
+  bool prestigeReset() {
+    if (!canPrestige) return false;
+    final newStars = starsToEarnOnPrestige;
+    prestigeStars += newStars;
+    reputation += 1;
+
+    // Reset station levels
+    for (final s in stations) {
+      s.level = 1;
+      s.isDirty = false;
+      s.foodReady = false;
+      s.cookTimer = 0;
+      s.cleanTimer = 0;
+      s.progressFraction = 0;
+      s.occupiedByCharacterId = null;
+    }
+
+    // Starting cash bonus based on prestige
+    cash = 500.0 * (1 + prestigeStars);
+
+    // Remove existing guests so resort starts fresh
+    characters.removeWhere((c) => c.isGuest);
+
+    // Spawn massive celebratory gold burst
+    final center = _gridToViewport(mapW / 2.0, mapH / 2.0);
+    for (int i = 0; i < 20; i++) {
+      _spawnCashParticles(center);
+    }
+    floatingLabels.add(FloatingLabel(
+      id: 'lbl_${_nextParticleId++}',
+      text: '★ PRESTIGE UP! +${(newStars * 25)}% INCOME ★',
+      screenPos: center.translate(0, -50),
+      color: const Color(0xFFFFD700),
+      scale: 1.3,
+    ));
+
+    notifyListeners();
+    return true;
+  }
+
+  /// Active Rush Action when player taps on a station or guest
+  bool rushActionAt(Offset gridPos) {
+    // 1. Check if tapped near a cooking stove
+    final stove = stations.where((s) => s.zone == ZoneType.kitchen &&
+        (s.centerGrid - gridPos).distance <= 2.0).firstOrNull;
+    if (stove != null && !stove.foodReady) {
+      stove.cookTimer += 2.0; // speed up cooking by 2 seconds
+      final pos = _gridToViewport(stove.centerGrid.dx, stove.centerGrid.dy);
+      _spawnSteamParticle(stove.centerGrid);
+      floatingLabels.add(FloatingLabel(
+        id: 'lbl_${_nextParticleId++}',
+        text: '⚡ CHEF RUSH!',
+        screenPos: pos,
+        color: const Color(0xFFFF9800),
+      ));
+      notifyListeners();
+      return true;
+    }
+
+    // 2. Check if tapped near a dirty hotel room
+    final dirtyRoom = stations.where((s) => s.zone == ZoneType.hotelRoom && s.isDirty &&
+        (s.centerGrid - gridPos).distance <= 2.5).firstOrNull;
+    if (dirtyRoom != null) {
+      final maid = characters.where((c) => c.type == CharacterType.maid &&
+          c.assignedStationId == dirtyRoom.id).firstOrNull;
+      if (maid != null) {
+        maid.stateTimer = max(0.0, maid.stateTimer - 2.5);
+      } else {
+        dirtyRoom.cleanTimer += 3.0;
+        if (dirtyRoom.cleanTimer >= dirtyRoom.actionDuration * 0.5) {
+          dirtyRoom.isDirty = false;
+        }
+      }
+      final pos = _gridToViewport(dirtyRoom.centerGrid.dx, dirtyRoom.centerGrid.dy);
+      _spawnCashParticles(pos);
+      floatingLabels.add(FloatingLabel(
+        id: 'lbl_${_nextParticleId++}',
+        text: '✨ QUICK CLEAN!',
+        screenPos: pos,
+        color: const Color(0xFF00E5FF),
+      ));
+      notifyListeners();
+      return true;
+    }
+
+    // 3. Check if tapped near a seated guest
+    final guest = characters.where((c) => c.isGuest &&
+        (Offset(c.gx, c.gy) - gridPos).distance <= 1.5).firstOrNull;
+    if (guest != null) {
+      guest.patience = min(50.0, guest.patience + 8.0);
+      if (guest.state == CharacterState.eating) {
+        guest.stateTimer = max(0.2, guest.stateTimer - 1.5);
+      }
+      final pos = _gridToViewport(guest.gx, guest.gy);
+      floatingLabels.add(FloatingLabel(
+        id: 'lbl_${_nextParticleId++}',
+        text: '❤️ VIP SERVICE!',
+        screenPos: pos,
+        color: const Color(0xFFFF4081),
+      ));
+      notifyListeners();
+      return true;
+    }
+
+    return false;
   }
 }

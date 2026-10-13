@@ -13,6 +13,26 @@ class ResortPainter extends CustomPainter {
 
   ResortPainter({required this.gs, required this.time});
 
+  // ─── Time-of-Day Lighting ────────────────────────────────────────────────
+  // 120-second day/night cycle: 0.0–0.45 day, 0.45–0.65 sunset, 0.65–0.90 night, 0.90–1.0 dawn
+  double get cyclePhase => (time % 120.0) / 120.0;
+
+  Color _ambientTint(Color baseColor) {
+    final p = cyclePhase;
+    if (p < 0.45) {
+      return baseColor;
+    } else if (p < 0.65) {
+      final t = (p - 0.45) / 0.20;
+      return Color.lerp(baseColor, const Color(0xFFFFB366), t * 0.35)!;
+    } else if (p < 0.90) {
+      final t = (p < 0.75) ? (p - 0.65) / 0.10 : (0.90 - p) / 0.15;
+      return Color.lerp(baseColor, const Color(0xFF1A2750), t * 0.45)!;
+    } else {
+      final t = (p - 0.90) / 0.10;
+      return Color.lerp(const Color(0xFF1A2750), baseColor, t)!;
+    }
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     canvas.save();
@@ -22,6 +42,7 @@ class ResortPainter extends CustomPainter {
     _drawGround(canvas, size);
     _drawZoneLabels(canvas);
     _drawStations(canvas);
+    _drawNightLighting(canvas);
     _drawCharacters(canvas);
     _drawParticles(canvas);
 
@@ -29,6 +50,42 @@ class ResortPainter extends CustomPainter {
 
     // Draw floating labels in screen space (after restore)
     _drawFloatingLabels(canvas);
+  }
+
+  void _drawNightLighting(Canvas canvas) {
+    final p = cyclePhase;
+    if (p < 0.60 || p > 0.95) return;
+    final nightAlpha = (p < 0.70)
+        ? (p - 0.60) / 0.10
+        : (p > 0.88)
+            ? (0.95 - p) / 0.07
+            : 1.0;
+
+    // Draw warm lantern halos around stations
+    for (final s in gs.stations) {
+      final center = IsoMath.gridToScreen(s.centerGrid.dx, s.centerGrid.dy);
+      final lampPaint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFFFFE082).withValues(alpha: 0.35 * nightAlpha),
+            const Color(0xFFFFD54F).withValues(alpha: 0.12 * nightAlpha),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromCircle(center: center, radius: 45));
+      canvas.drawCircle(center, 45, lampPaint);
+    }
+
+    // Pool glowing luminescence
+    final poolCenter = IsoMath.gridToScreen(14.0, 13.0);
+    final poolGlow = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF00E5FF).withValues(alpha: 0.30 * nightAlpha),
+          const Color(0xFF00B0FF).withValues(alpha: 0.10 * nightAlpha),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: poolCenter, radius: 90));
+    canvas.drawCircle(poolCenter, 90, poolGlow);
   }
 
   // ─── Ground tiles ─────────────────────────────────────────────────────────
@@ -60,7 +117,7 @@ class ResortPainter extends CustomPainter {
       final y = z['y'] as int;
       final w = z['w'] as int;
       final h = z['h'] as int;
-      final color = floorColors[zone]!;
+      final color = _ambientTint(floorColors[zone]!);
 
       _drawZone(canvas, x, y, w, h, color);
     }

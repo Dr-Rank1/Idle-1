@@ -13,6 +13,7 @@ class SaveService {
       'cash': gs.cash,
       'totalEarned': gs.totalEarned,
       'reputation': gs.reputation,
+      'prestigeStars': gs.prestigeStars,
       'hotelName': gs.hotelName,
       'stations': gs.stations.map((s) => {
         'id': s.id,
@@ -41,6 +42,7 @@ class SaveService {
       gs.cash = (data['cash'] as num?)?.toDouble() ?? gs.cash;
       gs.totalEarned = (data['totalEarned'] as num?)?.toDouble() ?? 0;
       gs.reputation = (data['reputation'] as int?) ?? 1;
+      gs.prestigeStars = (data['prestigeStars'] as int?) ?? gs.prestigeStars;
       gs.hotelName = (data['hotelName'] as String?) ?? gs.hotelName;
 
       // Restore station levels

@@ -30,6 +30,10 @@ class HudOverlay extends StatelessWidget {
                   children: [
                     // Cash pill
                     _CashPill(cash: gs.cash),
+                    if (gs.prestigeStars > 0) ...[
+                      const SizedBox(width: 6),
+                      _PrestigePill(stars: gs.prestigeStars),
+                    ],
                     const Spacer(),
                     // Hotel name
                     Flexible(
@@ -109,6 +113,47 @@ class _CashPill extends StatelessWidget {
               color: Color(0xFF69F0AE),
               fontWeight: FontWeight.w900,
               fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrestigePill extends StatelessWidget {
+  final int stars;
+  const _PrestigePill({required this.stars});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFFFD700).withValues(alpha: 0.8),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.25),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('👑', style: TextStyle(fontSize: 13)),
+          const SizedBox(width: 4),
+          Text(
+            '$stars ★',
+            style: const TextStyle(
+              color: Color(0xFFFFD700),
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
             ),
           ),
         ],
@@ -335,9 +380,74 @@ class StatsPanel extends StatelessWidget {
               _statRow('👔 Staff Members', '$staffCount'),
               _statRow('⭐ Managers Active', '$assignedManagers'),
               _statRow('📈 Reputation', 'Level ${gs.reputation}'),
+              _statRow('👑 Prestige Stars', '${gs.prestigeStars} ★ (+${(gs.prestigeStars * 25)}%)'),
               _statRow('🏨 Hotel', gs.hotelName),
               if (gs.vipActive)
                 _statRow('👑 VIP Multiplier', '×${gs.revenueMultiplier.toStringAsFixed(0)}'),
+              const SizedBox(height: 12),
+              if (gs.canPrestige)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFD700),
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: const Text('👑', style: TextStyle(fontSize: 15)),
+                    label: Text(
+                      'PRESTIGE (+${gs.starsToEarnOnPrestige} ★)',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+                    ),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: const Color(0xFF1A237E),
+                          title: const Text('👑 Open New Luxury Franchise',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          content: Text(
+                            'Sell your current resort and open a prestigious luxury franchise!\n\n'
+                            '• Earn: +${gs.starsToEarnOnPrestige} Prestige Stars\n'
+                            '• Permanent Global Income: +${((gs.prestigeStars + gs.starsToEarnOnPrestige) * 25)}%\n'
+                            '• Starting Bonus: \$${(500 * (1 + gs.prestigeStars + gs.starsToEarnOnPrestige)).toStringAsFixed(0)}\n\n'
+                            'Stations will reset to Level 1 with supercharged earnings!',
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFFD700),
+                                foregroundColor: Colors.black,
+                              ),
+                              onPressed: () {
+                                Navigator.of(ctx).pop();
+                                gs.prestigeReset();
+                                onClose();
+                              },
+                              child: const Text('PRESTIGE NOW!'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Prestige unlocks at \$15k total earned',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 10),
+                  ),
+                ),
             ],
           ),
         );

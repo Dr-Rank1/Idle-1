@@ -19,6 +19,14 @@ var waiters: Array[Node3D] = []
 var pending_orders: Array[Node3D] = []
 var waiter_scene: PackedScene = null
 
+var waiting_customers: Array[Node3D] = []
+const MAX_WAITING_CUSTOMERS: int = 3
+const WAITING_SPOTS: Array[Vector3] = [
+	Vector3(-3.0, 0.0, 5.0),
+	Vector3(-2.8, 0.0, 4.0),
+	Vector3(-3.8, 0.0, 4.0)
+]
+
 func _ready() -> void:
 	waiter_scene = load("res://scenes/waiter.tscn")
 	
@@ -87,7 +95,19 @@ func _process(delta: float) -> void:
 		critic_timer = randf_range(38.0, 52.0)
 		_try_spawn_critic()
 		
+	_check_seat_waiting_customers()
 	_dispatch_waiter_tasks()
+
+func _check_seat_waiting_customers() -> void:
+	waiting_customers = waiting_customers.filter(func(c): return is_instance_valid(c) and c.current_state == c.State.WAITING_IN_LOBBY)
+	if waiting_customers.size() == 0:
+		return
+	var available = _get_available_tables()
+	if available.size() == 0:
+		return
+	var cust = waiting_customers.pop_front()
+	var free_table: Node3D = available.pick_random()
+	cust.assign_table_from_lobby(free_table)
 
 func _get_tables_targeted_by_waiters() -> Array[Node3D]:
 	var targeted: Array[Node3D] = []
@@ -140,11 +160,27 @@ func _get_available_tables() -> Array[Node3D]:
 
 func _try_spawn_customer() -> void:
 	var available = _get_available_tables()
-	if available.size() == 0:
-		return
+	if available.size() > 0:
+		var free_table: Node3D = available.pick_random()
+		_spawn_customer_flow(free_table, false)
+	elif waiting_customers.size() < MAX_WAITING_CUSTOMERS and customer_scene != null:
+		_spawn_waiting_customer_flow()
+
+func _spawn_waiting_customer_flow() -> void:
+	var cust = customer_scene.instantiate()
+	customers_container.add_child(cust)
 	
-	var free_table: Node3D = available.pick_random()
-	_spawn_customer_flow(free_table, false)
+	var spawn_pos: Vector3 = Vector3(-5.5, 0.0, 9.5)
+	if spawn_marker != null:
+		spawn_pos = spawn_marker.global_position
+	cust.global_position = spawn_pos
+	
+	var spot_idx = waiting_customers.size() % WAITING_SPOTS.size()
+	var wait_spot = WAITING_SPOTS[spot_idx]
+	cust.set_as_waiting_in_lobby(wait_spot)
+	cust.order_placed.connect(_on_customer_order_placed)
+	cust.lobby_wait_timeout.connect(func(c): waiting_customers.erase(c))
+	waiting_customers.append(cust)
 
 func _try_spawn_critic() -> void:
 	var available = _get_available_tables()
@@ -182,12 +218,11 @@ func _spawn_customer_flow(table: Node3D, is_critic: bool = false) -> void:
 	
 	cust.current_state = cust.State.WALKING_TO_HOST
 	cust.set_waypoints([cust.DOOR_POS, cust.HOST_POS])
-	
-	# When customer reaches table, queue waiter service
-	get_tree().create_timer(4.5).timeout.connect(func():
-		if is_instance_valid(cust) and is_instance_valid(table) and table.is_occupied:
-			_queue_order(table)
-	)
+	cust.order_placed.connect(_on_customer_order_placed)
+
+func _on_customer_order_placed(table: Node3D, cust: Node3D) -> void:
+	if is_instance_valid(table) and is_instance_valid(cust) and table.is_occupied:
+		_queue_order(table)
 
 func _queue_order(table: Node3D) -> void:
 	if not pending_orders.has(table):
