@@ -89,19 +89,19 @@
 background_mode = 1
 background_color = Color(0.55, 0.78, 0.95, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.94, 0.95, 0.98, 1)
-ambient_light_energy = 0.62
+ambient_light_color = Color(0.92, 0.94, 0.98, 1)
+ambient_light_energy = 0.38
 tonemap_mode = 2
-tonemap_exposure = 1.05
+tonemap_exposure = 1.08
 ssao_enabled = true
 ssao_radius = 1.2
-ssao_intensity = 1.5
+ssao_intensity = 1.6
 glow_enabled = true
 glow_intensity = 0.12
 glow_bloom = 0.04
 adjustment_enabled = true
 adjustment_brightness = 1.02
-adjustment_contrast = 1.05
+adjustment_contrast = 1.06
 adjustment_saturation = 1.18
 
 [sub_resource type="StandardMaterial3D" id="Material_asphalt"]
@@ -192,16 +192,16 @@ material = SubResource("Material_kitchen_floor")
 size = Vector2(8.0, 6.35)
 
 [sub_resource type="StandardMaterial3D" id="Material_wall"]
-albedo_color = Color(0.90, 0.76, 0.50, 1)
-roughness = 0.8
+albedo_color = Color(0.92, 0.89, 0.84, 1)
+roughness = 0.75
 
 [sub_resource type="StandardMaterial3D" id="Material_wall_dining_accent"]
-albedo_color = Color(0.22, 0.54, 0.52, 1)
-roughness = 0.8
+albedo_color = Color(0.90, 0.88, 0.83, 1)
+roughness = 0.7
 
 [sub_resource type="StandardMaterial3D" id="Material_wall_manager"]
-albedo_color = Color(0.52, 0.12, 0.16, 1)
-roughness = 0.75
+albedo_color = Color(0.91, 0.90, 0.87, 1)
+roughness = 0.65
 
 [sub_resource type="StandardMaterial3D" id="Material_roof"]
 albedo_color = Color(0.48, 0.51, 0.56, 1)
@@ -212,8 +212,8 @@ albedo_color = Color(0.35, 0.38, 0.43, 1)
 roughness = 0.6
 
 [sub_resource type="StandardMaterial3D" id="Material_hedge"]
-albedo_color = Color(0.24, 0.58, 0.14, 1)
-roughness = 0.72
+albedo_color = Color(0.14, 0.36, 0.12, 1)
+roughness = 0.82
 
 [sub_resource type="StandardMaterial3D" id="Material_crosswalk"]
 shading_mode = 0
@@ -224,8 +224,9 @@ material = SubResource("Material_crosswalk")
 size = Vector3(0.65, 0.02, 3.2)
 
 [sub_resource type="StandardMaterial3D" id="Material_manager_rug_ring"]
-albedo_color = Color(0.55, 0.78, 0.95, 1)
-roughness = 0.6
+albedo_color = Color(0.88, 0.76, 0.32, 1)
+metallic = 0.5
+roughness = 0.4
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_manager_rug_ring"]
 material = SubResource("Material_manager_rug_ring")
@@ -234,8 +235,8 @@ bottom_radius = 1.58
 height = 0.015
 
 [sub_resource type="StandardMaterial3D" id="Material_manager_rug"]
-albedo_color = Color(0.18, 0.38, 0.65, 1)
-roughness = 0.6
+albedo_color = Color(0.50, 0.16, 0.18, 1)
+roughness = 0.75
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_manager_rug"]
 material = SubResource("Material_manager_rug")
@@ -244,8 +245,8 @@ bottom_radius = 1.4
 height = 0.02
 
 [sub_resource type="StandardMaterial3D" id="Material_magenta_frame"]
-albedo_color = Color(0.88, 0.22, 0.55, 1)
-roughness = 0.65
+albedo_color = Color(0.30, 0.18, 0.11, 1)
+roughness = 0.45
 
 [sub_resource type="StandardMaterial3D" id="Material_window_vent"]
 albedo_color = Color(0.24, 0.72, 0.68, 1)
@@ -296,11 +297,11 @@ size = Vector3(0.06, 0.025, 9.6)
 albedo_texture = ExtResource("29_sidewalk_tex")
 albedo_color = Color(0.92, 0.88, 0.82, 1)
 roughness = 0.65
-uv1_scale = Vector3(4, 6, 1)
+uv1_scale = Vector3(6, 7, 1)
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_patio_deck"]
 material = SubResource("Material_patio_deck")
-size = Vector2(4.6, 7.8)
+size = Vector2(6.8, 8.2)
 
 [node name="Main" type="Node3D"]
 
@@ -310,15 +311,17 @@ environment = SubResource("Environment_main")
 [node name="DirectionalLight3D_Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.819152, -0.469846, 0.32899, 0, 0.573576, 0.819152, -0.573576, -0.67101, 0.469846, 0, 18, 0)
 light_color = Color(1, 0.98, 0.93, 1)
-light_energy = 1.25
+light_energy = 1.35
 shadow_enabled = true
-shadow_bias = 0.012
-shadow_blur = 1.2
+shadow_bias = 0.005
+shadow_blur = 0.8
+directional_shadow_mode = 0
+directional_shadow_max_distance = 36.0
 
 [node name="DirectionalLight3D_Fill" type="DirectionalLight3D" parent="."]
 transform = Transform3D(-0.707107, 0.454519, -0.541675, 0, 0.766044, 0.642788, 0.707107, 0.454519, -0.541675, 0, 12, 0)
 light_color = Color(0.72, 0.85, 0.98, 1)
-light_energy = 0.35
+light_energy = 0.22
 shadow_enabled = false
 
 [node name="Camera3D" type="Camera3D" parent="."]
@@ -870,7 +873,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
 mesh = SubResource("PlaneMesh_lawn_garden")
 
 [node name="PatioDeck" type="MeshInstance3D" parent="Restaurant/GardenLawn"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0.025, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0.025, 0)
 mesh = SubResource("PlaneMesh_patio_deck")
 
 [node name="HedgeEast" type="CSGBox3D" parent="Restaurant/GardenLawn"]

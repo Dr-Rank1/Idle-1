@@ -220,7 +220,15 @@ func occupy(customer: Node) -> Vector3:
 	update_level_display(lvl)
 	return get_seat_position()
 
-func serve_food() -> void:
+const DISH_SCENES: Dictionary = {
+	"burger": "res://assets/models/food/burger-cheese.glb",
+	"pasta": "res://assets/models/food/bowl-broth.glb",
+	"pizza": "res://assets/models/food/pizza.glb",
+	"sushi": "res://assets/models/food/sushi-salmon.glb"
+}
+
+func serve_food(dish_id: String = "burger") -> void:
+	_setup_dish_model(dish_id)
 	if food_dish != null:
 		food_dish.visible = true
 		food_dish.scale = Vector3(0.1, 0.1, 0.1)
@@ -228,6 +236,17 @@ func serve_food() -> void:
 		tween.tween_property(food_dish, "scale", Vector3(0.42, 0.42, 0.42), 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	if occupying_customer != null and is_instance_valid(occupying_customer) and occupying_customer.has_method("on_food_delivered"):
 		occupying_customer.on_food_delivered()
+
+func _setup_dish_model(dish_id: String) -> void:
+	if food_dish == null:
+		return
+	var scn_path = DISH_SCENES.get(dish_id, DISH_SCENES["burger"])
+	for c in food_dish.get_children():
+		c.queue_free()
+	var scn = load(scn_path)
+	if scn:
+		var node = scn.instantiate()
+		food_dish.add_child(node)
 
 func clear_food() -> void:
 	if food_dish != null:

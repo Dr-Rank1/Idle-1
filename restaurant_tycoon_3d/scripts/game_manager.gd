@@ -17,11 +17,13 @@ signal quests_updated()
 signal campaign_updated(campaign_id: String, active: bool, time_left: float)
 signal terrace_unlocked_changed(unlocked: bool)
 signal stall_unlocked(stall_idx: int)
+signal offline_earnings_available(amount: float, elapsed_seconds: float)
 
 # ─── Economy State ──────────────────────────────────────────────────────────
 var cash: float = 650.0
 var gems: int = 50
 var total_earned: float = 0.0
+var pending_offline_earnings: float = 0.0
 var star_rating: float = 4.8
 var restaurant_name: String = "Chef's Bistro Tycoon"
 var is_boosted: bool = false
@@ -284,7 +286,8 @@ func save_game() -> void:
 		"station_levels": station_levels,
 		"menu_items": menu_items,
 		"staff_roster": staff_roster,
-		"active_quests": active_quests
+		"active_quests": active_quests,
+		"saved_timestamp": Time.get_unix_time_from_system()
 	}
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file != null:
@@ -313,11 +316,23 @@ func load_game() -> void:
 	unlocked_stalls = int(parsed.get("unlocked_stalls", unlocked_stalls))
 	terrace_unlocked = bool(parsed.get("terrace_unlocked", terrace_unlocked))
 	xp_to_next_level = 250.0 * pow(1.35, restaurant_level - 1)
-	
+
+	var last_ts = float(parsed.get("saved_timestamp", 0.0))
+	if last_ts > 0.0:
+		var now = Time.get_unix_time_from_system()
+		var elapsed = max(0.0, now - last_ts)
+		if elapsed >= 30.0:
+			var capped = min(elapsed, 7200.0)
+			var base_rate = 14.0 + (restaurant_level * 5.0)
+			var earned = round(capped * (base_rate / 60.0))
+			if earned >= 15.0:
+				pending_offline_earnings = earned
+				call_deferred("_notify_offline_earnings", earned, capped)
+
 	if parsed.has("unlocked_tables") and typeof(parsed["unlocked_tables"]) == TYPE_DICTIONARY:
 		for k in parsed["unlocked_tables"].keys():
 			unlocked_tables[k] = parsed["unlocked_tables"][k]
-			
+
 	if parsed.has("station_levels") and typeof(parsed["station_levels"]) == TYPE_DICTIONARY:
 		for k in parsed["station_levels"].keys():
 			station_levels[k] = int(parsed["station_levels"][k])
@@ -343,6 +358,17 @@ func load_game() -> void:
 					existing["reward_cash"] = q.get("reward_cash", existing["reward_cash"])
 					existing["reward_gems"] = q.get("reward_gems", existing["reward_gems"])
 					existing["claimed"] = q.get("claimed", existing["claimed"])
+
+func _notify_offline_earnings(earned: float, elapsed: float) -> void:
+	await get_tree().create_timer(0.6).timeout
+	offline_earnings_available.emit(earned, elapsed)
+
+func claim_offline_earnings(multiplier: float = 1.0) -> float:
+	var payout = pending_offline_earnings * multiplier
+	pending_offline_earnings = 0.0
+	add_cash(payout)
+	save_game()
+	return payout
 
 func _process(delta: float) -> void:
 	autosave_timer += delta

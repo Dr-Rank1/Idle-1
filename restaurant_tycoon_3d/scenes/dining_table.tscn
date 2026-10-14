@@ -22,8 +22,8 @@ albedo_color = Color(0.38, 0.22, 0.14, 1)
 roughness = 0.65
 
 [sub_resource type="StandardMaterial3D" id="Material_planter_green"]
-albedo_color = Color(0.24, 0.62, 0.16, 1)
-roughness = 0.7
+albedo_color = Color(0.14, 0.38, 0.13, 1)
+roughness = 0.82
 
 [sub_resource type="StandardMaterial3D" id="Material_gold_brass"]
 albedo_color = Color(0.92, 0.78, 0.25, 1)

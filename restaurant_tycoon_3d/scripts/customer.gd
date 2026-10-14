@@ -435,4 +435,5 @@ func on_food_delivered() -> void:
 	state_timer = 3.2
 	_play_anim("sit")
 	if table_ref != null and table_ref.has_method("serve_food"):
-		table_ref.serve_food()
+		var d_id = ordered_dish.get("id", "burger")
+		table_ref.serve_food(d_id)

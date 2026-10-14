@@ -144,6 +144,7 @@ func _ready() -> void:
 		gm.table_unlocked.connect(_on_table_unlocked)
 		gm.quests_updated.connect(_on_quests_updated)
 		gm.campaign_updated.connect(_on_campaign_updated)
+		gm.offline_earnings_available.connect(_on_offline_earnings_available)
 		
 		displayed_cash = gm.cash
 		_update_top_bar(gm.cash, gm.gems, gm.star_rating, gm.restaurant_name, gm.restaurant_level, gm.restaurant_xp, gm.xp_to_next_level)
@@ -857,3 +858,117 @@ func _get_gold_btn_style() -> StyleBoxFlat:
 	sb.set_corner_radius_all(12)
 	sb.set_content_margin_all(10)
 	return sb
+
+var welcome_modal: PanelContainer = null
+
+func _on_offline_earnings_available(earned: float, elapsed: float) -> void:
+	if welcome_modal != null and is_instance_valid(welcome_modal):
+		welcome_modal.queue_free()
+
+	welcome_modal = PanelContainer.new()
+	welcome_modal.name = "WelcomeBackModal"
+	welcome_modal.custom_minimum_size = Vector2(440, 300)
+	welcome_modal.anchors_preset = Control.PRESET_CENTER
+	welcome_modal.anchor_left = 0.5
+	welcome_modal.anchor_top = 0.5
+	welcome_modal.anchor_right = 0.5
+	welcome_modal.anchor_bottom = 0.5
+	welcome_modal.offset_left = -220
+	welcome_modal.offset_top = -150
+	welcome_modal.offset_right = 220
+	welcome_modal.offset_bottom = 150
+	welcome_modal.pivot_offset = Vector2(220, 150)
+
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.12, 0.14, 0.20, 0.96)
+	style.border_color = Color(0.95, 0.82, 0.25, 1.0)
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(18)
+	style.shadow_color = Color(0, 0, 0, 0.6)
+	style.shadow_size = 20
+	welcome_modal.add_theme_stylebox_override("panel", style)
+
+	var vb = VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 14)
+	welcome_modal.add_child(vb)
+
+	var title = Label.new()
+	title.text = "✨ WELCOME BACK, CHEF! ✨"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", Color(1.0, 0.88, 0.25))
+	vb.add_child(title)
+
+	var mins = max(1, int(elapsed / 60.0))
+	var desc = Label.new()
+	desc.text = "While you were away for %d minutes,\nyour staff kept cooking and earned:" % mins
+	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc.add_theme_font_size_override("font_size", 15)
+	desc.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+	vb.add_child(desc)
+
+	var cash_val = Label.new()
+	cash_val.text = "+$" + _format_money(earned)
+	cash_val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cash_val.add_theme_font_size_override("font_size", 34)
+	cash_val.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55))
+	vb.add_child(cash_val)
+
+	var hb = HBoxContainer.new()
+	hb.alignment = BoxContainer.ALIGNMENT_CENTER
+	hb.add_theme_constant_override("separation", 16)
+	vb.add_child(hb)
+
+	var collect_btn = Button.new()
+	collect_btn.text = "COLLECT (1X)"
+	collect_btn.custom_minimum_size = Vector2(160, 44)
+	var btn_style = StyleBoxFlat.new()
+	btn_style.bg_color = Color(0.22, 0.58, 0.32, 1.0)
+	btn_style.set_corner_radius_all(10)
+	collect_btn.add_theme_stylebox_override("normal", btn_style)
+	collect_btn.add_theme_font_size_override("font_size", 16)
+	collect_btn.pressed.connect(func(): _claim_offline(1.0))
+	hb.add_child(collect_btn)
+
+	var double_btn = Button.new()
+	double_btn.text = "⚡ 2X DOUBLE!"
+	double_btn.custom_minimum_size = Vector2(160, 44)
+	var double_style = StyleBoxFlat.new()
+	double_style.bg_color = Color(0.92, 0.65, 0.12, 1.0)
+	double_style.set_corner_radius_all(10)
+	double_btn.add_theme_stylebox_override("normal", double_style)
+	double_btn.add_theme_font_size_override("font_size", 16)
+	double_btn.pressed.connect(func(): _claim_offline(2.0))
+	hb.add_child(double_btn)
+
+	add_child(welcome_modal)
+
+	welcome_modal.scale = Vector2(0.4, 0.4)
+	var tw = create_tween()
+	tw.tween_property(welcome_modal, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _claim_offline(mult: float) -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null:
+		var payout = gm.claim_offline_earnings(mult)
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("upgrade", 0.05, 3.0)
+		_spawn_reward_floater("+$" + _format_money(payout) + " COLLECTED! 🎉")
+	if welcome_modal != null and is_instance_valid(welcome_modal):
+		var tw = create_tween()
+		tw.tween_property(welcome_modal, "scale", Vector2(0.2, 0.2), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		tw.tween_callback(welcome_modal.queue_free)
+
+func _spawn_reward_floater(txt: String) -> void:
+	var lbl = Label.new()
+	lbl.text = txt
+	lbl.add_theme_font_size_override("font_size", 24)
+	lbl.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55))
+	lbl.position = Vector2(640.0 - 140.0, 360.0 - 50.0)
+	add_child(lbl)
+	
+	var tw = create_tween()
+	tw.tween_property(lbl, "position:y", lbl.position.y - 70.0, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(lbl, "modulate:a", 0.0, 0.9).set_delay(0.2)
+	tw.tween_callback(lbl.queue_free)

@@ -11,8 +11,8 @@ func _init():
 	var main_node = main_scn.instantiate()
 	root.add_child(main_node)
 	
-	# Simulate 120 frames
-	for i in range(120):
+	# Simulate 260 frames for active dining and serving
+	for i in range(260):
 		await process_frame
 		
 	var img = root.get_viewport().get_texture().get_image()
