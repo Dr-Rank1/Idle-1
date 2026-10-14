@@ -157,10 +157,52 @@ def generate_restaurant_ambience():
 
     create_wav("assets/audio/restaurant_ambience.wav", samples, sr)
 
+def generate_button_click_sfx():
+    # Tactile woody bubble pop / tap (650 Hz down to 250 Hz in 0.04s)
+    sr = 44100
+    duration = 0.05
+    total_samples = int(sr * duration)
+    samples = []
+    for i in range(total_samples):
+        t = i / sr
+        freq = 680.0 - (t / duration) * 380.0
+        env = math.exp(-t * 80.0)
+        s = math.sin(2.0 * math.pi * freq * t) * env * 0.45
+        samples.append(s)
+    create_wav("assets/audio/button_click.wav", samples, sr)
+
+def generate_claim_reward_sfx():
+    # Sparkly triumphal harp arpeggio (F5 -> A5 -> C6 -> E6 -> G6)
+    sr = 44100
+    duration = 0.65
+    total_samples = int(sr * duration)
+    samples = []
+    notes = [
+        (0.00, 698.46, 0.12),
+        (0.08, 880.00, 0.12),
+        (0.16, 1046.50, 0.12),
+        (0.24, 1318.51, 0.12),
+        (0.32, 1567.98, 0.32)
+    ]
+    for i in range(total_samples):
+        t = i / sr
+        sample = 0.0
+        for start_t, freq, note_dur in notes:
+            if t >= start_t:
+                dt = t - start_t
+                env = math.exp(-dt * 9.0)
+                w = math.sin(2.0 * math.pi * freq * dt) * 0.65
+                w += math.sin(2.0 * math.pi * freq * 2.0 * dt) * 0.25
+                sample += w * env * 0.4
+        samples.append(sample)
+    create_wav("assets/audio/quest_claim.wav", samples, sr)
+
 if __name__ == "__main__":
     generate_coin_sfx()
     generate_order_bell_sfx()
     generate_upgrade_fanfare_sfx()
     generate_angry_exit_sfx()
     generate_restaurant_ambience()
+    generate_button_click_sfx()
+    generate_claim_reward_sfx()
     print("All audio generated successfully!")

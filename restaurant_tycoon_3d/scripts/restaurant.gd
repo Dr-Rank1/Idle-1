@@ -87,7 +87,11 @@ var critic_timer: float = 35.0
 func _process(delta: float) -> void:
 	spawn_timer -= delta
 	if spawn_timer <= 0.0:
-		spawn_timer = spawn_interval
+		var gm = get_node_or_null("/root/GameManager")
+		var mult: float = 1.0
+		if gm != null and gm.has_method("get_spawn_rate_multiplier"):
+			mult = gm.get_spawn_rate_multiplier()
+		spawn_timer = spawn_interval / mult
 		_try_spawn_customer()
 		
 	critic_timer -= delta

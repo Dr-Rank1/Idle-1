@@ -287,8 +287,11 @@ func _on_all_waypoints_reached() -> void:
 				
 			set_bubble_text("%s %s" % [ordered_dish.get("icon", "🍽️"), ordered_dish.get("name", "Dish")])
 			
-			# Start Customer Patience countdown
-			current_patience = max_patience
+			# Start Customer Patience countdown with marketing campaign buffs
+			var pat_mult: float = 1.0
+			if gm != null and gm.has_method("get_patience_multiplier"):
+				pat_mult = gm.get_patience_multiplier()
+			current_patience = max_patience * pat_mult
 			is_waiting_for_food = true
 			if patience_root != null:
 				patience_root.visible = true
@@ -365,8 +368,13 @@ func _on_timer_complete() -> void:
 			if gm != null:
 				var dish_price: float = ordered_dish.get("price", 45.0)
 				var table_bonus: float = gm.get_station_income(assigned_table_id)
-				var total_revenue: float = dish_price + table_bonus
+				var price_mult: float = 1.0
+				if gm.has_method("get_dish_price_multiplier"):
+					price_mult = gm.get_dish_price_multiplier()
+				var total_revenue: float = (dish_price * price_mult) + table_bonus
 				gm.add_cash(total_revenue, global_position + Vector3(0, 1.8, 0))
+				if gm.has_method("record_customer_served"):
+					gm.record_customer_served()
 			
 			if table_ref != null and table_ref.has_method("vacate"):
 				table_ref.vacate()
