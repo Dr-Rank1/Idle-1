@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://glassrailing123"]
+[gd_scene load_steps=8 format=3 uid="uid://glassrailing123"]
 
 [sub_resource type="StandardMaterial3D" id="Material_metal_post"]
 albedo_color = Color(0.25, 0.26, 0.28, 1)
@@ -23,6 +23,17 @@ size = Vector3(2.4, 0.8, 0.03)
 material = SubResource("Material_metal_post")
 size = Vector3(2.5, 0.06, 0.08)
 
+[sub_resource type="StandardMaterial3D" id="Material_fairy_bulb"]
+albedo_color = Color(1, 0.92, 0.6, 1)
+emission_enabled = true
+emission = Color(1, 0.88, 0.5, 1)
+emission_energy_multiplier = 3.2
+
+[sub_resource type="SphereMesh" id="SphereMesh_fairy"]
+material = SubResource("Material_fairy_bulb")
+radius = 0.024
+height = 0.048
+
 [node name="GlassRailing" type="Node3D"]
 
 [node name="Post1" type="MeshInstance3D" parent="."]
@@ -40,3 +51,15 @@ mesh = SubResource("BoxMesh_glass")
 [node name="Handrail" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.92, 0)
 mesh = SubResource("BoxMesh_handrail")
+
+[node name="FairyBulb1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75, 0.96, 0)
+mesh = SubResource("SphereMesh_fairy")
+
+[node name="FairyBulb2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.96, 0)
+mesh = SubResource("SphereMesh_fairy")
+
+[node name="FairyBulb3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.75, 0.96, 0)
+mesh = SubResource("SphereMesh_fairy")

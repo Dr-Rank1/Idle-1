@@ -47,6 +47,28 @@ func _ready() -> void:
 	for child in get_children():
 		if child.name in ["Taxi", "Sedan", "SUV", "Delivery", "Hatchback"]:
 			child.queue_free()
+			
+	# Spawn initial parked cars so the lot is active from frame 1
+	_spawn_initial_parked_car(0)
+	_spawn_initial_parked_car(1)
+
+func _spawn_initial_parked_car(stall_idx: int) -> void:
+	if stall_idx < 0 or stall_idx >= STALL_POSITIONS.size() or car_scenes.size() == 0:
+		return
+	var scn = car_scenes[stall_idx % car_scenes.size()]
+	var car_node = scn.instantiate()
+	car_node.scale = Vector3(1.15, 1.15, 1.15)
+	car_node.position = STALL_POSITIONS[stall_idx]
+	car_node.rotation.y = PI
+	add_child(car_node)
+	
+	var inst = CarInstance.new()
+	inst.node = car_node
+	inst.stall_index = stall_idx
+	inst.state = "PARKED"
+	inst.target_stall_pos = STALL_POSITIONS[stall_idx]
+	stalls[stall_idx] = inst
+	active_cars.append(inst)
 
 func _process(delta: float) -> void:
 	car_spawn_timer -= delta
