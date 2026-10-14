@@ -145,6 +145,7 @@ func _ready() -> void:
 		gm.quests_updated.connect(_on_quests_updated)
 		gm.campaign_updated.connect(_on_campaign_updated)
 		gm.offline_earnings_available.connect(_on_offline_earnings_available)
+		gm.critic_review_awarded.connect(_on_critic_review_awarded)
 		
 		displayed_cash = gm.cash
 		_update_top_bar(gm.cash, gm.gems, gm.star_rating, gm.restaurant_name, gm.restaurant_level, gm.restaurant_xp, gm.xp_to_next_level)
@@ -972,3 +973,65 @@ func _spawn_reward_floater(txt: String) -> void:
 	tw.tween_property(lbl, "position:y", lbl.position.y - 70.0, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(lbl, "modulate:a", 0.0, 0.9).set_delay(0.2)
 	tw.tween_callback(lbl.queue_free)
+
+func _on_critic_review_awarded(stars: float, is_positive: bool) -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null:
+		_update_top_bar(gm.cash, gm.gems, stars, gm.restaurant_name, gm.restaurant_level, gm.restaurant_xp, gm.xp_to_next_level)
+	
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		if is_positive:
+			am.play_sfx("upgrade", 0.05, 3.0)
+		else:
+			am.play_sfx("angry")
+
+	var banner = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_left = 12
+	style.corner_radius_bottom_right = 12
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	if is_positive:
+		style.bg_color = Color(0.11, 0.14, 0.22, 0.95)
+		style.border_color = Color(0.96, 0.77, 0.27, 1.0)
+	else:
+		style.bg_color = Color(0.24, 0.11, 0.12, 0.95)
+		style.border_color = Color(0.95, 0.27, 0.30, 1.0)
+	banner.add_theme_stylebox_override("panel", style)
+	
+	var lbl = Label.new()
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 16)
+	if is_positive:
+		lbl.text = "👑 MICHELIN 5-STAR CRITIC REVIEW! ⭐ +0.1 STARS • +2 GEMS 💎"
+		lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55))
+	else:
+		lbl.text = "💢 CRITIC DOCKED STARS (-0.1 ★)! Food took too long!"
+		lbl.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
+	banner.add_child(lbl)
+	
+	banner.custom_minimum_size = Vector2(500, 48)
+	banner.anchors_preset = Control.PRESET_CENTER_TOP
+	banner.anchor_left = 0.5
+	banner.anchor_top = 0.0
+	banner.anchor_right = 0.5
+	banner.anchor_bottom = 0.0
+	banner.offset_left = -250
+	banner.offset_right = 250
+	banner.offset_top = 70
+	banner.offset_bottom = 118
+	banner.pivot_offset = Vector2(250, 24)
+	banner.scale = Vector2(0.5, 0.5)
+	add_child(banner)
+	
+	var tw = create_tween()
+	tw.tween_property(banner, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(3.0)
+	tw.tween_property(banner, "scale", Vector2(0.3, 0.3), 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(banner, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(banner.queue_free)
