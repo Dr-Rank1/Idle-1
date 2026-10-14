@@ -265,7 +265,7 @@ roughness = 0.45
 
 [sub_resource type="BoxMesh" id="BoxMesh_pass_counter"]
 material = SubResource("Material_wood_counter")
-size = Vector3(3.6, 0.88, 0.65)
+size = Vector3(3.7, 0.08, 0.52)
 
 [sub_resource type="BoxMesh" id="BoxMesh_reception_counter"]
 material = SubResource("Material_wood_counter")
@@ -644,7 +644,7 @@ operation = 2
 size = Vector3(3.3, 1.15, 0.35)
 
 [node name="PassCounterWood" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.1, 0.88, -2.7)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.1, 0.92, -2.7)
 mesh = SubResource("BoxMesh_pass_counter")
 
 [node name="OrderTicketRail" parent="Restaurant/BuildingWalls" instance=ExtResource("79_ticket_rail")]
