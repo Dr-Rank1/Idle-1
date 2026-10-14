@@ -139,7 +139,7 @@ uv1_scale = Vector3(24, 2, 1)
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_sidewalk"]
 material = SubResource("Material_sidewalk")
-size = Vector2(48, 4.2)
+size = Vector2(48, 1.6)
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_sidewalk_north"]
 material = SubResource("Material_sidewalk")
@@ -465,11 +465,12 @@ transparency = 1
 albedo_texture = ExtResource("81_neon_tex")
 emission_enabled = true
 emission_texture = ExtResource("81_neon_tex")
-emission_energy_multiplier = 2.2
+emission_energy_multiplier = 2.4
+roughness = 0.2
 
 [sub_resource type="QuadMesh" id="QuadMesh_neon_idle_diner"]
 material = SubResource("Material_neon_idle_diner")
-size = Vector2(3.2, 1.6)
+size = Vector2(2.35, 1.2)
 
 [sub_resource type="StandardMaterial3D" id="Material_sign_post"]
 albedo_color = Color(0.25, 0.25, 0.28, 1)
@@ -556,9 +557,9 @@ light_energy = 0.48
 shadow_enabled = false
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(0.707107, -0.353553, 0.612372, 0, 0.866025, 0.5, -0.707107, -0.353553, 0.612372, 16.0, 15.0, 16.2)
+transform = Transform3D(0.707107, -0.353553, 0.612372, 0, 0.866025, 0.5, -0.707107, -0.353553, 0.612372, 14.2, 15.0, 16.8)
 projection = 1
-size = 15.8
+size = 18.0
 script = ExtResource("1_cam")
 
 [node name="WorldGround" type="MeshInstance3D" parent="."]
@@ -580,31 +581,31 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0, 6.8)
 script = ExtResource("68_parking_script")
 
 [node name="Asphalt" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.02, 14.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.02, 16.5)
 mesh = SubResource("PlaneMesh_asphalt")
 
 [node name="Line1" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0.01, 14)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0.01, 15.2)
 mesh = SubResource("BoxMesh_parking_line")
 
 [node name="Line2" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.2, 0.01, 14)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.2, 0.01, 15.2)
 mesh = SubResource("BoxMesh_parking_line")
 
 [node name="Line3" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.4, 0.01, 14)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.4, 0.01, 15.2)
 mesh = SubResource("BoxMesh_parking_line")
 
 [node name="Line4" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 0.01, 14)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 0.01, 15.2)
 mesh = SubResource("BoxMesh_parking_line")
 
 [node name="Line5" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.2, 0.01, 14)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.2, 0.01, 15.2)
 mesh = SubResource("BoxMesh_parking_line")
 
 [node name="Line6" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.0, 0.01, 14)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.0, 0.01, 15.2)
 mesh = SubResource("BoxMesh_parking_line")
 
 [node name="Taxi" parent="Restaurant/ParkingLot" instance=ExtResource("9_taxi")]
@@ -623,11 +624,11 @@ transform = Transform3D(-1.15, 0, 0, 0, 1.15, 0, 0, 0, -1.15, 3.3, 0, 14)
 transform = Transform3D(-1.15, 0, 0, 0, 1.15, 0, 0, 0, -1.15, 7.1, 0, 14)
 
 [node name="Sidewalk" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 9.0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008, 13.8)
 mesh = SubResource("PlaneMesh_sidewalk")
 
 [node name="ParkingSign" parent="Restaurant/ParkingLot" instance=ExtResource("70_psign")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.5, 0, 11.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.5, 0, 13.8)
 visible = false
 
 [node name="ZebraStripe1" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
@@ -647,22 +648,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.8, 0.015, 17.2)
 mesh = SubResource("BoxMesh_crosswalk_stripe")
 
 [node name="StreetLampWest" parent="Restaurant/ParkingLot" instance=ExtResource("71_slamp")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.5, 0, 10.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.5, 0, 13.8)
 
 [node name="StreetLampEast" parent="Restaurant/ParkingLot" instance=ExtResource("71_slamp")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 0, 10.5)
-
-[node name="SidewalkBench" parent="Restaurant/ParkingLot" instance=ExtResource("74_bench")]
-transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, -7.5, 0, 8.2)
-
-[node name="SidewalkPlanter" parent="Restaurant/ParkingLot" instance=ExtResource("26_plant")]
-transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, -5.2, 0, 8.2)
-
-[node name="SidewalkTree1" parent="Restaurant/ParkingLot" instance=ExtResource("69_tree")]
-transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, -9.5, 0, 8.5)
-
-[node name="SidewalkTree2" parent="Restaurant/ParkingLot" instance=ExtResource("69_tree")]
-transform = Transform3D(1.3, 0, 0, 0, 1.3, 0, 0, 0, 1.3, 12.5, 0, 8.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.5, 0, 13.8)
 
 
 [node name="TownhousesAcrossStreet" parent="." instance=ExtResource("72_townhouse")]
@@ -967,13 +956,25 @@ mesh = SubResource("SphereMesh_topiary_round")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.8, 0.55, 11.85)
 mesh = SubResource("CylinderMesh_topiary_cone")
 
-[node name="FrontTopiaryCone2" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.8, 0.55, 11.85)
-mesh = SubResource("CylinderMesh_topiary_cone")
+[node name="LoungeFrontLawn" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 0.015, 11.85)
+size = Vector3(8.0, 0.02, 2.4)
+material = SubResource("Material_lawn_garden")
 
-[node name="FrontTopiaryRound2" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.0, 0.42, 11.85)
-mesh = SubResource("SphereMesh_topiary_round")
+[node name="LoungeFrontHedgeSouth" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 0.28, 13.0)
+size = Vector3(8.0, 0.56, 0.32)
+material = SubResource("Material_hedge")
+
+[node name="LoungeFrontHedgeWest" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.5, 0.28, 11.85)
+size = Vector3(0.32, 0.56, 2.4)
+material = SubResource("Material_hedge")
+
+[node name="LoungeFrontHedgeEast" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 0.28, 11.85)
+size = Vector3(0.32, 0.56, 2.4)
+material = SubResource("Material_hedge")
 
 
 [node name="IndustrialRoof" type="Node3D" parent="Restaurant"]
@@ -1607,19 +1608,24 @@ transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 4.0, 0, 5.0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.0, 0, 0)
 
 [node name="IdleDinerSign" type="Node3D" parent="Restaurant"]
-transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, -13.0, 0, 7.5)
+transform = Transform3D(0.906308, 0, 0.422618, 0, 1, 0, -0.422618, 0, 0.906308, -8.0, 0, 11.85)
 
 [node name="SignBase" type="CSGBox3D" parent="Restaurant/IdleDinerSign"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
-size = Vector3(1.2, 0.12, 0.8)
+size = Vector3(1.1, 0.12, 0.7)
 material = SubResource("Material_baseboard")
 
 [node name="SignPost" type="MeshInstance3D" parent="Restaurant/IdleDinerSign"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, 0)
 mesh = SubResource("CylinderMesh_sign_post")
 
+[node name="SignBacking" type="CSGBox3D" parent="Restaurant/IdleDinerSign"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.25, 0)
+size = Vector3(2.4, 1.25, 0.16)
+material = SubResource("Material_asphalt")
+
 [node name="SignBoard" type="MeshInstance3D" parent="Restaurant/IdleDinerSign"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.25, 0.05)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.25, 0.09)
 mesh = SubResource("QuadMesh_neon_idle_diner")
 
 [node name="SignLight" type="OmniLight3D" parent="Restaurant/IdleDinerSign"]
@@ -1629,7 +1635,11 @@ light_energy = 1.5
 omni_range = 3.8
 
 [node name="SignTree" parent="Restaurant/IdleDinerSign" instance=ExtResource("69_tree")]
-transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0.85, 0, -0.2)
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 1.0, 0, -0.15)
+
+[node name="SignBush" type="MeshInstance3D" parent="Restaurant/IdleDinerSign"]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, 2.1, 0.35, -0.05)
+mesh = SubResource("SphereMesh_topiary_round")
 
 
 [node name="Tables" type="Node3D" parent="Restaurant"]

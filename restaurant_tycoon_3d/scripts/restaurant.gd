@@ -117,7 +117,7 @@ func _setup_custom_textures() -> void:
 			var mat_rec = StandardMaterial3D.new()
 			mat_rec.albedo_texture = rec_tex
 			mat_rec.roughness = 0.55
-			mat_rec.uv1_scale = Vector3(4, 7, 1)
+			mat_rec.uv1_scale = Vector3(1.5, 2.625, 1)
 			reception_floor_node.material_override = mat_rec
 
 	# Red Carpet Runners (Kitchen Pass and Host Desk)

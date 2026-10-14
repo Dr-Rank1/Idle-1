@@ -6,13 +6,13 @@ signal car_departed(stall_index: int)
 @export var car_scenes: Array[PackedScene] = []
 
 const STALL_POSITIONS: Array[Vector3] = [
-	Vector3(-8.2, 0.0, 13.2),
-	Vector3(-4.4, 0.0, 13.2),
-	Vector3(-0.6, 0.0, 13.2),
-	Vector3(3.2, 0.0, 13.2)
+	Vector3(-8.1, 0.0, 15.2),
+	Vector3(-4.3, 0.0, 15.2),
+	Vector3(3.3, 0.0, 15.2),
+	Vector3(7.1, 0.0, 15.2)
 ]
 
-const ROAD_Z: float = 17.2
+const ROAD_Z: float = 18.2
 const SPAWN_X: float = -22.0
 const EXIT_X: float = 22.0
 
