@@ -2,6 +2,7 @@ extends CharacterBody3D
 
 signal order_placed(table_node: Node3D, customer_node: Node3D)
 signal lobby_wait_timeout(customer_node: Node3D)
+signal entered_restaurant(customer_node: Node3D)
 
 enum State {
 	SPAWNING,
@@ -253,7 +254,10 @@ func _physics_process(delta: float) -> void:
 				mesh_root.position.y = abs(sin(walk_cycle)) * 0.05
 				mesh_root.rotation.z = sin(walk_cycle) * 0.04
 		else:
+			var reached_wp: Vector3 = waypoints[0]
 			waypoints.remove_at(0)
+			if (reached_wp - DOOR_POS).length() < 0.6:
+				entered_restaurant.emit(self)
 			if waypoints.size() == 0:
 				velocity = Vector3.ZERO
 				if mesh_root != null:

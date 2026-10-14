@@ -1604,30 +1604,58 @@ func _on_spawn_floating_cash(amount: float, world_pos: Vector3) -> void:
 		cash_lbl.setup(amount, world_pos)
 
 func spawn_customer_from_car(car_exit_pos: Vector3) -> Node3D:
-	var available = _get_available_tables()
-	if available.size() == 0:
-		return null
-	var free_table: Node3D = available.pick_random()
 	if customer_scene == null:
+		return null
+		
+	var available = _get_available_tables()
+	var free_table: Node3D = null
+	if available.size() > 0:
+		free_table = available.pick_random()
+	elif waiting_customers.size() >= MAX_WAITING_CUSTOMERS:
 		return null
 		
 	var cust = customer_scene.instantiate()
 	customers_container.add_child(cust)
 	cust.global_position = car_exit_pos
 	
-	if free_table.has_method("occupy"):
-		free_table.occupy(cust)
-	else:
-		free_table.is_occupied = true
-	cust.assigned_table_id = free_table.table_id
-	cust.table_ref = free_table
+	# Pedestrian pathway: car exit -> zebra crosswalk -> sidewalk -> front garden lawn -> sliding glass doors
+	var crosswalk_road_pt = Vector3(car_exit_pos.x, 0.0, 16.5)
+	var crosswalk_start = Vector3(-1.5, 0.0, 16.5)
+	var crosswalk_end = Vector3(-1.5, 0.0, 13.8)
+	var garden_path = Vector3(-1.5, 0.0, 12.0)
+	var approach_pts = [
+		crosswalk_road_pt,
+		crosswalk_start,
+		crosswalk_end,
+		garden_path,
+		cust.DOOR_POS
+	]
 	
-	cust.current_state = cust.State.WALKING_TO_HOST
-	var sidewalk_pt = Vector3(car_exit_pos.x, 0.0, 13.8)
-	var walkway_entry = Vector3(-1.5, 0.0, 13.8)
-	var walkway_approach = Vector3(-1.5, 0.0, 11.5)
-	cust.set_waypoints([sidewalk_pt, walkway_entry, walkway_approach, cust.DOOR_POS, cust.HOST_POS])
-	cust.order_placed.connect(_on_customer_order_placed)
+	if free_table != null:
+		if free_table.has_method("occupy"):
+			free_table.occupy(cust)
+		else:
+			free_table.is_occupied = true
+		cust.assigned_table_id = free_table.table_id
+		cust.table_ref = free_table
+		cust.current_state = cust.State.WALKING_TO_HOST
+		approach_pts.append(cust.HOST_POS)
+		cust.set_waypoints(approach_pts)
+		cust.order_placed.connect(_on_customer_order_placed)
+	else:
+		# Queue up in the lobby waiting area
+		var spot_idx = waiting_customers.size()
+		var spot = WAITING_SPOTS[spot_idx] if spot_idx < WAITING_SPOTS.size() else Vector3(-1.5, 0.0, 7.0 + spot_idx * 1.2)
+		waiting_customers.append(cust)
+		cust.current_state = cust.State.WAITING_IN_LOBBY
+		cust.max_patience = 28.0
+		cust.current_patience = 28.0
+		cust.is_waiting_for_food = true
+		cust.set_bubble_text("⏳ 🍽️")
+		approach_pts.append(spot)
+		cust.set_waypoints(approach_pts)
+		cust.lobby_wait_timeout.connect(func(c): waiting_customers.erase(c))
+		
 	return cust
 
 func _setup_courtyard_fidelity() -> void:

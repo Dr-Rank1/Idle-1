@@ -41,6 +41,14 @@ mesh = SubResource("BoxMesh_head")
 
 [node name="OmniLight3D" type="OmniLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.3, 0.4)
-light_color = Color(1.0, 0.95, 0.82, 1)
-light_energy = 0.4
+light_color = Color(1.0, 0.88, 0.65, 1)
+light_energy = 0.5
 omni_range = 3.5
+
+[node name="SpotLight3D" type="SpotLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 2.35, 0.4)
+light_color = Color(1.0, 0.78, 0.35, 1)
+light_energy = 1.8
+spot_range = 6.2
+spot_angle = 48.0
+spot_attenuation = 0.85

@@ -463,7 +463,11 @@ albedo_color = Color(0.96, 0.96, 0.96, 1)
 
 [sub_resource type="BoxMesh" id="BoxMesh_crosswalk_stripe"]
 material = SubResource("Material_crosswalk")
-size = Vector3(0.65, 0.02, 3.2)
+size = Vector3(0.50, 0.02, 3.4)
+
+[sub_resource type="BoxMesh" id="BoxMesh_lane_marker"]
+material = SubResource("Material_crosswalk")
+size = Vector3(1.8, 0.02, 0.16)
 
 [sub_resource type="StandardMaterial3D" id="Material_manager_rug_ring"]
 albedo_color = Color(0.88, 0.76, 0.32, 1)
@@ -826,20 +830,60 @@ light_energy = 0.8
 omni_range = 3.6
 
 [node name="ZebraStripe1" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20.5, 0.015, 17.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.7, 0.015, 16.5)
 mesh = SubResource("BoxMesh_crosswalk_stripe")
 
 [node name="ZebraStripe2" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19.5, 0.015, 17.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.1, 0.015, 16.5)
 mesh = SubResource("BoxMesh_crosswalk_stripe")
 
 [node name="ZebraStripe3" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.5, 0.015, 17.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0.015, 16.5)
 mesh = SubResource("BoxMesh_crosswalk_stripe")
 
 [node name="ZebraStripe4" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17.5, 0.015, 17.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.9, 0.015, 16.5)
 mesh = SubResource("BoxMesh_crosswalk_stripe")
+
+[node name="ZebraStripe5" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0.015, 16.5)
+mesh = SubResource("BoxMesh_crosswalk_stripe")
+
+[node name="RoadLaneMarker1" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19.0, 0.015, 18.2)
+mesh = SubResource("BoxMesh_lane_marker")
+
+[node name="RoadLaneMarker2" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.0, 0.015, 18.2)
+mesh = SubResource("BoxMesh_lane_marker")
+
+[node name="RoadLaneMarker3" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.0, 0.015, 18.2)
+mesh = SubResource("BoxMesh_lane_marker")
+
+[node name="RoadLaneMarker4" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.0, 0.015, 18.2)
+mesh = SubResource("BoxMesh_lane_marker")
+
+[node name="RoadLaneMarker5" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.0, 0.015, 18.2)
+mesh = SubResource("BoxMesh_lane_marker")
+
+[node name="RoadLaneMarker6" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.0, 0.015, 18.2)
+mesh = SubResource("BoxMesh_lane_marker")
+
+[node name="RoadLaneMarker7" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.0, 0.015, 18.2)
+mesh = SubResource("BoxMesh_lane_marker")
+
+[node name="RoadLaneMarker8" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.0, 0.015, 18.2)
+mesh = SubResource("BoxMesh_lane_marker")
+
+[node name="RoadLaneMarker9" type="MeshInstance3D" parent="Restaurant/ParkingLot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.0, 0.015, 18.2)
+mesh = SubResource("BoxMesh_lane_marker")
 
 [node name="StreetLampWest" parent="Restaurant/ParkingLot" instance=ExtResource("71_slamp")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.5, 0, 13.8)
@@ -849,8 +893,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.5, 0, 13.8)
 
 
 [node name="TownhousesAcrossStreet" parent="." instance=ExtResource("72_townhouse")]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 48.0)
-visible = false
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -6.0, 0, 24.5)
+
+[node name="TownhousesAcrossStreet2" parent="." instance=ExtResource("72_townhouse")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 12.0, 0, 24.5)
 
 [node name="TownhousesSideStreet" parent="." instance=ExtResource("72_townhouse")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -18.5, 0, 13.5)
