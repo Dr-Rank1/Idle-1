@@ -996,47 +996,46 @@ transform = Transform3D(1.1, 0, 0, 0, 1.1, 0, 0, 0, 1.1, 1.5, 0, -0.3)
 [node name="Tables" type="Node3D" parent="Restaurant"]
 
 [node name="Table1" parent="Restaurant/Tables" instance=ExtResource("5_table_scn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0, 0.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, 0, 0.5)
 table_id = "table_1"
-table_name = "VIP Suite 1"
+table_name = "Booth Table 1"
 
 [node name="Table2" parent="Restaurant/Tables" instance=ExtResource("5_table_scn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0, 0.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.2, 0, 0.5)
 table_id = "table_2"
-table_name = "VIP Suite 2"
+table_name = "Booth Table 2"
 
 [node name="Table3" parent="Restaurant/Tables" instance=ExtResource("5_table_scn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0, 6.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, 0, 4.2)
 table_id = "table_3"
-table_name = "VIP Suite 3"
+table_name = "Booth Table 3"
 
 [node name="Table4" parent="Restaurant/Tables" instance=ExtResource("5_table_scn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0, 6.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.2, 0, 4.2)
 table_id = "table_4"
-table_name = "VIP Suite 4"
+table_name = "Booth Table 4"
 
 [node name="Table5" parent="Restaurant/Tables" instance=ExtResource("5_table_scn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.0, 0, 1.0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, 0, 7.8)
 table_id = "table_5"
-table_name = "Terrace Sun Table 5"
-is_terrace_table = true
+table_name = "Booth Table 5"
 
 [node name="Table6" parent="Restaurant/Tables" instance=ExtResource("5_table_scn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.0, 0, 6.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.0, 0, 1.8)
 table_id = "table_6"
-table_name = "Terrace Sun Table 6"
+table_name = "Garden Patio Table 6"
 is_terrace_table = true
 
 [node name="Table7" parent="Restaurant/Tables" instance=ExtResource("5_table_scn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 0, 1.0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.0, 0, 6.8)
 table_id = "table_7"
 table_name = "Garden Patio Table 7"
 is_terrace_table = true
 
 [node name="Table8" parent="Restaurant/Tables" instance=ExtResource("5_table_scn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 0, 6.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 0, 4.3)
 table_id = "table_8"
-table_name = "Sunset Gazebo Table 8"
+table_name = "Sunset Umbrella Table 8"
 is_terrace_table = true
 
 [node name="Waiter" parent="Restaurant" instance=ExtResource("6_waiter_scn")]

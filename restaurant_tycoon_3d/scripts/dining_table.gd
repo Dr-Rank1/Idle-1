@@ -256,11 +256,17 @@ func get_seat_position() -> Vector3:
 	return seat_pos.global_position if seat_pos != null else global_position
 
 func get_seat_rotation_y() -> float:
-	return seat_pos.global_rotation.y if seat_pos != null else (PI * 0.5)
+	return seat_pos.global_rotation.y if seat_pos != null else 0.0
 
 func occupy(customer: Node) -> Vector3:
 	is_occupied = true
 	occupying_customer = customer
+	var diner_s = get_node_or_null("CompanionDiners/DinerSouth")
+	if diner_s != null:
+		diner_s.visible = false
+	var diner_n = get_node_or_null("CompanionDiners/DinerNorth")
+	if diner_n != null and not is_terrace_table:
+		diner_n.visible = true
 	var gm = get_node_or_null("/root/GameManager")
 	var lvl = gm.get_station_level(table_id) if gm != null else 1
 	update_level_display(lvl)
@@ -316,6 +322,9 @@ func vacate() -> void:
 	is_occupied = false
 	occupying_customer = null
 	clear_food()
+	var diner_s = get_node_or_null("CompanionDiners/DinerSouth")
+	if diner_s != null and not is_terrace_table:
+		diner_s.visible = true
 	
 	is_dirty = true
 	if dirty_dishes != null:

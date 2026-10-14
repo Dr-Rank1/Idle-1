@@ -332,16 +332,16 @@ func set_as_waiting_in_lobby(spot: Vector3) -> void:
 	set_waypoints([DOOR_POS, spot])
 
 func _get_waypoints_to_table(seat_pos: Vector3) -> Array:
-	if seat_pos.x > 6.0:
-		return [ARCH_POS, Vector3(0.2, 0.0, 2.2), Vector3(5.0, 0.0, 2.2), Vector3(seat_pos.x, 0.0, 2.2), seat_pos]
+	if seat_pos.x > 10.0:
+		return [ARCH_POS, Vector3(3.5, 0.0, 3.5), Vector3(9.5, 0.0, 3.5), Vector3(seat_pos.x, 0.0, 3.5), seat_pos]
 	else:
-		return [ARCH_POS, Vector3(0.2, 0.0, 2.2), Vector3(0.2, 0.0, seat_pos.z), seat_pos]
+		return [ARCH_POS, Vector3(3.5, 0.0, 3.5), Vector3(3.5, 0.0, seat_pos.z), seat_pos]
 
 func _get_waypoints_from_table(curr_pos: Vector3) -> Array:
-	if curr_pos.x > 6.0:
-		return [Vector3(curr_pos.x, 0.0, 2.2), Vector3(5.0, 0.0, 2.2), Vector3(0.2, 0.0, 2.2), ARCH_POS, HOST_POS, DOOR_POS, EXIT_POS]
+	if curr_pos.x > 10.0:
+		return [Vector3(curr_pos.x, 0.0, 3.5), Vector3(9.5, 0.0, 3.5), Vector3(3.5, 0.0, 3.5), ARCH_POS, HOST_POS, DOOR_POS, EXIT_POS]
 	else:
-		return [Vector3(0.2, 0.0, curr_pos.z), Vector3(0.2, 0.0, 2.2), ARCH_POS, HOST_POS, DOOR_POS, EXIT_POS]
+		return [Vector3(3.5, 0.0, curr_pos.z), Vector3(3.5, 0.0, 3.5), ARCH_POS, HOST_POS, DOOR_POS, EXIT_POS]
 
 func assign_table_from_lobby(target_table: Node3D) -> void:
 	if current_state != State.WAITING_IN_LOBBY and current_state != State.AT_HOST:
