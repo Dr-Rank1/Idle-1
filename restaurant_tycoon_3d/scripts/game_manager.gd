@@ -29,6 +29,7 @@ var star_rating: float = 4.8
 var restaurant_name: String = "Idle Diner"
 var is_boosted: bool = false
 var boost_timer: float = 0.0
+var daily_gift_claimed: bool = false
 
 # ─── World Map Restaurants ──────────────────────────────────────────────────
 var active_restaurant_id: String = "idle_diner"
@@ -541,6 +542,58 @@ func spend_gems(amount: int) -> bool:
 		gems -= amount
 		gems_changed.emit(gems)
 		return true
+	return false
+
+func add_boost_time(seconds: float) -> void:
+	is_boosted = true
+	boost_timer = max(boost_timer, 0.0) + seconds
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.1, 2.0)
+	boost_toggled.emit(true)
+
+func can_claim_daily_gift() -> bool:
+	return not daily_gift_claimed
+
+func claim_daily_gift() -> bool:
+	if daily_gift_claimed:
+		return false
+	daily_gift_claimed = true
+	add_cash(250.0)
+	add_gems(5)
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("claim")
+	return true
+
+func buy_shop_item(item_id: String) -> bool:
+	match item_id:
+		"daily_gift":
+			return claim_daily_gift()
+		"cash_small":
+			if spend_gems(10):
+				add_cash(500.0)
+				return true
+		"cash_medium":
+			if spend_gems(40):
+				add_cash(2500.0)
+				return true
+		"cash_vault":
+			if spend_gems(120):
+				add_cash(10000.0)
+				return true
+		"boost_5m":
+			if spend_gems(15):
+				add_boost_time(300.0)
+				return true
+		"boost_15m":
+			if spend_gems(35):
+				add_boost_time(900.0)
+				return true
+		"buy_gems":
+			if spend_cash(1000.0):
+				add_gems(50)
+				return true
 	return false
 
 func add_xp(amount: float) -> void:
