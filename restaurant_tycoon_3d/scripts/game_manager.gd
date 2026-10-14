@@ -15,6 +15,8 @@ signal table_unlocked(table_id: String)
 signal critic_review_awarded(stars: float, is_positive: bool)
 signal quests_updated()
 signal campaign_updated(campaign_id: String, active: bool, time_left: float)
+signal terrace_unlocked_changed(unlocked: bool)
+signal stall_unlocked(stall_idx: int)
 
 # ─── Economy State ──────────────────────────────────────────────────────────
 var cash: float = 650.0
@@ -24,6 +26,11 @@ var star_rating: float = 4.8
 var restaurant_name: String = "Chef's Bistro Tycoon"
 var is_boosted: bool = false
 var boost_timer: float = 0.0
+
+# ─── Sectors & Expansions ───────────────────────────────────────────────────
+var unlocked_stalls: int = 2
+var terrace_unlocked: bool = false
+const TERRACE_UNLOCK_COST: float = 380.0
 
 # ─── Tycoon Level & XP ──────────────────────────────────────────────────────
 var restaurant_level: int = 1
@@ -271,6 +278,8 @@ func save_game() -> void:
 		"restaurant_name": restaurant_name,
 		"restaurant_level": restaurant_level,
 		"restaurant_xp": restaurant_xp,
+		"unlocked_stalls": unlocked_stalls,
+		"terrace_unlocked": terrace_unlocked,
 		"unlocked_tables": unlocked_tables,
 		"station_levels": station_levels,
 		"menu_items": menu_items,
@@ -301,6 +310,8 @@ func load_game() -> void:
 	restaurant_name = parsed.get("restaurant_name", restaurant_name)
 	restaurant_level = parsed.get("restaurant_level", restaurant_level)
 	restaurant_xp = parsed.get("restaurant_xp", restaurant_xp)
+	unlocked_stalls = int(parsed.get("unlocked_stalls", unlocked_stalls))
+	terrace_unlocked = bool(parsed.get("terrace_unlocked", terrace_unlocked))
 	xp_to_next_level = 250.0 * pow(1.35, restaurant_level - 1)
 	
 	if parsed.has("unlocked_tables") and typeof(parsed["unlocked_tables"]) == TYPE_DICTIONARY:
@@ -537,6 +548,50 @@ func unlock_table(table_id: String) -> bool:
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
 			am.play_sfx("upgrade", 0.0, 3.0)
+		return true
+	return false
+
+func is_terrace_unlocked() -> bool:
+	return terrace_unlocked
+
+func unlock_terrace() -> bool:
+	if terrace_unlocked:
+		return true
+	if spend_cash(TERRACE_UNLOCK_COST):
+		terrace_unlocked = true
+		unlocked_tables["table_6"] = true
+		unlocked_tables["table_7"] = true
+		unlocked_tables["table_8"] = true
+		table_unlocked.emit("table_6")
+		table_unlocked.emit("table_7")
+		table_unlocked.emit("table_8")
+		terrace_unlocked_changed.emit(true)
+		add_xp(200.0)
+		save_game()
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("upgrade", 0.0, 3.5)
+		return true
+	return false
+
+func is_stall_unlocked(idx: int) -> bool:
+	return idx <= unlocked_stalls
+
+func get_stall_unlock_cost(idx: int) -> float:
+	return 220.0 if idx == 3 else 480.0
+
+func unlock_parking_stall(idx: int) -> bool:
+	if is_stall_unlocked(idx):
+		return true
+	var cost = get_stall_unlock_cost(idx)
+	if spend_cash(cost):
+		unlocked_stalls = idx
+		stall_unlocked.emit(idx)
+		add_xp(120.0)
+		save_game()
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("upgrade", 0.0, 2.5)
 		return true
 	return false
 

@@ -407,9 +407,9 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -340.0
+offset_left = -380.0
 offset_top = -78.0
-offset_right = 340.0
+offset_right = 380.0
 offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 0
@@ -417,14 +417,22 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_bottom_dock")
 
 [node name="HBox" type="HBoxContainer" parent="HUD/BottomDock"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 8
 alignment = 1
+
+[node name="ParkingBtn" type="Button" parent="HUD/BottomDock/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.45, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
+text = "🚗 PARKING"
 
 [node name="KitchenBtn" type="Button" parent="HUD/BottomDock/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 0.88, 0.4, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
 text = "🍳 KITCHEN"
 
@@ -432,31 +440,31 @@ text = "🍳 KITCHEN"
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.4, 0.95, 0.65, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
 text = "🪑 DINING"
 
-[node name="MenuBtn" type="Button" parent="HUD/BottomDock/HBox"]
+[node name="TerraceBtn" type="Button" parent="HUD/BottomDock/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.7, 0.85, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.3, 0.95, 0.5, 1)
+theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
-text = "📖 MENU"
+text = "🌿 TERRACE"
 
 [node name="StaffBtn" type="Button" parent="HUD/BottomDock/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.45, 0.85, 1, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
-text = "👨‍🍳 STAFF"
+text = "👥 STAFF"
 
-[node name="MarketingBtn" type="Button" parent="HUD/BottomDock/HBox"]
+[node name="PromoBtn" type="Button" parent="HUD/BottomDock/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 0.65, 0.4, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
 text = "📢 PROMO"
 
@@ -641,6 +649,88 @@ theme_override_constants/separation = 8
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
 text = "✕ Close Kitchen"
+
+[node name="TerracePanel" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -260.0
+offset_right = 280.0
+offset_bottom = 260.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="TerracePanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="Label" parent="TerracePanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.95, 0.5, 1)
+theme_override_font_sizes/font_size = 20
+text = "🌿 OUTDOOR GARDEN TERRACE"
+horizontal_alignment = 1
+
+[node name="Scroll" type="ScrollContainer" parent="TerracePanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBox" type="VBoxContainer" parent="TerracePanel/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CloseBtn" type="Button" parent="TerracePanel/VBox"]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
+text = "✕ Close Garden Terrace"
+
+[node name="ParkingPanel" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -250.0
+offset_right = 280.0
+offset_bottom = 250.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="ParkingPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="Label" parent="ParkingPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "🚗 PARKING LOT & TRAFFIC"
+horizontal_alignment = 1
+
+[node name="Scroll" type="ScrollContainer" parent="ParkingPanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBox" type="VBoxContainer" parent="ParkingPanel/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CloseBtn" type="Button" parent="ParkingPanel/VBox"]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
+text = "✕ Close Parking Lot"
 
 [node name="MenuPanel" type="PanelContainer" parent="."]
 visible = false

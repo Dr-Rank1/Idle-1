@@ -1,0 +1,158 @@
+extends Node3D
+
+signal car_parked(stall_index: int, customer_node: Node3D)
+signal car_departed(stall_index: int)
+
+@export var car_scenes: Array[PackedScene] = []
+
+const STALL_POSITIONS: Array[Vector3] = [
+	Vector3(-8.2, 0.0, 13.2),
+	Vector3(-4.4, 0.0, 13.2),
+	Vector3(-0.6, 0.0, 13.2),
+	Vector3(3.2, 0.0, 13.2)
+]
+
+const ROAD_Z: float = 17.2
+const SPAWN_X: float = -22.0
+const EXIT_X: float = 22.0
+
+# Stall states: null if empty, or CarInstance if occupied
+var stalls: Array = [null, null, null, null]
+var active_cars: Array = []
+var car_spawn_timer: float = 2.0
+
+class CarInstance:
+	var node: Node3D
+	var stall_index: int = -1
+	var state: String = "DRIVING_IN" # DRIVING_IN, TURNING, PARKED, BACKING_OUT, DRIVING_AWAY
+	var target_stall_pos: Vector3
+	var speed: float = 8.0
+	var driver_node: Node3D = null
+
+func _ready() -> void:
+	# Load car scenes
+	var car_paths = [
+		"res://assets/models/cars/taxi.glb",
+		"res://assets/models/cars/sedan.glb",
+		"res://assets/models/cars/suv.glb",
+		"res://assets/models/cars/hatchback-sports.glb",
+		"res://assets/models/cars/sedan-sports.glb"
+	]
+	for p in car_paths:
+		var scn = load(p)
+		if scn:
+			car_scenes.append(scn)
+			
+	# Remove any static placeholder cars
+	for child in get_children():
+		if child.name in ["Taxi", "Sedan", "SUV", "Delivery", "Hatchback"]:
+			child.queue_free()
+
+func _process(delta: float) -> void:
+	car_spawn_timer -= delta
+	if car_spawn_timer <= 0.0:
+		var gm = get_node_or_null("/root/GameManager")
+		var mult: float = 1.0
+		if gm != null and gm.has_method("get_spawn_rate_multiplier"):
+			mult = gm.get_spawn_rate_multiplier()
+		car_spawn_timer = randf_range(4.5, 7.5) / mult
+		_try_spawn_car()
+		
+	_update_cars(delta)
+
+func _get_free_stall_index() -> int:
+	var gm = get_node_or_null("/root/GameManager")
+	var max_stalls = 4
+	if gm != null and "unlocked_stalls" in gm:
+		max_stalls = gm.unlocked_stalls
+		
+	for i in range(min(max_stalls, STALL_POSITIONS.size())):
+		if stalls[i] == null:
+			return i
+	return -1
+
+func _try_spawn_car() -> void:
+	var free_idx = _get_free_stall_index()
+	if free_idx == -1 or car_scenes.size() == 0:
+		return
+		
+	var scn = car_scenes.pick_random()
+	var car_node = scn.instantiate()
+	car_node.scale = Vector3(1.15, 1.15, 1.15)
+	car_node.position = Vector3(SPAWN_X, 0.0, ROAD_Z)
+	car_node.rotation.y = -PI * 0.5 # facing +X along road
+	add_child(car_node)
+	
+	var inst = CarInstance.new()
+	inst.node = car_node
+	inst.stall_index = free_idx
+	inst.state = "DRIVING_IN"
+	inst.target_stall_pos = STALL_POSITIONS[free_idx]
+	inst.speed = randf_range(7.5, 9.5)
+	
+	stalls[free_idx] = inst
+	active_cars.append(inst)
+
+func _update_cars(delta: float) -> void:
+	for i in range(active_cars.size() - 1, -1, -1):
+		var car = active_cars[i]
+		if not is_instance_valid(car.node):
+			active_cars.remove_at(i)
+			continue
+			
+		match car.state:
+			"DRIVING_IN":
+				# Move along road until reaching stall's X position
+				var target_x = car.target_stall_pos.x
+				car.node.position.x = move_toward(car.node.position.x, target_x, car.speed * delta)
+				if abs(car.node.position.x - target_x) < 0.2:
+					car.state = "TURNING"
+					
+			"TURNING":
+				# Rotate to face parking stall (facing North -Z) and move into stall
+				car.node.rotation.y = lerp_angle(car.node.rotation.y, PI, 10.0 * delta)
+				car.node.position.z = move_toward(car.node.position.z, car.target_stall_pos.z, car.speed * 0.6 * delta)
+				car.node.position.x = move_toward(car.node.position.x, car.target_stall_pos.x, car.speed * 0.4 * delta)
+				if abs(car.node.position.z - car.target_stall_pos.z) < 0.15:
+					car.node.position = car.target_stall_pos
+					car.node.rotation.y = PI
+					car.state = "PARKED"
+					_on_car_parked(car)
+					
+			"PARKED":
+				# Parked safely waiting for customer
+				pass
+				
+			"BACKING_OUT":
+				# Back out into the road
+				car.node.position.z = move_toward(car.node.position.z, ROAD_Z, car.speed * 0.5 * delta)
+				if abs(car.node.position.z - ROAD_Z) < 0.2:
+					car.node.rotation.y = -PI * 0.5
+					car.state = "DRIVING_AWAY"
+					if car.stall_index >= 0 and car.stall_index < stalls.size():
+						stalls[car.stall_index] = null
+						car_departed.emit(car.stall_index)
+						
+			"DRIVING_AWAY":
+				car.node.position.x = move_toward(car.node.position.x, EXIT_X, car.speed * delta)
+				if car.node.position.x >= EXIT_X - 0.5:
+					car.node.queue_free()
+					active_cars.remove_at(i)
+
+func _on_car_parked(car: CarInstance) -> void:
+	# Award parking fee
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null:
+		gm.add_cash(15.0, car.node.global_position + Vector3(0, 1.5, 0))
+		
+	# Spawn customer walking out of car towards the restaurant entrance!
+	var rest = get_parent()
+	if rest != null and rest.has_method("spawn_customer_from_car"):
+		var cust = rest.spawn_customer_from_car(car.node.global_position + Vector3(0.9, 0, 0))
+		if cust != null:
+			car.driver_node = cust
+			cust.tree_exiting.connect(func(): _on_driver_left(car))
+
+func _on_driver_left(car: CarInstance) -> void:
+	if is_instance_valid(car.node) and car.state == "PARKED":
+		car.state = "BACKING_OUT"

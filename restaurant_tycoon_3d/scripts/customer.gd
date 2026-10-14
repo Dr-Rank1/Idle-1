@@ -328,6 +328,20 @@ func set_as_waiting_in_lobby(spot: Vector3) -> void:
 	set_bubble_text("⏳ Waiting...")
 	set_waypoints([DOOR_POS, spot])
 
+func _get_waypoints_to_table(seat_pos: Vector3) -> Array:
+	if seat_pos.x > 9.5:
+		return [ARCH_POS, Vector3(5.0, 0.0, 2.2), Vector3(10.5, 0.0, 2.2), Vector3(seat_pos.x, 0.0, 2.2), seat_pos]
+	else:
+		var aisle_x = 1.8 if seat_pos.x > 2.0 else 0.0
+		return [ARCH_POS, Vector3(aisle_x, 0.0, 2.2), Vector3(aisle_x, 0.0, seat_pos.z), seat_pos]
+
+func _get_waypoints_from_table(curr_pos: Vector3) -> Array:
+	if curr_pos.x > 9.5:
+		return [Vector3(curr_pos.x, 0.0, 2.2), Vector3(10.5, 0.0, 2.2), Vector3(5.0, 0.0, 2.2), ARCH_POS, HOST_POS, DOOR_POS, EXIT_POS]
+	else:
+		var aisle_x = 1.8 if curr_pos.x > 2.0 else 0.0
+		return [Vector3(aisle_x, 0.0, curr_pos.z), Vector3(aisle_x, 0.0, 2.2), ARCH_POS, HOST_POS, DOOR_POS, EXIT_POS]
+
 func assign_table_from_lobby(target_table: Node3D) -> void:
 	if current_state != State.WAITING_IN_LOBBY and current_state != State.AT_HOST:
 		return
@@ -343,8 +357,7 @@ func assign_table_from_lobby(target_table: Node3D) -> void:
 	var seat_pos: Vector3 = target_table.get_seat_position()
 	current_state = State.WALKING_TO_TABLE
 	set_bubble_text("💭")
-	var aisle_waypoint = Vector3(0.0, 0.0, seat_pos.z)
-	set_waypoints([ARCH_POS, aisle_waypoint, seat_pos])
+	set_waypoints(_get_waypoints_to_table(seat_pos))
 
 func _on_timer_complete() -> void:
 	match current_state:
@@ -353,8 +366,7 @@ func _on_timer_complete() -> void:
 				var seat_pos: Vector3 = table_ref.get_seat_position()
 				current_state = State.WALKING_TO_TABLE
 				set_bubble_text("💭")
-				var aisle_waypoint = Vector3(0.0, 0.0, seat_pos.z)
-				set_waypoints([ARCH_POS, aisle_waypoint, seat_pos])
+				set_waypoints(_get_waypoints_to_table(seat_pos))
 			else:
 				current_state = State.WALKING_TO_EXIT
 				set_waypoints([DOOR_POS, EXIT_POS])
@@ -385,8 +397,7 @@ func _on_timer_complete() -> void:
 			status_bubble.visible = false
 			global_position.y = 0.0
 			_play_anim("walk")
-			var aisle_out = Vector3(0.0, 0.0, position.z)
-			set_waypoints([aisle_out, ARCH_POS, HOST_POS, DOOR_POS, EXIT_POS])
+			set_waypoints(_get_waypoints_from_table(position))
 
 # Called when waiter serves food to this customer's table
 func on_food_delivered() -> void:

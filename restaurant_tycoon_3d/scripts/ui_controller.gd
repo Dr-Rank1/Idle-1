@@ -22,11 +22,12 @@ extends CanvasLayer
 @onready var quest_claim_btn: Button = $HUD/QuestBanner/HBox/ClaimBtn
 
 # ─── Bottom Navigation Dock ─────────────────────────────────────────────────
-@onready var nav_kitchen_btn: Button = $HUD/BottomDock/HBox/KitchenBtn
-@onready var nav_dining_btn: Button = $HUD/BottomDock/HBox/DiningBtn
-@onready var nav_menu_btn: Button = $HUD/BottomDock/HBox/MenuBtn
-@onready var nav_staff_btn: Button = $HUD/BottomDock/HBox/StaffBtn
-@onready var nav_marketing_btn: Button = $HUD/BottomDock/HBox/MarketingBtn
+@onready var nav_parking_btn: Button = get_node_or_null("HUD/BottomDock/HBox/ParkingBtn")
+@onready var nav_kitchen_btn: Button = get_node_or_null("HUD/BottomDock/HBox/KitchenBtn")
+@onready var nav_dining_btn: Button = get_node_or_null("HUD/BottomDock/HBox/DiningBtn")
+@onready var nav_terrace_btn: Button = get_node_or_null("HUD/BottomDock/HBox/TerraceBtn")
+@onready var nav_staff_btn: Button = get_node_or_null("HUD/BottomDock/HBox/StaffBtn")
+@onready var nav_promo_btn: Button = get_node_or_null("HUD/BottomDock/HBox/PromoBtn")
 
 # ─── Modals ─────────────────────────────────────────────────────────────────
 @onready var upgrade_panel: PanelContainer = $UpgradePanel
@@ -50,39 +51,65 @@ extends CanvasLayer
 @onready var kitchen_vbox: VBoxContainer = $KitchenPanel/VBox/Scroll/VBox
 @onready var close_kitchen_btn: Button = $KitchenPanel/VBox/CloseBtn
 
-@onready var menu_panel: PanelContainer = $MenuPanel
-@onready var menu_items_vbox: VBoxContainer = $MenuPanel/VBox/ItemsScroll/ItemsVBox
-@onready var close_menu_btn: Button = $MenuPanel/VBox/CloseMenuBtn
+@onready var terrace_panel: PanelContainer = get_node_or_null("TerracePanel")
+@onready var terrace_vbox: VBoxContainer = get_node_or_null("TerracePanel/VBox/Scroll/VBox")
+@onready var close_terrace_btn: Button = get_node_or_null("TerracePanel/VBox/CloseBtn")
+
+@onready var parking_panel: PanelContainer = get_node_or_null("ParkingPanel")
+@onready var parking_vbox: VBoxContainer = get_node_or_null("ParkingPanel/VBox/Scroll/VBox")
+@onready var close_parking_btn: Button = get_node_or_null("ParkingPanel/VBox/CloseBtn")
 
 @onready var staff_panel: PanelContainer = $StaffPanel
 @onready var staff_vbox: VBoxContainer = $StaffPanel/VBox/StaffScroll/StaffVBox
 @onready var close_staff_btn: Button = $StaffPanel/VBox/CloseStaffBtn
 
-@onready var marketing_panel: PanelContainer = $MarketingPanel
-@onready var marketing_vbox: VBoxContainer = $MarketingPanel/VBox/Scroll/VBox
-@onready var close_marketing_btn: Button = $MarketingPanel/VBox/CloseBtn
+@onready var marketing_panel: PanelContainer = get_node_or_null("MarketingPanel")
+@onready var marketing_vbox: VBoxContainer = get_node_or_null("MarketingPanel/VBox/Scroll/VBox")
+@onready var close_marketing_btn: Button = get_node_or_null("MarketingPanel/VBox/CloseBtn")
 
 @onready var quests_panel: PanelContainer = $QuestsPanel
 @onready var quests_vbox: VBoxContainer = $QuestsPanel/VBox/Scroll/VBox
 @onready var close_quests_btn: Button = $QuestsPanel/VBox/CloseBtn
 
 var current_station_id: String = ""
-var current_multiplier: String = "1" # "1", "10", or "MAX"
+var current_multiplier: String = "1"
 var displayed_cash: float = 650.0
 
 func _ready() -> void:
 	_hide_all_modals()
 	
-	# Connect Button Events
 	boost_btn.pressed.connect(_on_boost_pressed)
 	add_gem_btn.pressed.connect(_on_add_gem_pressed)
 	
-	# Navigation Dock
-	nav_kitchen_btn.pressed.connect(func(): _toggle_modal(kitchen_panel, _refresh_kitchen_panel))
-	nav_dining_btn.pressed.connect(func(): _toggle_modal(dining_panel, _refresh_dining_panel))
-	nav_menu_btn.pressed.connect(func(): _toggle_modal(menu_panel, _refresh_menu_panel))
-	nav_staff_btn.pressed.connect(func(): _toggle_modal(staff_panel, _refresh_staff_panel))
-	nav_marketing_btn.pressed.connect(func(): _toggle_modal(marketing_panel, _refresh_marketing_panel))
+	# Navigation Dock with Camera Smooth Glides
+	if nav_parking_btn != null:
+		nav_parking_btn.pressed.connect(func():
+			_focus_camera("parking")
+			_toggle_modal(parking_panel, _refresh_parking_panel)
+		)
+	if nav_kitchen_btn != null:
+		nav_kitchen_btn.pressed.connect(func():
+			_focus_camera("kitchen")
+			_toggle_modal(kitchen_panel, _refresh_kitchen_panel)
+		)
+	if nav_dining_btn != null:
+		nav_dining_btn.pressed.connect(func():
+			_focus_camera("dining")
+			_toggle_modal(dining_panel, _refresh_dining_panel)
+		)
+	if nav_terrace_btn != null:
+		nav_terrace_btn.pressed.connect(func():
+			_focus_camera("terrace")
+			_toggle_modal(terrace_panel, _refresh_terrace_panel)
+		)
+	if nav_staff_btn != null:
+		nav_staff_btn.pressed.connect(func():
+			_toggle_modal(staff_panel, _refresh_staff_panel)
+		)
+	if nav_promo_btn != null:
+		nav_promo_btn.pressed.connect(func():
+			_toggle_modal(marketing_panel, _refresh_marketing_panel)
+		)
 	
 	# Quest Banner Click
 	quest_banner.gui_input.connect(_on_quest_banner_input)
@@ -96,12 +123,13 @@ func _ready() -> void:
 	close_btn.pressed.connect(func(): _close_modal(upgrade_panel))
 	
 	# Modal Close Buttons
-	close_dining_btn.pressed.connect(func(): _close_modal(dining_panel))
-	close_kitchen_btn.pressed.connect(func(): _close_modal(kitchen_panel))
-	close_menu_btn.pressed.connect(func(): _close_modal(menu_panel))
-	close_staff_btn.pressed.connect(func(): _close_modal(staff_panel))
-	close_marketing_btn.pressed.connect(func(): _close_modal(marketing_panel))
-	close_quests_btn.pressed.connect(func(): _close_modal(quests_panel))
+	if close_dining_btn != null: close_dining_btn.pressed.connect(func(): _close_modal(dining_panel))
+	if close_kitchen_btn != null: close_kitchen_btn.pressed.connect(func(): _close_modal(kitchen_panel))
+	if close_terrace_btn != null: close_terrace_btn.pressed.connect(func(): _close_modal(terrace_panel))
+	if close_parking_btn != null: close_parking_btn.pressed.connect(func(): _close_modal(parking_panel))
+	if close_staff_btn != null: close_staff_btn.pressed.connect(func(): _close_modal(staff_panel))
+	if close_marketing_btn != null: close_marketing_btn.pressed.connect(func(): _close_modal(marketing_panel))
+	if close_quests_btn != null: close_quests_btn.pressed.connect(func(): _close_modal(quests_panel))
 
 	# Connect GameManager signals
 	var gm = get_node_or_null("/root/GameManager")
@@ -112,7 +140,6 @@ func _ready() -> void:
 		gm.level_updated.connect(_on_level_updated)
 		gm.station_upgraded.connect(_on_station_upgraded)
 		gm.boost_toggled.connect(_on_boost_toggled)
-		gm.menu_updated.connect(_on_menu_updated)
 		gm.staff_updated.connect(_on_staff_updated)
 		gm.table_unlocked.connect(_on_table_unlocked)
 		gm.quests_updated.connect(_on_quests_updated)
@@ -122,16 +149,23 @@ func _ready() -> void:
 		_update_top_bar(gm.cash, gm.gems, gm.star_rating, gm.restaurant_name, gm.restaurant_level, gm.restaurant_xp, gm.xp_to_next_level)
 		_refresh_quest_banner()
 
+func _focus_camera(zone: String) -> void:
+	var cam = get_viewport().get_camera_3d()
+	if cam != null and cam.has_method("focus_zone"):
+		cam.focus_zone(zone)
+
 func _hide_all_modals() -> void:
-	upgrade_panel.visible = false
-	dining_panel.visible = false
-	kitchen_panel.visible = false
-	menu_panel.visible = false
-	staff_panel.visible = false
-	marketing_panel.visible = false
-	quests_panel.visible = false
+	if upgrade_panel != null: upgrade_panel.visible = false
+	if dining_panel != null: dining_panel.visible = false
+	if kitchen_panel != null: kitchen_panel.visible = false
+	if terrace_panel != null: terrace_panel.visible = false
+	if parking_panel != null: parking_panel.visible = false
+	if staff_panel != null: staff_panel.visible = false
+	if marketing_panel != null: marketing_panel.visible = false
+	if quests_panel != null: quests_panel.visible = false
 
 func _open_modal(panel: PanelContainer) -> void:
+	if panel == null: return
 	_play_click_sfx()
 	_hide_all_modals()
 	panel.visible = true
@@ -140,12 +174,14 @@ func _open_modal(panel: PanelContainer) -> void:
 	tw.tween_property(panel, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _close_modal(panel: PanelContainer) -> void:
+	if panel == null: return
 	_play_click_sfx()
 	var tw = create_tween()
 	tw.tween_property(panel, "scale", Vector2(0.9, 0.9), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func(): panel.visible = false)
 
 func _toggle_modal(panel: PanelContainer, refresh_func: Callable) -> void:
+	if panel == null: return
 	if panel.visible:
 		_close_modal(panel)
 	else:
@@ -182,17 +218,19 @@ func _on_cash_changed(new_cash: float) -> void:
 		cash_label.text = _format_money(val)
 	, displayed_cash, new_cash, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	
-	if upgrade_panel.visible:
+	if upgrade_panel != null and upgrade_panel.visible:
 		_refresh_upgrade_btn()
-	if dining_panel.visible:
+	if dining_panel != null and dining_panel.visible:
 		_refresh_dining_panel()
-	if kitchen_panel.visible:
+	if kitchen_panel != null and kitchen_panel.visible:
 		_refresh_kitchen_panel()
-	if menu_panel.visible:
-		_refresh_menu_panel()
-	if staff_panel.visible:
+	if terrace_panel != null and terrace_panel.visible:
+		_refresh_terrace_panel()
+	if parking_panel != null and parking_panel.visible:
+		_refresh_parking_panel()
+	if staff_panel != null and staff_panel.visible:
 		_refresh_staff_panel()
-	if marketing_panel.visible:
+	if marketing_panel != null and marketing_panel.visible:
 		_refresh_marketing_panel()
 
 func _on_gems_changed(new_gems: int) -> void:
@@ -269,7 +307,7 @@ func _on_banner_claim_pressed() -> void:
 
 func _on_quests_updated() -> void:
 	_refresh_quest_banner()
-	if quests_panel.visible:
+	if quests_panel != null and quests_panel.visible:
 		_refresh_quests_panel()
 
 func _refresh_quests_panel() -> void:
@@ -348,7 +386,6 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 	upgrade_income.text = "Income: +$%d / customer" % round(inc)
 	upgrade_next_unlock.text = gm.get_next_tier_desc(station_id, level)
 	
-	# Milestone progress bar (progress to next visual tier: Lv 5, 10, etc.)
 	var next_milestone = 5 if level < 5 else (10 if level < 10 else 25)
 	var prev_milestone = 1 if level < 5 else (5 if level < 10 else 10)
 	upgrade_milestone_bar.min_value = prev_milestone
@@ -395,10 +432,12 @@ func _on_station_upgraded(station_id: String, new_lvl: int) -> void:
 			upgrade_next_unlock.text = gm.get_next_tier_desc(station_id, new_lvl)
 			upgrade_milestone_bar.value = new_lvl
 			_refresh_upgrade_btn()
-	if dining_panel.visible:
+	if dining_panel != null and dining_panel.visible:
 		_refresh_dining_panel()
-	if kitchen_panel.visible:
+	if kitchen_panel != null and kitchen_panel.visible:
 		_refresh_kitchen_panel()
+	if terrace_panel != null and terrace_panel.visible:
+		_refresh_terrace_panel()
 
 # ─── Dining Floor Management Modal ──────────────────────────────────────────
 func _refresh_dining_panel() -> void:
@@ -408,7 +447,7 @@ func _refresh_dining_panel() -> void:
 	if gm == null:
 		return
 	
-	for i in range(1, 9):
+	for i in range(1, 6): # Indoor tables 1 to 5
 		var tid = "table_%d" % i
 		var card = _create_table_card(tid, i, gm)
 		dining_vbox.add_child(card)
@@ -444,7 +483,7 @@ func _create_table_card(table_id: String, index: int, gm: Node) -> PanelContaine
 		sub_lbl.text = "%s • Level %d (+$%d/dish)" % [gm.get_station_tier_title(table_id, lvl), lvl, round(gm.get_station_income(table_id))]
 		sub_lbl.add_theme_color_override("font_color", Color(0.45, 0.95, 0.55, 1))
 	else:
-		sub_lbl.text = "Locked Dining Station • Unlock for Customers"
+		sub_lbl.text = "Locked Station • Unlock for Customers"
 		sub_lbl.add_theme_color_override("font_color", Color(0.8, 0.7, 0.5, 0.8))
 	sub_lbl.add_theme_font_size_override("font_size", 12)
 	vb.add_child(sub_lbl)
@@ -476,8 +515,114 @@ func _create_table_card(table_id: String, index: int, gm: Node) -> PanelContaine
 	return p
 
 func _on_table_unlocked(_table_id: String) -> void:
-	if dining_panel.visible:
+	if dining_panel != null and dining_panel.visible:
 		_refresh_dining_panel()
+	if terrace_panel != null and terrace_panel.visible:
+		_refresh_terrace_panel()
+
+# ─── Outdoor Terrace Panel ──────────────────────────────────────────────────
+func _refresh_terrace_panel() -> void:
+	if terrace_vbox == null: return
+	for c in terrace_vbox.get_children():
+		c.queue_free()
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+	
+	if not gm.is_terrace_unlocked():
+		var card = PanelContainer.new()
+		card.add_theme_stylebox_override("panel", _get_card_style())
+		var vb = VBoxContainer.new()
+		vb.add_theme_constant_override("separation", 10)
+		card.add_child(vb)
+		
+		var title = Label.new()
+		title.text = "🌿 SUNNY GARDEN TERRACE EXPANSION"
+		title.add_theme_font_size_override("font_size", 17)
+		title.add_theme_color_override("font_color", Color(1, 0.88, 0.35, 1))
+		vb.add_child(title)
+		
+		var desc = Label.new()
+		desc.text = "Expand your restaurant outdoors with 3 luxury patio umbrella tables, garden hedges, and +50% tips from outdoor diners!"
+		desc.add_theme_font_size_override("font_size", 12)
+		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		vb.add_child(desc)
+		
+		var btn = Button.new()
+		btn.text = "UNLOCK TERRACE ($%d)" % round(gm.TERRACE_UNLOCK_COST)
+		btn.disabled = gm.cash < gm.TERRACE_UNLOCK_COST
+		btn.add_theme_stylebox_override("normal", _get_gold_btn_style())
+		btn.pressed.connect(func():
+			_play_click_sfx()
+			if gm.unlock_terrace():
+				_focus_camera("terrace")
+				_refresh_terrace_panel()
+		)
+		vb.add_child(btn)
+		terrace_vbox.add_child(card)
+	else:
+		for tid in ["table_6", "table_7", "table_8"]:
+			var card = _create_table_card(tid, int(tid.trim_prefix("table_")), gm)
+			terrace_vbox.add_child(card)
+
+# ─── Parking Lot Panel ──────────────────────────────────────────────────────
+func _refresh_parking_panel() -> void:
+	if parking_vbox == null: return
+	for c in parking_vbox.get_children():
+		c.queue_free()
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+		
+	for i in range(1, 5):
+		var p = PanelContainer.new()
+		p.add_theme_stylebox_override("panel", _get_card_style())
+		var hbox = HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 12)
+		p.add_child(hbox)
+		
+		var icon = Label.new()
+		icon.text = "🚗" if i <= 2 else ("🚙" if i == 3 else "🏎️")
+		icon.add_theme_font_size_override("font_size", 28)
+		hbox.add_child(icon)
+		
+		var vb = VBoxContainer.new()
+		vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hbox.add_child(vb)
+		
+		var name_lbl = Label.new()
+		name_lbl.text = "Parking Stall #%d" % i
+		name_lbl.add_theme_font_size_override("font_size", 16)
+		name_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+		vb.add_child(name_lbl)
+		
+		var is_unlocked = gm.is_stall_unlocked(i)
+		var sub_lbl = Label.new()
+		sub_lbl.add_theme_font_size_override("font_size", 12)
+		if is_unlocked:
+			sub_lbl.text = "Active Stall • +$15 Parking Fee per Visitor"
+			sub_lbl.add_theme_color_override("font_color", Color(0.45, 0.95, 0.55, 1))
+		else:
+			sub_lbl.text = "Locked Stall • Expand for More Car Traffic"
+			sub_lbl.add_theme_color_override("font_color", Color(0.8, 0.7, 0.5, 0.8))
+		vb.add_child(sub_lbl)
+		
+		var btn = Button.new()
+		if is_unlocked:
+			btn.text = "✓ ACTIVE"
+			btn.disabled = true
+		else:
+			var cost = gm.get_stall_unlock_cost(i)
+			btn.text = "UNLOCK\n($%d)" % round(cost)
+			btn.disabled = gm.cash < cost
+			btn.add_theme_stylebox_override("normal", _get_gold_btn_style())
+			btn.pressed.connect(func():
+				_play_click_sfx()
+				gm.unlock_parking_stall(i)
+				_refresh_parking_panel()
+			)
+		hbox.add_child(btn)
+		parking_vbox.add_child(p)
 
 # ─── Kitchen Management Modal ───────────────────────────────────────────────
 func _refresh_kitchen_panel() -> void:
@@ -487,9 +632,7 @@ func _refresh_kitchen_panel() -> void:
 	if gm == null:
 		return
 	
-	# Stove Range
 	kitchen_vbox.add_child(_create_kitchen_card("stove", "Master Range Stoves", "🍳", gm))
-	# Host Desk
 	kitchen_vbox.add_child(_create_kitchen_card("host_desk", "Reception Host Desk", "🛎️", gm))
 
 func _create_kitchen_card(st_id: String, st_name: String, icon_str: String, gm: Node) -> PanelContainer:
@@ -538,78 +681,9 @@ func _create_kitchen_card(st_id: String, st_name: String, icon_str: String, gm: 
 	hbox.add_child(btn)
 	return p
 
-# ─── Menu Book Modal ────────────────────────────────────────────────────────
-func _on_menu_updated() -> void:
-	if menu_panel.visible:
-		_refresh_menu_panel()
-
-func _refresh_menu_panel() -> void:
-	for c in menu_items_vbox.get_children():
-		c.queue_free()
-	var gm = get_node_or_null("/root/GameManager")
-	if gm == null:
-		return
-	for dish_id in ["burger", "pasta", "pizza", "sushi"]:
-		if gm.menu_items.has(dish_id):
-			menu_items_vbox.add_child(_create_recipe_card(gm.menu_items[dish_id], gm))
-
-func _create_recipe_card(dish: Dictionary, gm: Node) -> PanelContainer:
-	var p = PanelContainer.new()
-	p.add_theme_stylebox_override("panel", _get_card_style())
-	
-	var hbox = HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 12)
-	p.add_child(hbox)
-	
-	var icon = Label.new()
-	icon.text = dish.get("icon", "🍽️")
-	icon.add_theme_font_size_override("font_size", 34)
-	hbox.add_child(icon)
-	
-	var vb = VBoxContainer.new()
-	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hbox.add_child(vb)
-	
-	var name_lbl = Label.new()
-	name_lbl.text = dish.get("name", "Dish")
-	name_lbl.add_theme_font_size_override("font_size", 16)
-	name_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
-	vb.add_child(name_lbl)
-	
-	var price_lbl = Label.new()
-	price_lbl.text = "Plate Price: +$%d / customer" % round(dish.get("price", 0))
-	price_lbl.add_theme_font_size_override("font_size", 13)
-	price_lbl.add_theme_color_override("font_color", Color(0.4, 0.95, 0.55, 1))
-	vb.add_child(price_lbl)
-	
-	var desc_lbl = Label.new()
-	desc_lbl.text = dish.get("desc", "")
-	desc_lbl.add_theme_font_size_override("font_size", 11)
-	desc_lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.8))
-	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vb.add_child(desc_lbl)
-	
-	var btn = Button.new()
-	var is_unlocked = dish.get("unlocked", false)
-	var unlock_cost = dish.get("unlock_cost", 0.0)
-	if is_unlocked:
-		btn.text = "✓ ACTIVE"
-		btn.disabled = true
-		btn.add_theme_color_override("font_color", Color(0.5, 0.8, 0.6, 0.9))
-	else:
-		btn.text = "UNLOCK\n($%d)" % round(unlock_cost)
-		btn.disabled = gm.cash < unlock_cost
-		btn.pressed.connect(func():
-			_play_click_sfx()
-			gm.unlock_dish(dish["id"])
-		)
-		btn.add_theme_stylebox_override("normal", _get_green_btn_style())
-	hbox.add_child(btn)
-	return p
-
 # ─── Staff Roster Modal ─────────────────────────────────────────────────────
 func _on_staff_updated(_sid: String) -> void:
-	if staff_panel.visible:
+	if staff_panel != null and staff_panel.visible:
 		_refresh_staff_panel()
 
 func _refresh_staff_panel() -> void:
@@ -690,10 +764,11 @@ func _create_staff_card(st: Dictionary, gm: Node) -> PanelContainer:
 
 # ─── Marketing Campaigns Modal ──────────────────────────────────────────────
 func _on_campaign_updated(_cid: String, _active: bool, _time_left: float) -> void:
-	if marketing_panel.visible:
+	if marketing_panel != null and marketing_panel.visible:
 		_refresh_marketing_panel()
 
 func _refresh_marketing_panel() -> void:
+	if marketing_vbox == null: return
 	for c in marketing_vbox.get_children():
 		c.queue_free()
 	var gm = get_node_or_null("/root/GameManager")

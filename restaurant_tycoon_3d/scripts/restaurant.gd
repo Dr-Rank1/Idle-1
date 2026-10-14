@@ -240,3 +240,28 @@ func _on_spawn_floating_cash(amount: float, world_pos: Vector3) -> void:
 		var cash_lbl = floating_cash_scene.instantiate()
 		add_child(cash_lbl)
 		cash_lbl.setup(amount, world_pos)
+
+func spawn_customer_from_car(car_exit_pos: Vector3) -> Node3D:
+	var available = _get_available_tables()
+	if available.size() == 0:
+		return null
+	var free_table: Node3D = available.pick_random()
+	if customer_scene == null:
+		return null
+		
+	var cust = customer_scene.instantiate()
+	customers_container.add_child(cust)
+	cust.global_position = car_exit_pos
+	
+	if free_table.has_method("occupy"):
+		free_table.occupy(cust)
+	else:
+		free_table.is_occupied = true
+	cust.assigned_table_id = free_table.table_id
+	cust.table_ref = free_table
+	
+	cust.current_state = cust.State.WALKING_TO_HOST
+	var sidewalk_pt = Vector3(car_exit_pos.x, 0.0, 11.2)
+	cust.set_waypoints([sidewalk_pt, cust.DOOR_POS, cust.HOST_POS])
+	cust.order_placed.connect(_on_customer_order_placed)
+	return cust

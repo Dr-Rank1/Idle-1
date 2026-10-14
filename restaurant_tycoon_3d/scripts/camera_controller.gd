@@ -1,14 +1,14 @@
 extends Camera3D
 
 @export var pan_speed: float = 0.025
-@export var key_pan_speed: float = 12.0
-@export var zoom_speed: float = 1.5
-@export var min_zoom_dist: float = 8.0
-@export var max_zoom_dist: float = 28.0
+@export var key_pan_speed: float = 14.0
+@export var zoom_speed: float = 1.6
+@export var min_zoom_dist: float = 9.0
+@export var max_zoom_dist: float = 32.0
 
 var is_dragging: bool = false
 var last_mouse_pos: Vector2 = Vector2.ZERO
-var target_position: Vector3 = Vector3.ZERO
+var target_position: Vector3 = Vector3(5.8, 21.0, 26.8)
 var initialized: bool = false
 
 # Camera forward and right vectors projected onto ground XZ plane
@@ -51,14 +51,26 @@ func _process(delta: float) -> void:
 		_clamp_target()
 	
 	# Smoothly interpolate position towards target
-	position = position.lerp(target_position, 14.0 * delta)
+	position = position.lerp(target_position, 12.0 * delta)
 
 func _clamp_target() -> void:
-	target_position.x = clamp(target_position.x, -2.0, 18.0)
-	target_position.z = clamp(target_position.z, 2.0, 22.0)
+	target_position.x = clamp(target_position.x, -8.0, 22.0)
+	target_position.z = clamp(target_position.z, 4.0, 30.0)
+
+func focus_zone(zone: String) -> void:
+	match zone:
+		"parking":
+			target_position = Vector3(-2.0, 15.5, 21.0)
+		"dining":
+			target_position = Vector3(3.2, 16.5, 16.0)
+		"kitchen":
+			target_position = Vector3(-4.0, 14.5, 8.5)
+		"terrace":
+			target_position = Vector3(14.0, 16.0, 14.5)
+		"overview":
+			target_position = Vector3(5.8, 21.0, 26.8)
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Mouse button pan (Left drag, Middle drag, or Right drag)
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_MIDDLE or event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:
@@ -95,7 +107,6 @@ func _unhandled_input(event: InputEvent) -> void:
 func _zoom(amount: float) -> void:
 	var cam_dir: Vector3 = transform.basis.z.normalized()
 	var new_pos = target_position + cam_dir * amount
-	# Check distance to restaurant center (0, 0, 0)
 	var dist = new_pos.length()
 	if dist >= min_zoom_dist and dist <= max_zoom_dist:
 		target_position = new_pos
