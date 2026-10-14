@@ -45,6 +45,10 @@ size = Vector3(1.9, 0.38, 0.48)
 material = SubResource("Material_red_vinyl")
 size = Vector3(1.9, 0.44, 0.14)
 
+[sub_resource type="BoxMesh" id="BoxMesh_bench_cap"]
+material = SubResource("Material_partition_wall")
+size = Vector3(1.94, 0.04, 0.16)
+
 [sub_resource type="StandardMaterial3D" id="Material_gold_brass"]
 albedo_color = Color(0.92, 0.78, 0.25, 1)
 metallic = 0.6
@@ -239,6 +243,10 @@ mesh = SubResource("BoxMesh_bench_seat")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.58, -0.92)
 mesh = SubResource("BoxMesh_bench_back")
 
+[node name="BenchNorthCap" type="MeshInstance3D" parent="BoothDecor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.81, -0.92)
+mesh = SubResource("BoxMesh_bench_cap")
+
 [node name="BenchSouthSeat" type="MeshInstance3D" parent="BoothDecor"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.19, 0.68)
 mesh = SubResource("BoxMesh_bench_seat")
@@ -246,6 +254,10 @@ mesh = SubResource("BoxMesh_bench_seat")
 [node name="BenchSouthBack" type="MeshInstance3D" parent="BoothDecor"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.58, 0.92)
 mesh = SubResource("BoxMesh_bench_back")
+
+[node name="BenchSouthCap" type="MeshInstance3D" parent="BoothDecor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.81, 0.92)
+mesh = SubResource("BoxMesh_bench_cap")
 
 [node name="TableMesh" parent="." instance=ExtResource("2_table")]
 transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 0, 0, 0)

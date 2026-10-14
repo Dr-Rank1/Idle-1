@@ -80,11 +80,21 @@ func clean_dirty_table(table: Node3D) -> void:
 		var target_z = target_table.global_position.z
 		var target_x = target_table.global_position.x
 		var lane_z = target_z + 0.65
-		var aisle_x = 5.0 if target_x > 5.0 else 0.2
+		var aisle_x = _get_aisle_x(target_x)
 		var table_approach = Vector3(aisle_x, 0.0, lane_z)
 		var table_dest = Vector3(target_x, 0.0, lane_z)
 		waypoints = [DINING_AISLE_POS, table_approach, table_dest]
 	_play_anim("walk")
+
+func _get_aisle_x(target_x: float) -> float:
+	if target_x > 10.0:
+		return 10.5
+	elif target_x > 6.5:
+		return 6.9
+	elif target_x > 2.5:
+		return 3.1
+	else:
+		return -0.2
 
 func _physics_process(delta: float) -> void:
 	if waypoints.size() > 0:
@@ -141,7 +151,7 @@ func _on_all_waypoints_reached() -> void:
 				var target_z = target_table.global_position.z
 				var target_x = target_table.global_position.x
 				var lane_z = target_z + 0.65
-				var aisle_x = 5.0 if target_x > 5.0 else 0.2
+				var aisle_x = _get_aisle_x(target_x)
 				var table_approach = Vector3(aisle_x, 0.0, lane_z)
 				var table_dest = Vector3(target_x, 0.0, lane_z)
 				waypoints = [DINING_AISLE_POS, table_approach, table_dest]
@@ -176,7 +186,7 @@ func _on_all_waypoints_reached() -> void:
 			
 			current_state = State.RETURNING
 			var curr_x = position.x
-			var aisle_x = 5.0 if curr_x > 5.0 else 0.2
+			var aisle_x = _get_aisle_x(curr_x)
 			var ret_approach = Vector3(aisle_x, 0.0, position.z)
 			waypoints = [ret_approach, DINING_AISLE_POS, home_pos]
 			_play_anim("walk")
