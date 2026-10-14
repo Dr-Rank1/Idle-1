@@ -1,0 +1,153 @@
+[gd_scene load_steps=18 format=3 uid="uid://boothsuite123"]
+
+[ext_resource type="PackedScene" path="res://assets/kaykit_restaurant/gltf/table_round_A_small.gltf" id="1_table"]
+[ext_resource type="PackedScene" path="res://assets/kaykit_restaurant/gltf/chair_A.gltf" id="2_chair"]
+[ext_resource type="PackedScene" path="res://assets/models/food/burger-cheese.glb" id="3_food"]
+[ext_resource type="PackedScene" path="res://assets/models/food/glass-wine.glb" id="4_wine"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/lampRoundTable.glb" id="5_lantern"]
+[ext_resource type="Shader" path="res://shaders/radial_timer.gdshader" id="6_timer_shader"]
+[ext_resource type="PackedScene" path="res://assets/models/characters/character-male-a.glb" id="7_char_male_a"]
+[ext_resource type="PackedScene" path="res://assets/models/characters/character-female-b.glb" id="8_char_female_b"]
+[ext_resource type="PackedScene" path="res://assets/models/characters/character-female-c.glb" id="9_char_female_c"]
+[ext_resource type="PackedScene" path="res://assets/models/characters/character-male-b.glb" id="10_char_male_b"]
+[ext_resource type="Script" path="res://scripts/decor_character.gd" id="11_decor_char"]
+
+[sub_resource type="StandardMaterial3D" id="Material_partition_wall"]
+albedo_color = Color(0.38, 0.22, 0.14, 1)
+roughness = 0.65
+
+[sub_resource type="StandardMaterial3D" id="Material_planter_green"]
+albedo_color = Color(0.24, 0.62, 0.16, 1)
+roughness = 0.7
+
+[sub_resource type="StandardMaterial3D" id="Material_gold_brass"]
+albedo_color = Color(0.92, 0.78, 0.25, 1)
+metallic = 0.6
+roughness = 0.3
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_wine_stand"]
+material = SubResource("Material_gold_brass")
+top_radius = 0.08
+bottom_radius = 0.12
+height = 0.75
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_booth_ring"]
+render_priority = 0
+shader = ExtResource("6_timer_shader")
+shader_parameter/progress = 0.72
+shader_parameter/bg_color = Color(1, 1, 1, 0.88)
+shader_parameter/fill_color = Color(0.92, 0.78, 0.15, 1)
+shader_parameter/inner_radius = 0.28
+shader_parameter/outer_radius = 0.44
+
+[sub_resource type="QuadMesh" id="QuadMesh_booth_ring"]
+material = SubResource("ShaderMaterial_booth_ring")
+size = Vector2(1.2, 1.2)
+
+[node name="DiningBoothSuite" type="Node3D"]
+
+[node name="PartitionBack" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, -1.25)
+size = Vector3(2.6, 0.5, 0.18)
+material = SubResource("Material_partition_wall")
+
+[node name="PlanterBack" type="CSGBox3D" parent="PartitionBack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.32, 0)
+size = Vector3(2.5, 0.16, 0.16)
+material = SubResource("Material_planter_green")
+
+[node name="PartitionLeft" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.25, 0.25, 0)
+size = Vector3(0.18, 0.5, 2.4)
+material = SubResource("Material_partition_wall")
+
+[node name="PlanterLeft" type="CSGBox3D" parent="PartitionLeft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.32, 0)
+size = Vector3(0.16, 0.16, 2.3)
+material = SubResource("Material_planter_green")
+
+[node name="PartitionRight" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.25, 0.25, 0)
+size = Vector3(0.18, 0.5, 2.4)
+material = SubResource("Material_partition_wall")
+
+[node name="PlanterRight" type="CSGBox3D" parent="PartitionRight"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.32, 0)
+size = Vector3(0.16, 0.16, 2.3)
+material = SubResource("Material_planter_green")
+
+[node name="LanternCorner1" parent="." instance=ExtResource("5_lantern")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, -1.25, 0.55, -1.25)
+
+[node name="LanternCorner2" parent="." instance=ExtResource("5_lantern")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 1.25, 0.55, -1.25)
+
+[node name="LanternLight1" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.25, 0.75, -1.25)
+light_color = Color(1, 0.85, 0.55, 1)
+light_energy = 0.4
+omni_range = 2.0
+
+[node name="LanternLight2" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.25, 0.75, -1.25)
+light_color = Color(1, 0.85, 0.55, 1)
+light_energy = 0.4
+omni_range = 2.0
+
+[node name="TableMesh" parent="." instance=ExtResource("1_table")]
+transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 0, 0, 0)
+
+[node name="ChairNorth" parent="." instance=ExtResource("2_chair")]
+transform = Transform3D(-0.75, 0, 0, 0, 0.75, 0, 0, 0, -0.75, 0, 0, -0.68)
+
+[node name="ChairSouth" parent="." instance=ExtResource("2_chair")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0.68)
+
+[node name="ChairWest" parent="." instance=ExtResource("2_chair")]
+transform = Transform3D(0, 0, 0.75, 0, 0.75, 0, -0.75, 0, 0, -0.68, 0, 0)
+
+[node name="ChairEast" parent="." instance=ExtResource("2_chair")]
+transform = Transform3D(0, 0, -0.75, 0, 0.75, 0, 0.75, 0, 0, 0.68, 0, 0)
+
+[node name="DinerNorth" parent="." instance=ExtResource("7_char_male_a")]
+transform = Transform3D(-0.9, 0, 0, 0, 0.9, 0, 0, 0, -0.9, 0, 0.05, -0.68)
+script = ExtResource("11_decor_char")
+anim_name = "sit"
+
+[node name="DinerSouth" parent="." instance=ExtResource("8_char_female_b")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0.05, 0.68)
+script = ExtResource("11_decor_char")
+anim_name = "sit"
+
+[node name="DinerWest" parent="." instance=ExtResource("9_char_female_c")]
+transform = Transform3D(0, 0, 0.9, 0, 0.9, 0, -0.9, 0, 0, -0.68, 0.05, 0)
+script = ExtResource("11_decor_char")
+anim_name = "sit"
+
+[node name="DinerEast" parent="." instance=ExtResource("10_char_male_b")]
+transform = Transform3D(0, 0, -0.9, 0, 0.9, 0, 0.9, 0, 0, 0.68, 0.05, 0)
+script = ExtResource("11_decor_char")
+anim_name = "sit"
+
+[node name="DishNorth" parent="." instance=ExtResource("3_food")]
+transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, 0, 0.58, -0.28)
+
+[node name="DishSouth" parent="." instance=ExtResource("3_food")]
+transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, 0, 0.58, 0.28)
+
+[node name="WineGlass1" parent="." instance=ExtResource("4_wine")]
+transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, -0.22, 0.58, -0.15)
+
+[node name="WineGlass2" parent="." instance=ExtResource("4_wine")]
+transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, 0.22, 0.58, 0.15)
+
+[node name="WineStand" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.45, 0.38, 0.85)
+mesh = SubResource("CylinderMesh_wine_stand")
+
+[node name="WineStandGlass" parent="WineStand" instance=ExtResource("4_wine")]
+transform = Transform3D(0.4, 0, 0, 0, 0.4, 0, 0, 0, 0.4, 0, 0.4, 0)
+
+[node name="RadialProgressRing" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.05, 0)
+mesh = SubResource("QuadMesh_booth_ring")

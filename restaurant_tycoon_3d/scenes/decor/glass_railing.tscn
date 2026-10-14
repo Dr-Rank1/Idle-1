@@ -1,0 +1,42 @@
+[gd_scene load_steps=6 format=3 uid="uid://glassrailing123"]
+
+[sub_resource type="StandardMaterial3D" id="Material_metal_post"]
+albedo_color = Color(0.25, 0.26, 0.28, 1)
+metallic = 0.8
+roughness = 0.25
+
+[sub_resource type="BoxMesh" id="BoxMesh_post"]
+material = SubResource("Material_metal_post")
+size = Vector3(0.08, 0.95, 0.08)
+
+[sub_resource type="StandardMaterial3D" id="Material_glass_pane"]
+transparency = 1
+albedo_color = Color(0.80, 0.92, 0.98, 0.45)
+roughness = 0.1
+metallic = 0.15
+
+[sub_resource type="BoxMesh" id="BoxMesh_glass"]
+material = SubResource("Material_glass_pane")
+size = Vector3(2.4, 0.8, 0.03)
+
+[sub_resource type="BoxMesh" id="BoxMesh_handrail"]
+material = SubResource("Material_metal_post")
+size = Vector3(2.5, 0.06, 0.08)
+
+[node name="GlassRailing" type="Node3D"]
+
+[node name="Post1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2, 0.48, 0)
+mesh = SubResource("BoxMesh_post")
+
+[node name="Post2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 0.48, 0)
+mesh = SubResource("BoxMesh_post")
+
+[node name="GlassPane" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+mesh = SubResource("BoxMesh_glass")
+
+[node name="Handrail" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.92, 0)
+mesh = SubResource("BoxMesh_handrail")

@@ -19,6 +19,12 @@ var occupying_customer: Node = null
 @onready var food_dish: Node3D = $FoodDish
 @onready var dirty_dishes: Node3D = get_node_or_null("DirtyDishes")
 @onready var table_mesh: Node3D = $TableMesh
+@onready var booth_decor: Node3D = get_node_or_null("BoothDecor")
+@onready var companion_diners: Node3D = get_node_or_null("CompanionDiners")
+@onready var chair_north: Node3D = get_node_or_null("ChairNorth")
+@onready var chair_south: Node3D = get_node_or_null("ChairSouth")
+@onready var chair_east: Node3D = get_node_or_null("ChairEast")
+@onready var chair_west: Node3D = get_node_or_null("ChairWest")
 @onready var chair_left: Node3D = get_node_or_null("ChairLeft")
 @onready var chair_right: Node3D = get_node_or_null("ChairRight")
 @onready var table_menu: Node3D = get_node_or_null("TableMenu")
@@ -41,6 +47,13 @@ func _ready() -> void:
 	if dirty_dishes != null: dirty_dishes.visible = false
 	if is_terrace_table and pendant_lamp != null:
 		pendant_lamp.visible = false
+	if is_terrace_table and booth_decor != null:
+		booth_decor.visible = false
+	if is_terrace_table and companion_diners != null:
+		companion_diners.visible = false
+	if timer_ring != null and timer_ring.mesh != null and timer_ring.mesh.material != null:
+		var ring_mat = timer_ring.mesh.material.duplicate()
+		timer_ring.material_override = ring_mat
 	if badge_root != null: initial_badge_y = badge_root.position.y
 	
 	if action_badge == null and badge_root != null:
@@ -82,17 +95,25 @@ func _on_cash_changed(_cash_val: float) -> void:
 func _set_locked_visual(cost: float) -> void:
 	is_unlocked = false
 	visible = false
+	if booth_decor != null: booth_decor.visible = false
+	if companion_diners != null: companion_diners.visible = false
 
 func _set_unlocked_visual(lvl: int) -> void:
 	is_unlocked = true
 	visible = true
 	if table_mesh != null: table_mesh.visible = true
+	if booth_decor != null: booth_decor.visible = not is_terrace_table
+	if companion_diners != null: companion_diners.visible = not is_terrace_table
+	if chair_north != null: chair_north.visible = true
+	if chair_south != null: chair_south.visible = true
+	if chair_east != null: chair_east.visible = true
+	if chair_west != null: chair_west.visible = true
 	if chair_left != null: chair_left.visible = true
 	if chair_right != null: chair_right.visible = true
 	if table_menu != null: table_menu.visible = true
 	if salt_shaker != null: salt_shaker.visible = true
 	if pepper_shaker != null: pepper_shaker.visible = true
-	if pendant_lamp != null: pendant_lamp.visible = true
+	if pendant_lamp != null: pendant_lamp.visible = not is_terrace_table
 	if table_omni_light != null: table_omni_light.visible = true
 	update_level_display(lvl)
 
@@ -209,7 +230,9 @@ func clear_food() -> void:
 func set_eating_progress(progress_val: float) -> void:
 	if timer_ring != null:
 		timer_ring.visible = true
-		var mat = timer_ring.get_active_material(0)
+		var mat = timer_ring.material_override
+		if mat == null:
+			mat = timer_ring.get_active_material(0)
 		if mat is ShaderMaterial:
 			mat.set_shader_parameter("progress", clamp(progress_val, 0.0, 1.0))
 
