@@ -95,6 +95,7 @@
 [ext_resource type="PackedScene" path="res://assets/models/food/frappe.glb" id="89_frappe"]
 [ext_resource type="PackedScene" path="res://assets/models/food/soda-glass.glb" id="90_soda_glass"]
 [ext_resource type="PackedScene" path="res://assets/models/furniture/kitchenFridgeLarge.glb" id="91_fridge_large"]
+[ext_resource type="Texture2D" path="res://assets/textures/tv_screen.png" id="93_tv_tex"]
 
 
 [sub_resource type="Environment" id="Environment_main"]
@@ -499,6 +500,17 @@ roughness = 0.45
 material = SubResource("Material_art_cafe")
 size = Vector2(0.95, 1.35)
 
+[sub_resource type="StandardMaterial3D" id="Material_tv_screen"]
+albedo_texture = ExtResource("93_tv_tex")
+emission_enabled = true
+emission_texture = ExtResource("93_tv_tex")
+emission_energy_multiplier = 1.15
+roughness = 0.25
+
+[sub_resource type="QuadMesh" id="QuadMesh_tv_screen"]
+material = SubResource("Material_tv_screen")
+size = Vector2(1.8, 1.0)
+
 [sub_resource type="StandardMaterial3D" id="Material_canopy_awning"]
 albedo_texture = ExtResource("84_canopy_tex")
 roughness = 0.65
@@ -825,6 +837,18 @@ mesh = SubResource("QuadMesh_neon_sign")
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -3.36, 1.6, 4.8)
 mesh = SubResource("QuadMesh_art_chef")
 
+[node name="WallTVFrame" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -3.37, 1.75, 7.6)
+size = Vector3(1.86, 1.06, 0.06)
+material = SubResource("Material_asphalt")
+
+[node name="WallTVScreen" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -3.33, 1.75, 7.6)
+mesh = SubResource("QuadMesh_tv_screen")
+
+[node name="PlantEntranceLobby" parent="Restaurant/BuildingWalls" instance=ExtResource("26_plant")]
+transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, -3.0, 0, 9.6)
+
 [node name="WallArtCafe" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 2.2, -3.38)
 mesh = SubResource("QuadMesh_art_cafe")
@@ -915,6 +939,12 @@ transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 5.0, 1.55, 10.5)
 
 [node name="FrontWindowDining3" parent="Restaurant/BuildingWalls" instance=ExtResource("23_window")]
 transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 8.8, 1.55, 10.5)
+
+[node name="IndoorWindowPlant1" parent="Restaurant/BuildingWalls" instance=ExtResource("26_plant")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 3.1, 0, 10.15)
+
+[node name="IndoorWindowPlant2" parent="Restaurant/BuildingWalls" instance=ExtResource("26_plant")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 6.9, 0, 10.15)
 
 [node name="FrontHedgeLawn" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.1, 0.015, 11.85)
