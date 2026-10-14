@@ -171,10 +171,6 @@ shape = SubResource("CylinderShape3D_click")
 
 [node name="BoothDecor" type="Node3D" parent="."]
 
-[node name="BoothRug" type="MeshInstance3D" parent="BoothDecor"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008, 0)
-mesh = SubResource("BoxMesh_booth_rug")
-
 [node name="PartitionBack" type="CSGBox3D" parent="BoothDecor"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.44, -1.15)
 size = Vector3(2.3, 0.88, 0.16)
