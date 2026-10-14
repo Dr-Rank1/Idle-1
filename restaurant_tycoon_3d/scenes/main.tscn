@@ -1,4 +1,4 @@
-[gd_scene load_steps=109 format=3 uid="uid://main12345"]
+[gd_scene load_steps=132 format=3 uid="uid://main12345"]
 
 [ext_resource type="Script" path="res://scripts/camera_controller.gd" id="1_cam"]
 [ext_resource type="Script" path="res://scripts/restaurant.gd" id="2_rest"]
@@ -95,6 +95,16 @@
 [ext_resource type="PackedScene" path="res://assets/models/food/soda-glass.glb" id="90_soda_glass"]
 [ext_resource type="PackedScene" path="res://assets/models/furniture/kitchenFridgeLarge.glb" id="91_fridge_large"]
 [ext_resource type="Texture2D" path="res://assets/textures/tv_screen.png" id="93_tv_tex"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/toiletSquare.glb" id="94_toilet"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/bathroomSink.glb" id="95_bathroom_sink"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/bathroomMirror.glb" id="96_bathroom_mirror"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/loungeSofa.glb" id="97_lounge_sofa"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/loungeSofaCorner.glb" id="98_lounge_sofa_corner"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/tableCoffee.glb" id="99_table_coffee"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/chairModernCushion.glb" id="100_chair_modern"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/bookcaseClosedWide.glb" id="101_bookcase_wide"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/bookcaseOpen.glb" id="102_bookcase_open"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/loungeChair.glb" id="103_lounge_chair"]
 
 
 [sub_resource type="Environment" id="Environment_main"]
@@ -183,7 +193,7 @@ roughness = 0.85
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_lawn_garden"]
 material = SubResource("Material_lawn_garden")
-size = Vector2(3, 14)
+size = Vector2(3, 11)
 
 [sub_resource type="StandardMaterial3D" id="Material_reception_floor"]
 albedo_color = Color(0.95, 0.94, 0.91, 1)
@@ -204,7 +214,69 @@ uv1_scale = Vector3(7, 4, 1)
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_kitchen_floor"]
 material = SubResource("Material_kitchen_floor")
-size = Vector2(14.0, 7.0)
+size = Vector2(8.0, 7.0)
+
+[sub_resource type="StandardMaterial3D" id="Material_restroom_floor"]
+albedo_color = Color(0.92, 0.96, 0.98, 1)
+roughness = 0.5
+uv1_scale = Vector3(3, 3.5, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_restroom_floor"]
+material = SubResource("Material_restroom_floor")
+size = Vector2(6.0, 7.0)
+
+[sub_resource type="StandardMaterial3D" id="Material_breakroom_floor"]
+albedo_color = Color(0.85, 0.85, 0.85, 1)
+roughness = 0.65
+uv1_scale = Vector3(4, 1.5, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_breakroom_floor"]
+material = SubResource("Material_breakroom_floor")
+size = Vector2(8.0, 3.0)
+
+[sub_resource type="StandardMaterial3D" id="Material_manager_office_floor"]
+albedo_color = Color(0.88, 0.74, 0.60, 1)
+roughness = 0.55
+uv1_scale = Vector3(4, 3.5, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_manager_office_floor"]
+material = SubResource("Material_manager_office_floor")
+size = Vector2(8.0, 7.0)
+
+[sub_resource type="StandardMaterial3D" id="Material_toilet_stall"]
+albedo_color = Color(0.18, 0.20, 0.23, 1)
+roughness = 0.65
+
+[sub_resource type="StandardMaterial3D" id="Material_rug_office"]
+albedo_color = Color(0.12, 0.14, 0.18, 1)
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="BoxMesh_rug_office"]
+material = SubResource("Material_rug_office")
+size = Vector3(3.2, 0.015, 2.4)
+
+[sub_resource type="StandardMaterial3D" id="Material_safe_body"]
+albedo_color = Color(0.16, 0.17, 0.19, 1)
+metallic = 0.85
+roughness = 0.45
+
+[sub_resource type="StandardMaterial3D" id="Material_safe_dial"]
+albedo_color = Color(0.88, 0.88, 0.90, 1)
+metallic = 0.95
+roughness = 0.2
+
+[sub_resource type="StandardMaterial3D" id="Material_water_jug"]
+transparency = 1
+albedo_color = Color(0.35, 0.75, 0.95, 0.65)
+roughness = 0.15
+metallic = 0.1
+
+[sub_resource type="StandardMaterial3D" id="Material_water_stand"]
+albedo_color = Color(0.92, 0.93, 0.95, 1)
+roughness = 0.4
+
+[sub_resource type="QuadMesh" id="QuadMesh_breakroom_lockers"]
+size = Vector2(3.2, 1.9)
 
 [sub_resource type="StandardMaterial3D" id="Material_wall"]
 albedo_color = Color(0.92, 0.89, 0.84, 1)
@@ -695,21 +767,26 @@ mesh = SubResource("QuadMesh_vinyl_record")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.6, 1.5, -10.36)
 mesh = SubResource("QuadMesh_vinyl_record")
 
+[node name="SolidBackWallRestroom" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 1.6, -10.5)
+size = Vector3(6.0, 3.2, 0.25)
+material = SubResource("Material_wall")
+
 [node name="SolidBackWallKitchen" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 1.6, -10.5)
-size = Vector3(14.0, 3.2, 0.25)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 1.6, -10.5)
+size = Vector3(8.0, 3.2, 0.25)
 material = SubResource("Material_wall")
 
 [node name="KitchenVent1" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 2.0, -10.35)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.0, 2.0, -10.35)
 mesh = SubResource("BoxMesh_window_vent")
 
 [node name="KitchenVent2" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 2.0, -10.35)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 2.0, -10.35)
 mesh = SubResource("BoxMesh_window_vent")
 
 [node name="KitchenVent3" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5, 2.0, -10.35)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.0, 2.0, -10.35)
 mesh = SubResource("BoxMesh_window_vent")
 
 [node name="SolidBackWallOffice" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
@@ -740,6 +817,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.5, 1.6, -7.0)
 size = Vector3(0.25, 3.2, 7.0)
 material = SubResource("Material_wall_manager")
 
+[node name="SolidRightWallBreakroom" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.5, 1.6, -2.0)
+size = Vector3(0.25, 3.2, 3.0)
+material = SubResource("Material_wall_manager")
+
 [node name="MilkshakeDividerLeft" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.0, 1.6, -3.5)
 size = Vector3(3.0, 3.2, 0.25)
@@ -755,8 +837,23 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.7, -3.5)
 size = Vector3(2.0, 1.0, 0.25)
 material = SubResource("Material_wall_reception")
 
-[node name="KitchenLeftDivider" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+[node name="RestroomSouthWall" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.9, 0.55, -3.5)
+size = Vector3(5.2, 1.1, 0.25)
+material = SubResource("Material_wall_dining_accent")
+
+[node name="RestroomSouthCap" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.9, 1.12, -3.5)
+size = Vector3(5.25, 0.08, 0.32)
+material = SubResource("Material_baseboard")
+
+[node name="MilkshakeRestroomDivider" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 1.6, -7.0)
+size = Vector3(0.25, 3.2, 7.0)
+material = SubResource("Material_wall")
+
+[node name="RestroomKitchenDivider" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 1.6, -7.0)
 size = Vector3(0.25, 3.2, 7.0)
 material = SubResource("Material_wall")
 
@@ -764,6 +861,36 @@ material = SubResource("Material_wall")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 1.6, -7.0)
 size = Vector3(0.25, 3.2, 7.0)
 material = SubResource("Material_wall_manager")
+
+[node name="OfficeBreakroomDivider" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 0.55, -3.5)
+size = Vector3(8.0, 1.1, 0.25)
+material = SubResource("Material_wall_manager")
+
+[node name="OfficeBreakroomCap" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 1.12, -3.5)
+size = Vector3(8.05, 0.08, 0.32)
+material = SubResource("Material_baseboard")
+
+[node name="BreakroomDiningDivider" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0.55, -2.0)
+size = Vector3(0.25, 1.1, 3.0)
+material = SubResource("Material_wall_manager")
+
+[node name="BreakroomDiningCap" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 1.12, -2.0)
+size = Vector3(0.32, 0.08, 3.05)
+material = SubResource("Material_baseboard")
+
+[node name="BreakroomBoothDivider" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 0.55, -0.5)
+size = Vector3(8.0, 1.1, 0.25)
+material = SubResource("Material_wall_manager")
+
+[node name="BreakroomBoothCap" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 1.12, -0.5)
+size = Vector3(8.05, 0.08, 0.32)
+material = SubResource("Material_baseboard")
 
 [node name="DiningReceptionDividerNorth" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 1.2, -2.5)
@@ -792,44 +919,44 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 1.12, 5.5)
 size = Vector3(0.32, 0.08, 10.0)
 material = SubResource("Material_baseboard")
 
-[node name="DiningBackAccentWall" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 1.4, -3.5)
-size = Vector3(4.0, 2.8, 0.22)
+[node name="HatchWallLeft" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.1, 1.4, -3.5)
+size = Vector3(1.2, 2.8, 0.22)
 material = SubResource("Material_wall_dining_accent")
 
 [node name="HatchWallRight" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 1.4, -3.5)
-size = Vector3(4.0, 2.8, 0.22)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.9, 1.4, -3.5)
+size = Vector3(1.2, 2.8, 0.22)
 material = SubResource("Material_wall_dining_accent")
 
 [node name="HatchHeader" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 2.5, -3.5)
-size = Vector3(6.0, 0.6, 0.22)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 2.5, -3.5)
+size = Vector3(5.6, 0.6, 0.22)
 material = SubResource("Material_wall_dining_accent")
 
 [node name="HatchKneeWall" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 0.44, -3.5)
-size = Vector3(6.0, 0.88, 0.22)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0.44, -3.5)
+size = Vector3(5.6, 0.88, 0.22)
 material = SubResource("Material_wall_dining_accent")
 
 [node name="HatchFrameWhite" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 1.54, -3.5)
-size = Vector3(5.8, 1.4, 0.26)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 1.54, -3.5)
+size = Vector3(5.4, 1.4, 0.26)
 material = SubResource("Material_crosswalk")
 
 [node name="HatchFrameCut" type="CSGBox3D" parent="Restaurant/BuildingWalls/HatchFrameWhite"]
 operation = 2
-size = Vector3(5.5, 1.15, 0.35)
+size = Vector3(5.1, 1.15, 0.35)
 
 [node name="PassCounterWood" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 0.92, -3.4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0.92, -3.4)
 mesh = SubResource("BoxMesh_pass_counter")
 
 [node name="OrderTicketRail" parent="Restaurant/BuildingWalls" instance=ExtResource("79_ticket_rail")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 2.15, -3.38)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 2.15, -3.38)
 
 [node name="BistroNeonSign" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 2.52, -3.38)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 2.52, -3.38)
 mesh = SubResource("QuadMesh_neon_sign")
 
 [node name="WallArtChef" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
@@ -849,7 +976,7 @@ mesh = SubResource("QuadMesh_tv_screen")
 transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, -3.0, 0, 9.6)
 
 [node name="WallArtCafe" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 2.2, -3.38)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.1, 1.8, -3.38)
 mesh = SubResource("QuadMesh_art_cafe")
 
 [node name="FrontWallLounge" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
@@ -1401,60 +1528,303 @@ material = SubResource("Material_water_jug")
 [node name="Kitchen" type="Node3D" parent="Restaurant"]
 
 [node name="KitchenFloor" type="MeshInstance3D" parent="Restaurant/Kitchen"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 0.02, -7.0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0.02, -7.0)
 mesh = SubResource("PlaneMesh_kitchen_floor")
 
 [node name="CookingStation" parent="Restaurant/Kitchen" instance=ExtResource("14_cooking_station")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 0, -9.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.7, 0, -9.5)
 
 [node name="Hood" parent="Restaurant/Kitchen" instance=ExtResource("15_hood")]
-transform = Transform3D(0.44, 0, 0, 0, 0.44, 0, 0, 0, 0.44, 3.5, 0.51, -9.5)
+transform = Transform3D(0.44, 0, 0, 0, 0.44, 0, 0, 0, 0.44, 5.7, 0.51, -9.5)
 
 [node name="Chef" parent="Restaurant/Kitchen" instance=ExtResource("7_chef_scn")]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 3.5, 0, -8.6)
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 5.7, 0, -8.6)
 
 [node name="SecondStove" parent="Restaurant/Kitchen" instance=ExtResource("35_secondstove")]
-transform = Transform3D(1.25, 0, 0, 0, 1.25, 0, 0, 0, 1.25, 5.5, 0, -9.5)
+transform = Transform3D(1.25, 0, 0, 0, 1.25, 0, 0, 0, 1.25, 7.4, 0, -9.5)
 
 [node name="PrepCounter" parent="Restaurant/Kitchen" instance=ExtResource("41_cabinet")]
-transform = Transform3D(1.8, 0, 0, 0, 1.3, 0, 0, 0, 1.4, 1.2, 0, -9.5)
+transform = Transform3D(1.8, 0, 0, 0, 1.3, 0, 0, 0, 1.4, 4.0, 0, -9.5)
 
 [node name="Microwave" parent="Restaurant/Kitchen" instance=ExtResource("37_microwave")]
-transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, 1.2, 0.58, -9.5)
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, 4.0, 0.58, -9.5)
 
 [node name="PrepIsland" parent="Restaurant/Kitchen" instance=ExtResource("44_prep_island")]
-transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, 3.5, 0.0, -5.8)
+transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, 6.2, 0.0, -5.8)
 
 [node name="ChefPrep" parent="Restaurant/Kitchen" instance=ExtResource("7_chef_scn")]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 3.5, 0, -5.15)
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 6.2, 0, -5.15)
 is_prep_chef = true
 
 [node name="Sink" parent="Restaurant/Kitchen" instance=ExtResource("16_sink")]
-transform = Transform3D(0, 0, 0.35, 0, 0.35, 0, -0.35, 0, 0, 8.5, 0, -9.5)
+transform = Transform3D(0, 0, 0.35, 0, 0.35, 0, -0.35, 0, 0, 9.2, 0, -9.5)
 
 [node name="Plates" parent="Restaurant/Kitchen" instance=ExtResource("17_plates")]
-transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, 8.5, 0.65, -9.5)
+transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, 9.2, 0.65, -9.5)
 
 [node name="FridgeLeft" parent="Restaurant/Kitchen" instance=ExtResource("19_fridge")]
-transform = Transform3D(0, 0, -2.2, 0, 2.2, 0, 2.2, 0, 0, -2.6, 0, -9.2)
+transform = Transform3D(0, 0, 2.2, 0, 2.2, 0, -2.2, 0, 0, 2.8, 0, -9.2)
 
 [node name="FridgeRight" parent="Restaurant/Kitchen" instance=ExtResource("19_fridge")]
-transform = Transform3D(0, 0, -2.2, 0, 2.2, 0, 2.2, 0, 0, -2.6, 0, -7.8)
+transform = Transform3D(0, 0, 2.2, 0, 2.2, 0, -2.2, 0, 0, 2.8, 0, -7.8)
 
 [node name="KitchenShelfCorner" parent="Restaurant/Kitchen" instance=ExtResource("87_shelf_decor")]
-transform = Transform3D(1.3, 0, 0, 0, 1.3, 0, 0, 0, 1.3, -2.5, 1.2, -5.8)
+transform = Transform3D(1.3, 0, 0, 0, 1.3, 0, 0, 0, 1.3, 2.8, 1.2, -6.0)
 
 [node name="KitchenShelfBack" parent="Restaurant/Kitchen" instance=ExtResource("87_shelf_decor")]
-transform = Transform3D(1.3, 0, 0, 0, 1.3, 0, 0, 0, 1.3, 1.2, 1.4, -10.2)
+transform = Transform3D(1.3, 0, 0, 0, 1.3, 0, 0, 0, 1.3, 4.0, 1.4, -10.2)
 
 [node name="ChefLine" parent="Restaurant/Kitchen" instance=ExtResource("7_chef_scn")]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 5.5, 0, -8.6)
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 7.4, 0, -8.6)
 
 [node name="CarrotCrate" parent="Restaurant/Kitchen" instance=ExtResource("20_carrots")]
-transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, 2.2, 0, -5.8)
+transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, 5.0, 0, -5.8)
 
 [node name="TomatoCrate" parent="Restaurant/Kitchen" instance=ExtResource("21_tomatoes")]
-transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, 4.8, 0, -5.8)
+transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, 7.4, 0, -5.8)
+
+[node name="Restroom" type="Node3D" parent="Restaurant"]
+
+[node name="RestroomFloor" type="MeshInstance3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.02, -7.0)
+mesh = SubResource("PlaneMesh_restroom_floor")
+
+[node name="StallDivider1" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.42, 0.9, -4.2)
+size = Vector3(0.04, 1.8, 1.4)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDivider2" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.72, 0.9, -4.2)
+size = Vector3(0.04, 1.8, 1.4)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDivider3" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.02, 0.9, -4.2)
+size = Vector3(0.04, 1.8, 1.4)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDivider4" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.32, 0.9, -4.2)
+size = Vector3(0.04, 1.8, 1.4)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDivider5" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.62, 0.9, -4.2)
+size = Vector3(0.04, 1.8, 1.4)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDivider6" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.08, 0.9, -4.2)
+size = Vector3(0.04, 1.8, 1.4)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDivider7" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.78, 0.9, -4.2)
+size = Vector3(0.04, 1.8, 1.4)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDivider8" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.48, 0.9, -4.2)
+size = Vector3(0.04, 1.8, 1.4)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDoor1" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.07, 0.9, -4.9)
+size = Vector3(0.66, 1.7, 0.04)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDoor2" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.37, 0.9, -4.9)
+size = Vector3(0.66, 1.7, 0.04)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDoor3" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.67, 0.9, -4.9)
+size = Vector3(0.66, 1.7, 0.04)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDoor4" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.97, 0.9, -4.9)
+size = Vector3(0.66, 1.7, 0.04)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDoor5" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.27, 0.9, -4.9)
+size = Vector3(0.66, 1.7, 0.04)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDoor6" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.43, 0.9, -4.9)
+size = Vector3(0.66, 1.7, 0.04)
+material = SubResource("Material_toilet_stall")
+
+[node name="StallDoor7" type="CSGBox3D" parent="Restaurant/Restroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.13, 0.9, -4.9)
+size = Vector3(0.66, 1.7, 0.04)
+material = SubResource("Material_toilet_stall")
+
+[node name="Toilet1" parent="Restaurant/Restroom" instance=ExtResource("94_toilet")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, -3.07, 0, -3.85)
+
+[node name="Toilet2" parent="Restaurant/Restroom" instance=ExtResource("94_toilet")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, -2.37, 0, -3.85)
+
+[node name="Toilet3" parent="Restaurant/Restroom" instance=ExtResource("94_toilet")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, -1.67, 0, -3.85)
+
+[node name="Toilet4" parent="Restaurant/Restroom" instance=ExtResource("94_toilet")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, -0.97, 0, -3.85)
+
+[node name="Toilet5" parent="Restaurant/Restroom" instance=ExtResource("94_toilet")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, -0.27, 0, -3.85)
+
+[node name="Toilet6" parent="Restaurant/Restroom" instance=ExtResource("94_toilet")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, 0.43, 0, -3.85)
+
+[node name="Toilet7" parent="Restaurant/Restroom" instance=ExtResource("94_toilet")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, 1.13, 0, -3.85)
+
+[node name="Sink1" parent="Restaurant/Restroom" instance=ExtResource("95_bathroom_sink")]
+transform = Transform3D(-0.95, 0, 0, 0, 0.95, 0, 0, 0, -0.95, -2.4, 0, -10.05)
+
+[node name="Mirror1" parent="Restaurant/Restroom" instance=ExtResource("96_bathroom_mirror")]
+transform = Transform3D(-0.85, 0, 0, 0, 0.85, 0, 0, 0, -0.85, -2.4, 1.35, -10.36)
+
+[node name="Sink2" parent="Restaurant/Restroom" instance=ExtResource("95_bathroom_sink")]
+transform = Transform3D(-0.95, 0, 0, 0, 0.95, 0, 0, 0, -0.95, -1.4, 0, -10.05)
+
+[node name="Mirror2" parent="Restaurant/Restroom" instance=ExtResource("96_bathroom_mirror")]
+transform = Transform3D(-0.85, 0, 0, 0, 0.85, 0, 0, 0, -0.85, -1.4, 1.35, -10.36)
+
+[node name="Sink3" parent="Restaurant/Restroom" instance=ExtResource("95_bathroom_sink")]
+transform = Transform3D(-0.95, 0, 0, 0, 0.95, 0, 0, 0, -0.95, -0.4, 0, -10.05)
+
+[node name="Mirror3" parent="Restaurant/Restroom" instance=ExtResource("96_bathroom_mirror")]
+transform = Transform3D(-0.85, 0, 0, 0, 0.85, 0, 0, 0, -0.85, -0.4, 1.35, -10.36)
+
+[node name="Sink4" parent="Restaurant/Restroom" instance=ExtResource("95_bathroom_sink")]
+transform = Transform3D(-0.95, 0, 0, 0, 0.95, 0, 0, 0, -0.95, 0.6, 0, -10.05)
+
+[node name="Mirror4" parent="Restaurant/Restroom" instance=ExtResource("96_bathroom_mirror")]
+transform = Transform3D(-0.85, 0, 0, 0, 0.85, 0, 0, 0, -0.85, 0.6, 1.35, -10.36)
+
+[node name="RestroomTrash" parent="Restaurant/Restroom" instance=ExtResource("54_trashcan")]
+transform = Transform3D(1.1, 0, 0, 0, 1.1, 0, 0, 0, 1.1, 1.5, 0, -10.05)
+
+[node name="RestroomPlant" parent="Restaurant/Restroom" instance=ExtResource("26_plant")]
+transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, -3.1, 0, -10.05)
+
+[node name="ManagerOffice" type="Node3D" parent="Restaurant"]
+
+[node name="ManagerOfficeFloor" type="MeshInstance3D" parent="Restaurant/ManagerOffice"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 0.02, -7.0)
+mesh = SubResource("PlaneMesh_manager_office_floor")
+
+[node name="OfficeRug" type="MeshInstance3D" parent="Restaurant/ManagerOffice"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 0.025, -7.0)
+mesh = SubResource("BoxMesh_rug_office")
+
+[node name="OfficeDesk" parent="Restaurant/ManagerOffice" instance=ExtResource("40_desk")]
+transform = Transform3D(1.25, 0, 0, 0, 1.25, 0, 0, 0, 1.25, 14.5, 0, -7.3)
+
+[node name="OfficeLaptop" parent="Restaurant/ManagerOffice" instance=ExtResource("38_laptop")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 14.5, 0.77, -7.2)
+
+[node name="OfficeDeskChair" parent="Restaurant/ManagerOffice" instance=ExtResource("46_desk_chair")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 14.5, 0, -8.15)
+
+[node name="GuestChairLeft" parent="Restaurant/ManagerOffice" instance=ExtResource("100_chair_modern")]
+transform = Transform3D(-0.985, 0, 0.358, 0, 1.1, 0, -0.358, 0, -0.985, 13.6, 0, -6.1)
+
+[node name="GuestChairRight" parent="Restaurant/ManagerOffice" instance=ExtResource("100_chair_modern")]
+transform = Transform3D(-0.985, 0, -0.358, 0, 1.1, 0, 0.358, 0, -0.985, 15.4, 0, -6.1)
+
+[node name="OfficeBookcaseWide" parent="Restaurant/ManagerOffice" instance=ExtResource("101_bookcase_wide")]
+transform = Transform3D(1.1, 0, 0, 0, 1.1, 0, 0, 0, 1.1, 13.0, 0, -10.1)
+
+[node name="OfficeBookcaseOpen" parent="Restaurant/ManagerOffice" instance=ExtResource("102_bookcase_open")]
+transform = Transform3D(1.1, 0, 0, 0, 1.1, 0, 0, 0, 1.1, 16.0, 0, -10.1)
+
+[node name="OfficeBooks" parent="Restaurant/ManagerOffice" instance=ExtResource("50_books")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, 16.0, 0.85, -10.05)
+
+[node name="OfficeBookcaseEast" parent="Restaurant/ManagerOffice" instance=ExtResource("49_exec_bookcase")]
+transform = Transform3D(0, 0, 1.1, 0, 1.1, 0, -1.1, 0, 0, 18.1, 0, -7.0)
+
+[node name="OfficeSafeBody" type="CSGBox3D" parent="Restaurant/ManagerOffice"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.4, 0.4, -9.8)
+size = Vector3(0.7, 0.8, 0.65)
+material = SubResource("Material_safe_body")
+
+[node name="OfficeSafeDoor" type="CSGBox3D" parent="Restaurant/ManagerOffice"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.4, 0.4, -9.46)
+size = Vector3(0.62, 0.72, 0.04)
+material = SubResource("Material_safe_body")
+
+[node name="OfficeSafeDial" type="CSGCylinder3D" parent="Restaurant/ManagerOffice"]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 11.3, 0.45, -9.43)
+radius = 0.08
+height = 0.04
+material = SubResource("Material_safe_dial")
+
+[node name="OfficeSafeHandle" type="CSGBox3D" parent="Restaurant/ManagerOffice"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.55, 0.45, -9.43)
+size = Vector3(0.18, 0.04, 0.06)
+material = SubResource("Material_safe_dial")
+
+[node name="OfficePlant" parent="Restaurant/ManagerOffice" instance=ExtResource("26_plant")]
+transform = Transform3D(1.3, 0, 0, 0, 1.3, 0, 0, 0, 1.3, 11.5, 0, -4.2)
+
+[node name="StaffBreakroom" type="Node3D" parent="Restaurant"]
+
+[node name="BreakroomFloor" type="MeshInstance3D" parent="Restaurant/StaffBreakroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 0.02, -2.0)
+mesh = SubResource("PlaneMesh_breakroom_floor")
+
+[node name="BreakroomLockers" type="MeshInstance3D" parent="Restaurant/StaffBreakroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.6, 1.35, -3.38)
+mesh = SubResource("QuadMesh_breakroom_lockers")
+
+[node name="BreakroomSofaMain" parent="Restaurant/StaffBreakroom" instance=ExtResource("97_lounge_sofa")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 14.6, 0, -2.4)
+
+[node name="BreakroomSofaCorner" parent="Restaurant/StaffBreakroom" instance=ExtResource("98_lounge_sofa_corner")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 16.1, 0, -2.4)
+
+[node name="BreakroomSofaSide" parent="Restaurant/StaffBreakroom" instance=ExtResource("97_lounge_sofa")]
+transform = Transform3D(0, 0, -1.15, 0, 1.15, 0, 1.15, 0, 0, 16.1, 0, -1.3)
+
+[node name="BreakroomArmchair" parent="Restaurant/StaffBreakroom" instance=ExtResource("103_lounge_chair")]
+transform = Transform3D(0, 0, 1.1, 0, 1.1, 0, -1.1, 0, 0, 13.2, 0, -1.5)
+
+[node name="BreakroomCoffeeTable" parent="Restaurant/StaffBreakroom" instance=ExtResource("99_table_coffee")]
+transform = Transform3D(1.1, 0, 0, 0, 1.1, 0, 0, 0, 1.1, 14.6, 0, -1.4)
+
+[node name="WaterCoolerStand" type="CSGBox3D" parent="Restaurant/StaffBreakroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.2, 0.425, -1.1)
+size = Vector3(0.45, 0.85, 0.45)
+material = SubResource("Material_water_stand")
+
+[node name="WaterCoolerBottle" type="CSGCylinder3D" parent="Restaurant/StaffBreakroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.2, 1.05, -1.1)
+radius = 0.17
+height = 0.44
+material = SubResource("Material_water_jug")
+
+[node name="WaterCoolerCupHolder" type="CSGCylinder3D" parent="Restaurant/StaffBreakroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.45, 0.95, -1.1)
+radius = 0.05
+height = 0.38
+material = SubResource("Material_water_stand")
+
+[node name="BreakroomCabinet" type="CSGBox3D" parent="Restaurant/StaffBreakroom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.2, 0.425, -2.7)
+size = Vector3(0.7, 0.85, 0.55)
+material = SubResource("Material_water_stand")
+
+[node name="BreakroomCoffeeMaker" parent="Restaurant/StaffBreakroom" instance=ExtResource("36_coffeemachine")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 11.2, 0.85, -2.7)
 
 [node name="DiningHall" type="Node3D" parent="Restaurant"]
 
@@ -1463,7 +1833,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 0.01, 3.5)
 mesh = SubResource("PlaneMesh_dining_floor")
 
 [node name="KitchenPassRedRunner" type="MeshInstance3D" parent="Restaurant/DiningHall"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 0.022, -1.95)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0.022, -1.95)
 mesh = SubResource("BoxMesh_kitchen_runner")
 
 [node name="RedCarpetRunner" type="MeshInstance3D" parent="Restaurant/DiningHall"]
@@ -1482,7 +1852,7 @@ visible = false
 mesh = SubResource("BoxMesh_gold_edge")
 
 [node name="PassPlates" parent="Restaurant/DiningHall" instance=ExtResource("17_plates")]
-transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, 4.8, 0.9, -3.4)
+transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, 6.5, 0.9, -3.4)
 
 [node name="TerraceFloor" type="MeshInstance3D" parent="Restaurant/DiningHall"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.25, 0.022, 5.0)
@@ -1613,7 +1983,7 @@ transform = Transform3D(0, 0, 1.3, 0, 1.3, 0, -1.3, 0, 0, -3.3, 0, -2.7)
 transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, 3.4, 0, -2.7)
 
 [node name="GardenLawn" type="Node3D" parent="Restaurant"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.5, 0, 3.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.5, 0, 5.0)
 
 [node name="LawnMesh" type="MeshInstance3D" parent="Restaurant/GardenLawn"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
@@ -1621,19 +1991,19 @@ mesh = SubResource("PlaneMesh_lawn_garden")
 
 [node name="HedgeEast" type="CSGBox3D" parent="Restaurant/GardenLawn"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 0.45, 0)
-size = Vector3(0.95, 0.9, 14.0)
+size = Vector3(0.95, 0.9, 11.0)
 material = SubResource("Material_hedge")
 
 [node name="HedgeSouth" type="CSGBox3D" parent="Restaurant/GardenLawn"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 7.0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 5.5)
 size = Vector3(3.0, 0.9, 0.95)
 material = SubResource("Material_hedge")
 
 [node name="GardenTree1" parent="Restaurant/GardenLawn" instance=ExtResource("69_tree")]
-transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 0.5, 0, -5.0)
+transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 0.5, 0, -3.5)
 
 [node name="GardenTree2" parent="Restaurant/GardenLawn" instance=ExtResource("69_tree")]
-transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 0.5, 0, 5.0)
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 0.5, 0, 3.5)
 
 [node name="GardenStreetLamp" parent="Restaurant/GardenLawn" instance=ExtResource("71_slamp")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0, 0)

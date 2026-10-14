@@ -86,9 +86,12 @@ The spatial layout is modeled 1:1 after *Idle Restaurant Tycoon* (Restaurant 1: 
 | :--- | :--- | :--- | :--- |
 | **Cocktail Lounge / Reception** | $[-11.5, -3.5]$ | $[-3.5, +10.5]$ | Warm cream cabochon / parquet (`reception_tiles.png`) |
 | **The Milkshake Diner Cafe** | $[-11.5, -3.5]$ | $[-10.5, -3.5]$ | High-contrast diamond checkerboard (`diner_diamond_tiles.png`) |
-| **Commercial Kitchen** | $[-3.5, +10.5]$ | $[-10.5, -3.5]$ | Slate-grey quarry tile (`kitchen_slate_tiles.png`) |
+| **Restroom** | $[-3.5, +2.5]$ | $[-10.5, -3.5]$ | Cool blue-grey square tiles (`restroom_tiles.png`) |
+| **Commercial Kitchen** | $[+2.5, +10.5]$ | $[-10.5, -3.5]$ | Commercial checkered tile (`kitchen_tiles.png`) |
+| **Manager's Office** | $[+10.5, +18.5]$ | $[-10.5, -3.5]$ | Warm terracotta quarry tiles (`kitchen_terracotta.png`) |
+| **Staff Breakroom** | $[+10.5, +18.5]$ | $[-3.5, -0.5]$ | Slate-grey quarry tiles (`kitchen_slate_tiles.png`) |
 | **Main 9-Booth Dining Hall** | $[-3.5, +10.5]$ | $[-3.5, +10.5]$ | Axis-aligned diamond checkerboard (`diner_diamond_tiles.png`) |
-| **Garden Patio Terrace** | $[+10.5, +16.0]$ | $[-0.5, +10.5]$ | Polished outdoor parquet deck (`wood_parquet.png`) |
+| **South-East Booth Expansion (Tables 10–12)** | $[+10.5, +16.0]$ | $[-0.5, +10.5]$ | Warm cream & tan diamond tiles (`expansion_diamond_tiles.png`) |
 | **Front Lawn & Neon Sign** | $[-11.5, +10.5]$ | $[+10.5, +13.5]$ | Vibrant emerald turf (`Material_lawn_garden`) + trimmed hedges |
 | **Parking Lot & Highway** | $[-24.0, +24.0]$ | $[+13.5, +24.0]$ | Dark asphalt (`Material_asphalt`) + zebra crosswalk |
 

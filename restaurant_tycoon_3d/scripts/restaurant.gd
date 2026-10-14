@@ -90,18 +90,69 @@ func _setup_custom_textures() -> void:
 			exp_mat.uv1_scale = Vector3(1.0, 2.0, 1.0)
 			exp_floor_node.material_override = exp_mat
 
-	# Kitchen Commercial Slate Floor
+	# Kitchen Floor (Checkered White/Grey Commercial Tiles)
+	var k_tile_path = ProjectSettings.globalize_path("res://assets/textures/kitchen_tiles.png")
+	var k_tile_img = Image.load_from_file(k_tile_path)
+	if k_tile_img != null:
+		var k_tile_tex = ImageTexture.create_from_image(k_tile_img)
+		var kitchen_floor_node = find_child("KitchenFloor", true, false)
+		if kitchen_floor_node != null and kitchen_floor_node is MeshInstance3D:
+			var mat_kitchen = StandardMaterial3D.new()
+			mat_kitchen.albedo_texture = k_tile_tex
+			mat_kitchen.roughness = 0.45
+			mat_kitchen.uv1_scale = Vector3(4.0, 3.5, 1)
+			kitchen_floor_node.material_override = mat_kitchen
+
+	# Restroom Cool Blue-Grey Square Tiles
+	var rest_path = ProjectSettings.globalize_path("res://assets/textures/restroom_tiles.png")
+	var rest_img = Image.load_from_file(rest_path)
+	if rest_img != null:
+		var rest_tex = ImageTexture.create_from_image(rest_img)
+		var rest_floor_node = find_child("RestroomFloor", true, false)
+		if rest_floor_node != null and rest_floor_node is MeshInstance3D:
+			var rest_mat = StandardMaterial3D.new()
+			rest_mat.albedo_texture = rest_tex
+			rest_mat.roughness = 0.5
+			rest_mat.uv1_scale = Vector3(3.0, 3.5, 1.0)
+			rest_floor_node.material_override = rest_mat
+
+	# Staff Breakroom Slate-Grey Tiles
 	var slate_path = ProjectSettings.globalize_path("res://assets/textures/kitchen_slate_tiles.png")
 	var slate_img = Image.load_from_file(slate_path)
 	if slate_img != null:
 		var slate_tex = ImageTexture.create_from_image(slate_img)
-		var kitchen_floor_node = find_child("KitchenFloor", true, false)
-		if kitchen_floor_node != null and kitchen_floor_node is MeshInstance3D:
-			var mat_kitchen = StandardMaterial3D.new()
-			mat_kitchen.albedo_texture = slate_tex
-			mat_kitchen.roughness = 0.85
-			mat_kitchen.uv1_scale = Vector3(2.5, 1.25, 1)
-			kitchen_floor_node.material_override = mat_kitchen
+		var break_floor_node = find_child("BreakroomFloor", true, false)
+		if break_floor_node != null and break_floor_node is MeshInstance3D:
+			var break_mat = StandardMaterial3D.new()
+			break_mat.albedo_texture = slate_tex
+			break_mat.roughness = 0.65
+			break_mat.uv1_scale = Vector3(4.0, 1.5, 1.0)
+			break_floor_node.material_override = break_mat
+
+	# Staff Breakroom Employee Lockers
+	var lock_path = ProjectSettings.globalize_path("res://assets/textures/lockers_wall.png")
+	var lock_img = Image.load_from_file(lock_path)
+	if lock_img != null:
+		var lock_tex = ImageTexture.create_from_image(lock_img)
+		var lock_mesh = find_child("BreakroomLockers", true, false)
+		if lock_mesh != null and lock_mesh is MeshInstance3D:
+			var mat = StandardMaterial3D.new()
+			mat.albedo_texture = lock_tex
+			mat.roughness = 0.65
+			lock_mesh.material_override = mat
+
+	# Manager's Office Warm Terracotta Floor
+	var terra_path = ProjectSettings.globalize_path("res://assets/textures/kitchen_terracotta.png")
+	var terra_img = Image.load_from_file(terra_path)
+	if terra_img != null:
+		var terra_tex = ImageTexture.create_from_image(terra_img)
+		var office_floor_node = find_child("ManagerOfficeFloor", true, false)
+		if office_floor_node != null and office_floor_node is MeshInstance3D:
+			var mat_terra = StandardMaterial3D.new()
+			mat_terra.albedo_texture = terra_tex
+			mat_terra.roughness = 0.55
+			mat_terra.uv1_scale = Vector3(4.0, 3.5, 1.0)
+			office_floor_node.material_override = mat_terra
 
 	# Front Lawn Idle Diner Neon Sign
 	var neon_path = ProjectSettings.globalize_path("res://assets/textures/idle_diner_neon.png")
@@ -142,9 +193,9 @@ func _setup_custom_textures() -> void:
 		var k_runner = find_child("KitchenPassRedRunner", true, false)
 		if k_runner != null and k_runner is MeshInstance3D:
 			var bmesh = BoxMesh.new()
-			bmesh.size = Vector3(8.5, 0.02, 2.4)
+			bmesh.size = Vector3(7.0, 0.02, 2.2)
 			k_runner.mesh = bmesh
-			k_runner.position = Vector3(3.5, 0.022, -2.1)
+			k_runner.position = Vector3(6.5, 0.022, -2.1)
 			var r_mat = StandardMaterial3D.new()
 			r_mat.albedo_texture = pass_rug_tex
 			r_mat.roughness = 0.65
@@ -212,6 +263,8 @@ func _setup_custom_textures() -> void:
 	_setup_lounge_fidelity()
 	_setup_milkshake_fidelity()
 	_setup_kitchen_fidelity()
+	_setup_breakroom_fidelity()
+	_setup_manager_office_fidelity()
 
 func _setup_lounge_fidelity() -> void:
 	var rec_room = find_child("ReceptionRoom", true, false)
@@ -368,26 +421,6 @@ func _setup_milkshake_fidelity() -> void:
 	var shake_bar = find_child("MilkshakeBar", true, false)
 	if shake_bar == null:
 		return
-
-	# Employee Lockers along hallway wall (x = 3.9, z = -2.2)
-	var lock_root = shake_bar.get_node_or_null("FidelityLockers")
-	if lock_root == null:
-		var lock_img_path = ProjectSettings.globalize_path("res://assets/textures/lockers_wall.png")
-		var lock_img = Image.load_from_file(lock_img_path)
-		if lock_img != null:
-			var lock_tex = ImageTexture.create_from_image(lock_img)
-			var lock_mesh = MeshInstance3D.new()
-			lock_mesh.name = "FidelityLockers"
-			var quad = QuadMesh.new()
-			quad.size = Vector2(2.8, 1.9)
-			lock_mesh.mesh = quad
-			var mat = StandardMaterial3D.new()
-			mat.albedo_texture = lock_tex
-			mat.roughness = 0.65
-			lock_mesh.material_override = mat
-			lock_mesh.position = Vector3(3.9, 1.35, -2.2)
-			lock_mesh.rotation_degrees = Vector3(0, -90, 0)
-			shake_bar.add_child(lock_mesh)
 
 	# Long Retro Diner Fountain Counter along back wall (matching crop_middle_08s.jpg)
 	var f_root = shake_bar.get_node_or_null("FidelityFountainCounter")
@@ -801,3 +834,48 @@ func spawn_customer_from_car(car_exit_pos: Vector3) -> Node3D:
 	cust.set_waypoints([sidewalk_pt, cust.DOOR_POS, cust.HOST_POS])
 	cust.order_placed.connect(_on_customer_order_placed)
 	return cust
+
+func _setup_breakroom_fidelity() -> void:
+	var breakroom = find_child("StaffBreakroom", true, false)
+	if breakroom == null:
+		return
+
+	# Red Vinyl material for L-shaped lounge sofa and armchair
+	var red_vinyl = StandardMaterial3D.new()
+	red_vinyl.albedo_color = Color(0.82, 0.16, 0.16, 1.0) # vibrant lounge red
+	red_vinyl.roughness = 0.4
+
+	for node_name in ["BreakroomSofaMain", "BreakroomSofaCorner", "BreakroomSofaSide", "BreakroomArmchair"]:
+		var sofa_node = breakroom.get_node_or_null(node_name)
+		if sofa_node != null:
+			_apply_material_to_node(sofa_node, red_vinyl)
+
+	# Dark wood coffee table
+	var coffee_tbl = breakroom.get_node_or_null("BreakroomCoffeeTable")
+	if coffee_tbl != null:
+		var dark_wood = StandardMaterial3D.new()
+		dark_wood.albedo_color = Color(0.24, 0.15, 0.10, 1.0)
+		dark_wood.roughness = 0.45
+		_apply_material_to_node(coffee_tbl, dark_wood)
+
+func _setup_manager_office_fidelity() -> void:
+	var office = find_child("ManagerOffice", true, false)
+	if office == null:
+		return
+
+	# Two red guest chairs in front of executive desk
+	var red_vinyl = StandardMaterial3D.new()
+	red_vinyl.albedo_color = Color(0.82, 0.16, 0.16, 1.0)
+	red_vinyl.roughness = 0.4
+
+	for node_name in ["GuestChairLeft", "GuestChairRight"]:
+		var chair_node = office.get_node_or_null(node_name)
+		if chair_node != null:
+			_apply_material_to_node(chair_node, red_vinyl)
+
+func _apply_material_to_node(node: Node, mat: Material) -> void:
+	if node is MeshInstance3D:
+		node.material_override = mat
+	for child in node.get_children():
+		_apply_material_to_node(child, mat)
+
