@@ -31,6 +31,7 @@ var waypoints: Array = []
 @onready var mesh_root: Node3D = $MeshRoot
 @onready var patience_root: Node3D = $PatienceRoot
 @onready var patience_fill: MeshInstance3D = $PatienceRoot/PatienceFill
+@onready var radial_ring: MeshInstance3D = get_node_or_null("RadialRing")
 
 var anim_player: AnimationPlayer = null
 var table_ref: Node3D = null
@@ -78,6 +79,9 @@ func _ready() -> void:
 		if orig_mat != null:
 			fill_material = orig_mat.duplicate()
 			patience_fill.material_override = fill_material
+	
+	if radial_ring != null and radial_ring.mesh != null and radial_ring.mesh.material != null:
+		radial_ring.material_override = radial_ring.mesh.material.duplicate()
 
 func _setup_bubble_bg() -> void:
 	if bubble_bg == null:
@@ -198,7 +202,14 @@ func _physics_process(delta: float) -> void:
 	
 	if state_timer > 0.0:
 		state_timer -= delta
-		if current_state == State.EATING:
+		if current_state == State.AT_HOST:
+			if radial_ring != null:
+				radial_ring.visible = true
+				var prog: float = clampf(1.0 - (state_timer / 0.8), 0.0, 1.0)
+				var mat = radial_ring.material_override
+				if mat is ShaderMaterial:
+					mat.set_shader_parameter("progress", prog)
+		elif current_state == State.EATING:
 			if table_ref != null and table_ref.has_method("set_eating_progress"):
 				var prog: float = 1.0 - (state_timer / 3.2)
 				table_ref.set_eating_progress(prog)
@@ -240,6 +251,8 @@ func _handle_customer_walkout() -> void:
 	is_waiting_for_food = false
 	if patience_root != null:
 		patience_root.visible = false
+	if radial_ring != null:
+		radial_ring.visible = false
 		
 	if current_state == State.WAITING_IN_LOBBY:
 		lobby_wait_timeout.emit(self)
@@ -288,11 +301,16 @@ func _on_all_waypoints_reached() -> void:
 	match current_state:
 		State.WALKING_TO_HOST:
 			current_state = State.AT_HOST
-			set_bubble_text("👋")
+			set_bubble_text("", false)
+			if radial_ring != null:
+				radial_ring.visible = true
+				var mat = radial_ring.material_override
+				if mat is ShaderMaterial:
+					mat.set_shader_parameter("progress", 0.0)
 			_play_anim("idle")
 			var to_host: Vector3 = (HOST_POS + Vector3(0, 0, 0.4)) - position
 			rotation.y = atan2(to_host.x, to_host.z)
-			state_timer = 0.6
+			state_timer = 0.8
 			
 			var hostess = get_tree().root.find_child("Hostess", true, false)
 			if hostess != null and hostess.has_method("greet_customer"):
@@ -372,6 +390,8 @@ func assign_table_from_lobby(target_table: Node3D) -> void:
 	is_waiting_for_food = false
 	if patience_root != null:
 		patience_root.visible = false
+	if radial_ring != null:
+		radial_ring.visible = false
 	table_ref = target_table
 	assigned_table_id = target_table.table_id
 	if target_table.has_method("occupy"):
@@ -386,6 +406,8 @@ func assign_table_from_lobby(target_table: Node3D) -> void:
 func _on_timer_complete() -> void:
 	match current_state:
 		State.AT_HOST:
+			if radial_ring != null:
+				radial_ring.visible = false
 			if table_ref != null:
 				var seat_pos: Vector3 = table_ref.get_seat_position()
 				current_state = State.WALKING_TO_TABLE

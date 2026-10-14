@@ -60,15 +60,17 @@ func _clamp_target() -> void:
 func focus_zone(zone: String) -> void:
 	match zone:
 		"parking":
-			target_position = Vector3(14.0, 16.5, 30.0)
+			target_position = Vector3(14.0, 16.5, 28.0)
 		"dining":
-			target_position = Vector3(22.0, 16.5, 23.5)
+			target_position = Vector3(17.5, 17.5, 19.5)
 		"kitchen":
 			target_position = Vector3(18.0, 16.5, 14.0)
+		"milkshake":
+			target_position = Vector3(12.0, 16.5, 15.0)
 		"terrace":
-			target_position = Vector3(28.0, 16.5, 23.5)
+			target_position = Vector3(26.0, 16.5, 21.0)
 		"overview":
-			target_position = Vector3(22.0, 16.5, 23.5)
+			target_position = Vector3(17.5, 17.5, 19.5)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:

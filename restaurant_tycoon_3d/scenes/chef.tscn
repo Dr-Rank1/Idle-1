@@ -22,17 +22,17 @@ bottom_radius = 0.22
 height = 0.22
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_cook_ring"]
-render_priority = 0
+render_priority = 2
 shader = ExtResource("4_shader")
 shader_parameter/progress = 0.72
-shader_parameter/bg_color = Color(0.2, 0.25, 0.3, 0.5)
-shader_parameter/fill_color = Color(0.96, 0.82, 0.15, 1.0)
-shader_parameter/inner_radius = 0.28
-shader_parameter/outer_radius = 0.44
+shader_parameter/bg_color = Color(0.12, 0.15, 0.2, 0.72)
+shader_parameter/fill_color = Color(1, 0.88, 0.12, 1)
+shader_parameter/inner_radius = 0.24
+shader_parameter/outer_radius = 0.48
 
 [sub_resource type="QuadMesh" id="QuadMesh_cook_ring"]
 material = SubResource("ShaderMaterial_cook_ring")
-size = Vector2(0.55, 0.55)
+size = Vector2(1.15, 1.15)
 
 [sub_resource type="StandardMaterial3D" id="Material_steam"]
 transparency = 1
@@ -74,7 +74,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.18, 0)
 mesh = SubResource("CylinderMesh_crown")
 
 [node name="CookingTimerRing" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.35, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.48, 0)
 mesh = SubResource("QuadMesh_cook_ring")
 
 [node name="Pan" parent="." instance=ExtResource("3_pan")]

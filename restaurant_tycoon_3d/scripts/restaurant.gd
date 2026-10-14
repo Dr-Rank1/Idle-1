@@ -142,6 +142,44 @@ func _setup_custom_textures() -> void:
 		if bubble_node != null and bubble_node is Sprite3D:
 			bubble_node.texture = chair_bubble_tex
 
+	# Milkshake Bar Floor Diamond Checkers
+	var shake_floor = find_child("MilkshakeFloor", true, false)
+	if shake_floor != null and shake_floor is MeshInstance3D and tile_img != null:
+		var shake_mat = StandardMaterial3D.new()
+		shake_mat.albedo_texture = ImageTexture.create_from_image(tile_img)
+		shake_mat.roughness = 0.85
+		shake_mat.uv1_scale = Vector3(2.5, 2.2, 1)
+		shake_floor.material_override = shake_mat
+
+	# The Milk Shake Neon Sign
+	var shake_neon_path = ProjectSettings.globalize_path("res://assets/textures/the_milk_shake_neon.png")
+	var shake_neon_img = Image.load_from_file(shake_neon_path)
+	if shake_neon_img != null:
+		var shake_neon_tex = ImageTexture.create_from_image(shake_neon_img)
+		var neon_node = find_child("TheMilkShakeNeon", true, false)
+		if neon_node != null and neon_node is MeshInstance3D:
+			var mat = StandardMaterial3D.new()
+			mat.albedo_texture = shake_neon_tex
+			mat.emission_enabled = true
+			mat.emission_texture = shake_neon_tex
+			mat.emission_energy_multiplier = 3.5
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			neon_node.material_override = mat
+
+	# Vinyl Records on Milkshake Wall
+	var vinyl_path = ProjectSettings.globalize_path("res://assets/textures/vinyl_record.png")
+	var vinyl_img = Image.load_from_file(vinyl_path)
+	if vinyl_img != null:
+		var vinyl_tex = ImageTexture.create_from_image(vinyl_img)
+		for v_name in ["VinylRecord1", "VinylRecord2", "VinylRecord3"]:
+			var v_node = find_child(v_name, true, false)
+			if v_node != null and v_node is MeshInstance3D:
+				var v_mat = StandardMaterial3D.new()
+				v_mat.albedo_texture = vinyl_tex
+				v_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				v_mat.roughness = 0.4
+				v_node.material_override = v_mat
+
 func _check_spawn_hired_staff() -> void:
 	var gm = get_node_or_null("/root/GameManager")
 	if gm == null or waiter_scene == null:

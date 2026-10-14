@@ -792,6 +792,27 @@ func get_station_tier_title(station_id: String, lvl: int) -> String:
 			return "★ TIER 2 • COMMERCIAL DOUBLE RANGE"
 		else:
 			return "🍳 TIER 1 • LINE COOK RANGE"
+	elif station_id == "milkshake_bar":
+		if lvl >= 10:
+			return "👑 TIER 3 • NEON CHROME SODA FOUNTAIN"
+		elif lvl >= 5:
+			return "★ TIER 2 • RETRO DINER COUNTER"
+		else:
+			return "🥤 TIER 1 • CLASSIC MILKSHAKE BAR"
+	elif station_id == "milkshake_blender":
+		if lvl >= 10:
+			return "👑 TIER 3 • TURBO FROZEN DESSERT SUITE"
+		elif lvl >= 5:
+			return "★ TIER 2 • COMMERCIAL TRIPLE BLENDER"
+		else:
+			return "🍨 TIER 1 • VINTAGE MILKSHAKE MIXER"
+	elif station_id == "jukebox":
+		if lvl >= 10:
+			return "👑 TIER 3 • GOLD RECORD JUKEBOX"
+		elif lvl >= 5:
+			return "★ TIER 2 • ILLUMINATED VINYL JUKEBOX"
+		else:
+			return "🎵 TIER 1 • RETRO 1950s JUKEBOX"
 	return "STATION TIER 1"
 
 func get_next_tier_desc(station_id: String, lvl: int) -> String:
@@ -809,6 +830,27 @@ func get_next_tier_desc(station_id: String, lvl: int) -> String:
 			return "Next: Lv. 10 unlocks Master Chef Golden Range (+60% Speed)"
 		else:
 			return "MAX TIER UNLOCKED • Culinary Mastery Achieved!"
+	elif station_id == "milkshake_bar":
+		if lvl < 5:
+			return "Next: Lv. 5 unlocks Polished Chrome Stools & Frappe Glasses"
+		elif lvl < 10:
+			return "Next: Lv. 10 unlocks Gold Neon Glow & Luxury Shakes (+50% rev)"
+		else:
+			return "MAX TIER UNLOCKED • Peak Milkshake Bar Prestige!"
+	elif station_id == "milkshake_blender":
+		if lvl < 5:
+			return "Next: Lv. 5 unlocks Triple Speed Whipped Cream & Cherries"
+		elif lvl < 10:
+			return "Next: Lv. 10 unlocks Gourmet Sundae Extravaganza (+75% speed)"
+		else:
+			return "MAX TIER UNLOCKED • Instant Dessert Preparation!"
+	elif station_id == "jukebox":
+		if lvl < 5:
+			return "Next: Lv. 5 unlocks +15% Customer Patience & Rockabilly Hits"
+		elif lvl < 10:
+			return "Next: Lv. 10 unlocks +30% Tip Multiplier & Golden Glow"
+		else:
+			return "MAX TIER UNLOCKED • Legendary Soundtrack Prestige!"
 	return ""
 
 # ─── Menu Methods ───────────────────────────────────────────────────────────

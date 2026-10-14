@@ -25,6 +25,7 @@ extends CanvasLayer
 @onready var nav_parking_btn: Button = get_node_or_null("HUD/BottomDock/HBox/ParkingBtn")
 @onready var nav_kitchen_btn: Button = get_node_or_null("HUD/BottomDock/HBox/KitchenBtn")
 @onready var nav_dining_btn: Button = get_node_or_null("HUD/BottomDock/HBox/DiningBtn")
+@onready var nav_milkshake_btn: Button = get_node_or_null("HUD/BottomDock/HBox/MilkshakeBtn")
 @onready var nav_terrace_btn: Button = get_node_or_null("HUD/BottomDock/HBox/TerraceBtn")
 @onready var nav_staff_btn: Button = get_node_or_null("HUD/BottomDock/HBox/StaffBtn")
 @onready var nav_promo_btn: Button = get_node_or_null("HUD/BottomDock/HBox/PromoBtn")
@@ -47,6 +48,9 @@ extends CanvasLayer
 @onready var tab_category_btn: Button = get_node_or_null("UpgradePanel/VBox/TopTabsHBox/TabCategoryBtn")
 @onready var tab_milestones_btn: Button = get_node_or_null("UpgradePanel/VBox/TopTabsHBox/TabMilestonesBtn")
 @onready var upgrade_tiles_hbox: HBoxContainer = get_node_or_null("UpgradePanel/VBox/TilesScroll/TilesHBox")
+@onready var stat_cash_lbl: Label = get_node_or_null("UpgradePanel/VBox/StatsRibbon/HBox/CashStat")
+@onready var stat_energy_lbl: Label = get_node_or_null("UpgradePanel/VBox/StatsRibbon/HBox/EnergyStat")
+@onready var stat_gem_lbl: Label = get_node_or_null("UpgradePanel/VBox/StatsRibbon/HBox/GemStat")
 
 @onready var dining_panel: PanelContainer = $DiningPanel
 @onready var dining_vbox: VBoxContainer = $DiningPanel/VBox/Scroll/VBox
@@ -114,12 +118,23 @@ func _ready() -> void:
 	if nav_kitchen_btn != null:
 		nav_kitchen_btn.pressed.connect(func():
 			_focus_camera("kitchen")
-			_toggle_modal(kitchen_panel, _refresh_kitchen_panel)
+			var gm = get_node_or_null("/root/GameManager")
+			var lvl = gm.get_station_level("stove") if gm != null else 1
+			open_upgrade("stove", "Master Range Stoves", lvl)
 		)
 	if nav_dining_btn != null:
 		nav_dining_btn.pressed.connect(func():
 			_focus_camera("dining")
-			_toggle_modal(dining_panel, _refresh_dining_panel)
+			var gm = get_node_or_null("/root/GameManager")
+			var lvl = gm.get_station_level("table_1") if gm != null else 1
+			open_upgrade("table_1", "Booth Table 1", lvl)
+		)
+	if nav_milkshake_btn != null:
+		nav_milkshake_btn.pressed.connect(func():
+			_focus_camera("milkshake")
+			var gm = get_node_or_null("/root/GameManager")
+			var lvl = gm.get_station_level("milkshake_bar") if gm != null else 1
+			open_upgrade("milkshake_bar", "Bar Top Counter", lvl)
 		)
 	if nav_terrace_btn != null:
 		nav_terrace_btn.pressed.connect(func():
@@ -493,16 +508,24 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 		icon_char = "🌿" if tnum >= 6 else "🪑"
 	elif station_id == "host_desk":
 		icon_char = "🛎️"
+	elif station_id.begins_with("milkshake"):
+		icon_char = "🥤"
+	elif station_id == "jukebox":
+		icon_char = "🎵"
 	if upgrade_icon != null:
 		upgrade_icon.text = icon_char
 	
 	if tab_category_btn != null:
 		if station_id == "stove" or station_id == "host_desk":
 			tab_category_btn.text = "🍳 KITCHEN & STATIONS  •  🌙 Closes 11:00 PM"
-		elif station_id.begins_with("table") and int(station_id.trim_prefix("table_")) >= 6:
+		elif station_id.begins_with("milkshake"):
+			tab_category_btn.text = "🥤 RETRO MILKSHAKE BAR  •  🌙 Opens 11:00 AM"
+		elif station_id == "jukebox":
+			tab_category_btn.text = "🎵 RETRO JUKEBOX  •  🌙 Closes 11:00 PM"
+		elif station_id.begins_with("table") and int(station_id.trim_prefix("table_")) >= 7:
 			tab_category_btn.text = "🌿 GARDEN TERRACE  •  🌙 Closes 11:00 PM"
 		else:
-			tab_category_btn.text = "🪑 DINING ROOM BOOTHS  •  🌙 Closes 11:00 PM"
+			tab_category_btn.text = "🪑 DINING ROOM BOOTHS  •  🌙 Closes 11:45 PM"
 
 	var next_milestone = 5 if level < 5 else (10 if level < 10 else 25)
 	var prev_milestone = 1 if level < 5 else (5 if level < 10 else 10)
@@ -510,6 +533,10 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 		upgrade_milestone_bar.min_value = prev_milestone
 		upgrade_milestone_bar.max_value = next_milestone
 		upgrade_milestone_bar.value = level
+	
+	if stat_cash_lbl != null: stat_cash_lbl.text = "💵 %s" % _format_money(gm.cash)
+	if stat_gem_lbl != null: stat_gem_lbl.text = "💎 %d" % gm.gems
+	if stat_energy_lbl != null: stat_energy_lbl.text = "⚡ %d" % max(12, gm.restaurant_level * 6)
 	
 	_refresh_upgrade_tiles(gm)
 	_refresh_upgrade_btn()
@@ -529,7 +556,10 @@ func _refresh_upgrade_tiles(gm: Node) -> void:
 		{"id": "table_3", "name": "Booth Table 3", "short": "Booth 3", "icon": "🪑"},
 		{"id": "table_4", "name": "Booth Table 4", "short": "Booth 4", "icon": "🪑"},
 		{"id": "table_5", "name": "Booth Table 5", "short": "Booth 5", "icon": "🪑"},
-		{"id": "table_6", "name": "Patio Table 6", "short": "Patio 6", "icon": "🌿"},
+		{"id": "table_6", "name": "Booth Table 6", "short": "Booth 6", "icon": "🪑"},
+		{"id": "milkshake_bar", "name": "Bar Top Counter", "short": "Bar Top", "icon": "🥤"},
+		{"id": "milkshake_blender", "name": "Frappe Blenders", "short": "Blender", "icon": "🍨"},
+		{"id": "jukebox", "name": "Retro Jukebox", "short": "Jukebox", "icon": "🎵"},
 		{"id": "table_7", "name": "Patio Table 7", "short": "Patio 7", "icon": "🌿"},
 		{"id": "table_8", "name": "Patio Table 8", "short": "Patio 8", "icon": "🌿"}
 	]

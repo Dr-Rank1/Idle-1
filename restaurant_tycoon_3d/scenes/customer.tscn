@@ -1,6 +1,7 @@
-[gd_scene load_steps=7 format=3 uid="uid://cust12345"]
+[gd_scene load_steps=10 format=3 uid="uid://cust12345"]
 
 [ext_resource type="Script" path="res://scripts/customer.gd" id="1_script"]
+[ext_resource type="Shader" path="res://shaders/radial_timer.gdshader" id="2_shader"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_c"]
 radius = 0.22
@@ -21,6 +22,19 @@ albedo_color = Color(0.25, 0.92, 0.45, 1)
 [sub_resource type="QuadMesh" id="QuadMesh_bar_fill"]
 material = SubResource("Material_bar_fill")
 size = Vector2(0.50, 0.055)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_cust_ring"]
+render_priority = 2
+shader = ExtResource("2_shader")
+shader_parameter/progress = 0.0
+shader_parameter/bg_color = Color(0.12, 0.15, 0.2, 0.72)
+shader_parameter/fill_color = Color(1, 0.88, 0.12, 1)
+shader_parameter/inner_radius = 0.24
+shader_parameter/outer_radius = 0.48
+
+[sub_resource type="QuadMesh" id="QuadMesh_cust_ring"]
+material = SubResource("ShaderMaterial_cust_ring")
+size = Vector2(0.95, 0.95)
 
 [node name="Customer" type="CharacterBody3D"]
 collision_layer = 2
@@ -45,6 +59,11 @@ mesh = SubResource("QuadMesh_bar_bg")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.005)
 mesh = SubResource("QuadMesh_bar_fill")
 
+[node name="RadialRing" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.35, 0)
+visible = false
+mesh = SubResource("QuadMesh_cust_ring")
+
 [node name="StatusBubble" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
 
@@ -61,4 +80,3 @@ text = "💭"
 font_size = 28
 outline_size = 0
 modulate = Color(0.12, 0.14, 0.18, 1)
-

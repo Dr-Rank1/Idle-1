@@ -1,4 +1,4 @@
-[gd_scene load_steps=108 format=3 uid="uid://main12345"]
+[gd_scene load_steps=109 format=3 uid="uid://main12345"]
 
 [ext_resource type="Script" path="res://scripts/camera_controller.gd" id="1_cam"]
 [ext_resource type="Script" path="res://scripts/restaurant.gd" id="2_rest"]
@@ -91,6 +91,11 @@
 [ext_resource type="PackedScene" path="res://scenes/decor/jukebox.tscn" id="85_jukebox"]
 [ext_resource type="PackedScene" path="res://assets/kaykit_restaurant/gltf/table_round_A_small.gltf" id="86_round_table"]
 [ext_resource type="PackedScene" path="res://assets/kaykit_restaurant/gltf/shelf_papertowel_decorated.gltf" id="87_shelf_decor"]
+[ext_resource type="PackedScene" path="res://assets/models/food/sundae.glb" id="88_sundae"]
+[ext_resource type="PackedScene" path="res://assets/models/food/frappe.glb" id="89_frappe"]
+[ext_resource type="PackedScene" path="res://assets/models/food/soda-glass.glb" id="90_soda_glass"]
+[ext_resource type="PackedScene" path="res://assets/models/furniture/kitchenFridgeLarge.glb" id="91_fridge_large"]
+
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -254,6 +259,37 @@ roughness = 0.8
 [sub_resource type="StandardMaterial3D" id="Material_topiary_round"]
 albedo_color = Color(0.16, 0.44, 0.14, 1)
 roughness = 0.8
+
+[sub_resource type="StandardMaterial3D" id="Material_wall_milkshake"]
+albedo_color = Color(0.42, 0.82, 0.72, 1)
+roughness = 0.65
+
+[sub_resource type="StandardMaterial3D" id="Material_table_turquoise"]
+albedo_color = Color(0.12, 0.76, 0.75, 1)
+roughness = 0.45
+
+[sub_resource type="StandardMaterial3D" id="Material_vinyl_disc"]
+albedo_color = Color(0.1, 0.1, 0.12, 1)
+roughness = 0.35
+
+[sub_resource type="StandardMaterial3D" id="Material_chrome_trim"]
+albedo_color = Color(0.88, 0.90, 0.92, 1)
+metallic = 0.85
+roughness = 0.2
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_milkshake_floor"]
+size = Vector2(8.0, 7.0)
+
+[sub_resource type="QuadMesh" id="QuadMesh_neon_milkshake"]
+size = Vector2(2.6, 1.3)
+
+[sub_resource type="QuadMesh" id="QuadMesh_vinyl_record"]
+size = Vector2(0.55, 0.55)
+
+[sub_resource type="BoxMesh" id="BoxMesh_booth_table_turquoise"]
+material = SubResource("Material_table_turquoise")
+size = Vector3(1.2, 0.04, 0.72)
+
 
 [sub_resource type="BoxMesh" id="BoxMesh_door_post"]
 material = SubResource("Material_door_frame")
@@ -504,9 +540,9 @@ light_energy = 0.48
 shadow_enabled = false
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(0.707107, -0.353553, 0.612372, 0, 0.866025, 0.5, -0.707107, -0.353553, 0.612372, 22.0, 16.5, 23.5)
+transform = Transform3D(0.707107, -0.353553, 0.612372, 0, 0.866025, 0.5, -0.707107, -0.353553, 0.612372, 17.5, 17.5, 19.5)
 projection = 1
-size = 18.0
+size = 22.5
 script = ExtResource("1_cam")
 
 [node name="WorldGround" type="MeshInstance3D" parent="."]
@@ -625,7 +661,23 @@ transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -18.5, 0, 13.5)
 [node name="SolidBackWallLeft" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1.6, -10.5)
 size = Vector3(8.0, 3.2, 0.25)
-material = SubResource("Material_wall")
+material = SubResource("Material_wall_milkshake")
+
+[node name="TheMilkShakeNeon" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.05, -10.36)
+mesh = SubResource("QuadMesh_neon_milkshake")
+
+[node name="VinylRecord1" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.4, 2.2, -10.36)
+mesh = SubResource("QuadMesh_vinyl_record")
+
+[node name="VinylRecord2" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.1, 1.95, -10.36)
+mesh = SubResource("QuadMesh_vinyl_record")
+
+[node name="VinylRecord3" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.6, 1.5, -10.36)
+mesh = SubResource("QuadMesh_vinyl_record")
 
 [node name="SolidBackWallKitchen" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 1.6, -10.5)
@@ -652,7 +704,7 @@ material = SubResource("Material_wall_manager")
 [node name="SolidLeftWallRoof" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.5, 1.6, -7.0)
 size = Vector3(0.25, 3.2, 7.0)
-material = SubResource("Material_wall")
+material = SubResource("Material_wall_milkshake")
 
 [node name="SolidLeftWallReception" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.5, 0.45, 3.5)
@@ -672,9 +724,19 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.5, 1.6, -7.0)
 size = Vector3(0.25, 3.2, 7.0)
 material = SubResource("Material_wall_manager")
 
-[node name="KitchenReceptionDivider" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1.6, -3.5)
-size = Vector3(8.0, 3.2, 0.25)
+[node name="MilkshakeDividerLeft" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.0, 1.6, -3.5)
+size = Vector3(3.0, 3.2, 0.25)
+material = SubResource("Material_wall_reception")
+
+[node name="MilkshakeDividerRight" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.0, 1.6, -3.5)
+size = Vector3(3.0, 3.2, 0.25)
+material = SubResource("Material_wall_reception")
+
+[node name="MilkshakeArchTransom" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.7, -3.5)
+size = Vector3(2.0, 1.0, 0.25)
 material = SubResource("Material_wall_reception")
 
 [node name="KitchenLeftDivider" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
@@ -1288,43 +1350,126 @@ transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 10.5, 0, 9.0)
 [node name="RetroJukebox" parent="Restaurant/DiningHall" instance=ExtResource("85_jukebox")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -3.1, 0, 0.8)
 
-[node name="ManagerOffice" type="Node3D" parent="Restaurant"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.1, 0, -5.325)
+[node name="MilkshakeBar" type="Node3D" parent="Restaurant"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 0, -7.0)
 
-[node name="OfficeFloor" type="MeshInstance3D" parent="Restaurant/ManagerOffice"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
-mesh = SubResource("PlaneMesh_manager_floor")
+[node name="MilkshakeFloor" type="MeshInstance3D" parent="Restaurant/MilkshakeBar"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, 0)
+mesh = SubResource("PlaneMesh_milkshake_floor")
 
-[node name="ManagerRugOuter" type="MeshInstance3D" parent="Restaurant/ManagerOffice"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, 0.1)
-mesh = SubResource("CylinderMesh_manager_rug_ring")
+[node name="BarCounterBody" type="CSGBox3D" parent="Restaurant/MilkshakeBar"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.7, 0.46, -0.1)
+size = Vector3(0.72, 0.92, 4.4)
+material = SubResource("Material_baseboard")
 
-[node name="ManagerRugInner" type="MeshInstance3D" parent="Restaurant/ManagerOffice"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0.1)
-mesh = SubResource("CylinderMesh_manager_rug")
+[node name="BarCounterTop" type="CSGBox3D" parent="Restaurant/MilkshakeBar"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.7, 0.93, -0.1)
+size = Vector3(0.82, 0.05, 4.5)
+material = SubResource("Material_chrome_trim")
 
-[node name="ExecutiveBookcase" parent="Restaurant/ManagerOffice" instance=ExtResource("49_exec_bookcase")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, 0, -3.6)
+[node name="Stool1" parent="Restaurant/MilkshakeBar" instance=ExtResource("62_stool")]
+transform = Transform3D(1.1, 0, 0, 0, 1.1, 0, 0, 0, 1.1, -1.9, 0, -1.6)
 
-[node name="ManagerDesk" parent="Restaurant/ManagerOffice" instance=ExtResource("40_desk")]
-transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 0, 0, 0.1)
+[node name="Stool2" parent="Restaurant/MilkshakeBar" instance=ExtResource("62_stool")]
+transform = Transform3D(1.1, 0, 0, 0, 1.1, 0, 0, 0, 1.1, -1.9, 0, -0.6)
 
-[node name="ManagerLaptop" parent="Restaurant/ManagerOffice" instance=ExtResource("38_laptop")]
-transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, 0.05, 0.58, 0.1)
+[node name="Stool3" parent="Restaurant/MilkshakeBar" instance=ExtResource("62_stool")]
+transform = Transform3D(1.1, 0, 0, 0, 1.1, 0, 0, 0, 1.1, -1.9, 0, 0.4)
 
-[node name="ManagerChair" parent="Restaurant/ManagerOffice" instance=ExtResource("46_desk_chair")]
-transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, 0, 0, -0.7)
+[node name="Stool4" parent="Restaurant/MilkshakeBar" instance=ExtResource("62_stool")]
+transform = Transform3D(1.1, 0, 0, 0, 1.1, 0, 0, 0, 1.1, -1.9, 0, 1.4)
 
-[node name="ManagerFigure" parent="Restaurant/ManagerOffice" instance=ExtResource("73_manager")]
-transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 0, 0, -0.9)
+[node name="CounterFrappe" parent="Restaurant/MilkshakeBar" instance=ExtResource("89_frappe")]
+transform = Transform3D(0.45, 0, 0, 0, 0.45, 0, 0, 0, 0.45, -2.6, 0.96, -1.3)
+
+[node name="CounterSundae" parent="Restaurant/MilkshakeBar" instance=ExtResource("88_sundae")]
+transform = Transform3D(0.45, 0, 0, 0, 0.45, 0, 0, 0, 0.45, -2.6, 0.96, -0.3)
+
+[node name="CounterSoda" parent="Restaurant/MilkshakeBar" instance=ExtResource("90_soda_glass")]
+transform = Transform3D(0.45, 0, 0, 0, 0.45, 0, 0, 0, 0.45, -2.6, 0.96, 0.7)
+
+[node name="MilkshakeBarGuest1" parent="Restaurant/MilkshakeBar" instance=ExtResource("58_char_female_b")]
+transform = Transform3D(0, 0, 0.88, 0, 0.88, 0, -0.88, 0, 0, -1.9, 0.45, -0.6)
 script = ExtResource("55_decor_char")
-anim_name = "idle"
+anim_name = "sit"
 
-[node name="LoungeArmchair" parent="Restaurant/ManagerOffice" instance=ExtResource("47_lounge_chair")]
-transform = Transform3D(0.9, 0, -0.9, 0, 1.25, 0, 0.9, 0, 0.9, -1.4, 0, 0.2)
+[node name="MilkshakeBarGuest2" parent="Restaurant/MilkshakeBar" instance=ExtResource("60_char_male_b")]
+transform = Transform3D(0, 0, 0.88, 0, 0.88, 0, -0.88, 0, 0, -1.9, 0.45, 1.4)
+script = ExtResource("55_decor_char")
+anim_name = "sit"
 
-[node name="OfficePalm" parent="Restaurant/ManagerOffice" instance=ExtResource("26_plant")]
-transform = Transform3D(2.2, 0, 0, 0, 2.2, 0, 0, 0, 2.2, 2.2, 0, -2.2)
+[node name="Table1Mesh" type="MeshInstance3D" parent="Restaurant/MilkshakeBar"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.72, -1.6)
+mesh = SubResource("BoxMesh_booth_table_turquoise")
+
+[node name="Table1Sundae" parent="Restaurant/MilkshakeBar" instance=ExtResource("88_sundae")]
+transform = Transform3D(0.4, 0, 0, 0, 0.4, 0, 0, 0, 0.4, 0.5, 0.75, -1.6)
+
+[node name="Table1ChairN" parent="Restaurant/MilkshakeBar" instance=ExtResource("53_chair")]
+transform = Transform3D(-0.75, 0, 0, 0, 0.75, 0, 0, 0, -0.75, 0.5, 0, -2.15)
+
+[node name="Table1ChairS" parent="Restaurant/MilkshakeBar" instance=ExtResource("53_chair")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0.5, 0, -1.05)
+
+[node name="Table1Guest" parent="Restaurant/MilkshakeBar" instance=ExtResource("59_char_female_c")]
+transform = Transform3D(-0.85, 0, 0, 0, 0.85, 0, 0, 0, -0.85, 0.5, 0.36, -2.15)
+script = ExtResource("55_decor_char")
+anim_name = "sit"
+
+[node name="Table2Mesh" type="MeshInstance3D" parent="Restaurant/MilkshakeBar"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.7, 0.72, -1.6)
+mesh = SubResource("BoxMesh_booth_table_turquoise")
+
+[node name="Table2Frappe" parent="Restaurant/MilkshakeBar" instance=ExtResource("89_frappe")]
+transform = Transform3D(0.4, 0, 0, 0, 0.4, 0, 0, 0, 0.4, 2.7, 0.75, -1.6)
+
+[node name="Table2ChairN" parent="Restaurant/MilkshakeBar" instance=ExtResource("53_chair")]
+transform = Transform3D(-0.75, 0, 0, 0, 0.75, 0, 0, 0, -0.75, 2.7, 0, -2.15)
+
+[node name="Table2ChairS" parent="Restaurant/MilkshakeBar" instance=ExtResource("53_chair")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 2.7, 0, -1.05)
+
+[node name="Table2Guest" parent="Restaurant/MilkshakeBar" instance=ExtResource("57_char_male_a")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, 2.7, 0.36, -1.05)
+script = ExtResource("55_decor_char")
+anim_name = "sit"
+
+[node name="Table3Mesh" type="MeshInstance3D" parent="Restaurant/MilkshakeBar"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.72, 1.2)
+mesh = SubResource("BoxMesh_booth_table_turquoise")
+
+[node name="Table3Sundae" parent="Restaurant/MilkshakeBar" instance=ExtResource("88_sundae")]
+transform = Transform3D(0.4, 0, 0, 0, 0.4, 0, 0, 0, 0.4, 0.5, 0.75, 1.2)
+
+[node name="Table3ChairN" parent="Restaurant/MilkshakeBar" instance=ExtResource("53_chair")]
+transform = Transform3D(-0.75, 0, 0, 0, 0.75, 0, 0, 0, -0.75, 0.5, 0, 0.65)
+
+[node name="Table3ChairS" parent="Restaurant/MilkshakeBar" instance=ExtResource("53_chair")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0.5, 0, 1.75)
+
+[node name="Table3Guest" parent="Restaurant/MilkshakeBar" instance=ExtResource("73_manager")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, 0.5, 0.36, 1.75)
+script = ExtResource("55_decor_char")
+anim_name = "sit"
+
+[node name="Table4Mesh" type="MeshInstance3D" parent="Restaurant/MilkshakeBar"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.7, 0.72, 1.2)
+mesh = SubResource("BoxMesh_booth_table_turquoise")
+
+[node name="Table4Soda" parent="Restaurant/MilkshakeBar" instance=ExtResource("90_soda_glass")]
+transform = Transform3D(0.4, 0, 0, 0, 0.4, 0, 0, 0, 0.4, 2.7, 0.75, 1.2)
+
+[node name="Table4ChairN" parent="Restaurant/MilkshakeBar" instance=ExtResource("53_chair")]
+transform = Transform3D(-0.75, 0, 0, 0, 0.75, 0, 0, 0, -0.75, 2.7, 0, 0.65)
+
+[node name="Table4ChairS" parent="Restaurant/MilkshakeBar" instance=ExtResource("53_chair")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 2.7, 0, 1.75)
+
+[node name="MilkshakeFridge" parent="Restaurant/MilkshakeBar" instance=ExtResource("91_fridge_large")]
+transform = Transform3D(0, 0, 1.3, 0, 1.3, 0, -1.3, 0, 0, -3.3, 0, -2.7)
+
+[node name="MilkshakePlant" parent="Restaurant/MilkshakeBar" instance=ExtResource("26_plant")]
+transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, 3.4, 0, -2.7)
 
 [node name="GardenLawn" type="Node3D" parent="Restaurant"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 0, 3.5)
