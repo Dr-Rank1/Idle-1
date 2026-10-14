@@ -31,6 +31,16 @@ func _init():
 	var err = img.save_png(out_path)
 	print("Snapshot result:", err)
 
+	var hud_node = root.find_child("HUD", true, false)
+	if hud_node != null and hud_node.has_method("open_upgrade"):
+		hud_node.open_upgrade("milkshake_bar", "Bar Top", 200)
+	for i in range(15):
+		await process_frame
+	var img_modal = root.get_viewport().get_texture().get_image()
+	img_modal.save_png("c:/Users/Ian/Documents/Apps/Idle-1/upgrade_modal_view.png")
+	if hud_node != null and hud_node.has_method("_hide_all_modals"):
+		hud_node._hide_all_modals()
+
 	# Focus camera on terrace to capture expansion booths in full view
 	var cam = root.find_child("Camera3D", true, false)
 	if cam != null and cam.has_method("focus_zone"):

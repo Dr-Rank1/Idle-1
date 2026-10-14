@@ -1,11 +1,13 @@
 extends CanvasLayer
 
 # ─── Top Bar Node References ────────────────────────────────────────────────
-@onready var profile_panel: PanelContainer = $HUD/TopBar/ProfilePanel
-@onready var rest_name_label: Label = $HUD/TopBar/ProfilePanel/VBox/RestNameLabel
-@onready var star_label: Label = $HUD/TopBar/ProfilePanel/VBox/HBox/StarLabel
-@onready var level_label: Label = $HUD/TopBar/ProfilePanel/VBox/HBox/LevelLabel
-@onready var xp_bar: ProgressBar = $HUD/TopBar/ProfilePanel/VBox/XPBar
+@onready var profile_panel: PanelContainer = get_node_or_null("HUD/TopBar/ProfilePanel")
+@onready var avatar_label: Label = get_node_or_null("HUD/TopBar/ProfilePanel/VBox/AvatarLabel")
+@onready var level_label: Label = get_node_or_null("HUD/TopBar/ProfilePanel/VBox/LevelLabel")
+@onready var star_milestone_bar: ProgressBar = get_node_or_null("HUD/StarMilestoneBar/FillBar")
+@onready var rest_name_label: Label = get_node_or_null("HUD/TopBar/ProfilePanel/VBox/RestNameLabel")
+@onready var star_label: Label = get_node_or_null("HUD/TopBar/ProfilePanel/VBox/HBox/StarLabel")
+@onready var xp_bar: ProgressBar = get_node_or_null("HUD/TopBar/ProfilePanel/VBox/XPBar")
 
 @onready var cash_label: Label = $HUD/TopBar/CashPanel/HBox/VBox/CashLabel
 @onready var cash_rate_label: Label = $HUD/TopBar/CashPanel/HBox/VBox/RateLabel
@@ -32,22 +34,23 @@ extends CanvasLayer
 
 # ─── Modals ─────────────────────────────────────────────────────────────────
 @onready var upgrade_panel: PanelContainer = get_node_or_null("UpgradePanel")
-@onready var upgrade_title: Label = get_node_or_null("UpgradePanel/VBox/StationCard/HBox/InfoVBox/TitleLabel")
-@onready var upgrade_tier: Label = get_node_or_null("UpgradePanel/VBox/StationCard/HBox/InfoVBox/TierBadgeLabel")
-@onready var upgrade_icon: Label = get_node_or_null("UpgradePanel/VBox/StationCard/HBox/IconLabel")
-@onready var upgrade_milestone_bar: ProgressBar = get_node_or_null("UpgradePanel/VBox/MilestoneBar")
-@onready var upgrade_level: Label = get_node_or_null("UpgradePanel/VBox/StationCard/HBox/InfoVBox/LevelLabel")
-@onready var upgrade_income: Label = get_node_or_null("UpgradePanel/VBox/StationCard/HBox/InfoVBox/IncomeLabel")
-@onready var upgrade_next_unlock: Label = get_node_or_null("UpgradePanel/VBox/StationCard/HBox/InfoVBox/NextUnlockLabel")
-@onready var multi_1_btn: Button = get_node_or_null("UpgradePanel/VBox/StationCard/HBox/ControlsVBox/MultiHBox/Multi1Btn")
-@onready var multi_10_btn: Button = get_node_or_null("UpgradePanel/VBox/StationCard/HBox/ControlsVBox/MultiHBox/Multi10Btn")
-@onready var multi_max_btn: Button = get_node_or_null("UpgradePanel/VBox/StationCard/HBox/ControlsVBox/MultiHBox/MultiMaxBtn")
-@onready var upgrade_btn: Button = get_node_or_null("UpgradePanel/VBox/StationCard/HBox/ControlsVBox/UpgradeBtn")
+@onready var upgrade_title: Label = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/HeaderHBox/TitleLabel")
+@onready var upgrade_level: Label = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/HeaderHBox/LevelLabel")
+@onready var upgrade_max_badge: Label = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/HeaderHBox/MaxBadge")
+@onready var upgrade_icon: Label = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/BodyHBox/IconLabel")
+@onready var upgrade_desc: Label = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/BodyHBox/InfoVBox/DescLabel")
+@onready var upgrade_income: Label = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/BodyHBox/InfoVBox/IncomeLabel")
+@onready var multi_1_btn: Button = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/BodyHBox/ControlsVBox/MultiHBox/Multi1Btn")
+@onready var multi_10_btn: Button = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/BodyHBox/ControlsVBox/MultiHBox/Multi10Btn")
+@onready var multi_max_btn: Button = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/BodyHBox/ControlsVBox/MultiHBox/MultiMaxBtn")
+@onready var upgrade_btn: Button = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/BodyHBox/ControlsVBox/UpgradeBtn")
 @onready var close_btn: Button = get_node_or_null("UpgradePanel/VBox/TopTabsHBox/CloseBtn")
 @onready var tab_upgrades_btn: Button = get_node_or_null("UpgradePanel/VBox/TopTabsHBox/TabUpgradesBtn")
-@onready var tab_category_btn: Button = get_node_or_null("UpgradePanel/VBox/TopTabsHBox/TabCategoryBtn")
-@onready var tab_milestones_btn: Button = get_node_or_null("UpgradePanel/VBox/TopTabsHBox/TabMilestonesBtn")
-@onready var upgrade_tiles_hbox: HBoxContainer = get_node_or_null("UpgradePanel/VBox/TilesScroll/TilesHBox")
+@onready var tab_staff_btn: Button = get_node_or_null("UpgradePanel/VBox/TopTabsHBox/TabStaffBtn")
+@onready var zone_title_label: Label = get_node_or_null("UpgradePanel/VBox/HeaderBar/HBox/ZoneTitle")
+@onready var hours_badge_label: Label = get_node_or_null("UpgradePanel/VBox/HeaderBar/HBox/HoursBadge")
+@onready var upgrade_milestone_bar: ProgressBar = get_node_or_null("UpgradePanel/VBox/MilestoneBar")
+@onready var sub_upgrade_grid: GridContainer = get_node_or_null("UpgradePanel/VBox/SubUpgradeGrid")
 @onready var stat_cash_lbl: Label = get_node_or_null("UpgradePanel/VBox/StatsRibbon/HBox/CashStat")
 @onready var stat_energy_lbl: Label = get_node_or_null("UpgradePanel/VBox/StatsRibbon/HBox/EnergyStat")
 @onready var stat_gem_lbl: Label = get_node_or_null("UpgradePanel/VBox/StatsRibbon/HBox/GemStat")
@@ -72,7 +75,6 @@ extends CanvasLayer
 @onready var staff_vbox: VBoxContainer = get_node_or_null("StaffPanel/VBox/StaffScroll/StaffVBox")
 @onready var close_staff_btn: Button = get_node_or_null("StaffPanel/VBox/TopTabsHBox/CloseStaffBtn")
 @onready var staff_tab_upgrades_btn: Button = get_node_or_null("StaffPanel/VBox/TopTabsHBox/TabUpgradesBtn")
-@onready var upgrade_tab_staff_btn: Button = get_node_or_null("UpgradePanel/VBox/TopTabsHBox/TabStaffBtn")
 
 @onready var marketing_panel: PanelContainer = get_node_or_null("MarketingPanel")
 @onready var marketing_vbox: VBoxContainer = get_node_or_null("MarketingPanel/VBox/Scroll/VBox")
@@ -85,9 +87,16 @@ extends CanvasLayer
 # ─── World Map & Right Action Dock ──────────────────────────────────────────
 @onready var map_btn: Button = get_node_or_null("HUD/TopBar/MapBtn")
 @onready var side_map_btn: Button = get_node_or_null("HUD/RightDock/SideMapBtn")
+@onready var side_ad_btn: Button = get_node_or_null("HUD/RightDock/SideAdBtn")
+@onready var side_settings_btn: Button = get_node_or_null("HUD/RightDock/SideSettingsBtn")
+@onready var side_lightbulb_btn: Button = get_node_or_null("HUD/RightDock/SideLightbulbBtn")
+@onready var side_stats_btn: Button = get_node_or_null("HUD/RightDock/SideStatsBtn")
 @onready var side_staff_btn: Button = get_node_or_null("HUD/RightDock/SideStaffBtn")
-@onready var side_menu_btn: Button = get_node_or_null("HUD/RightDock/SideMenuBtn")
-@onready var side_promo_btn: Button = get_node_or_null("HUD/RightDock/SidePromoBtn")
+
+@onready var clock_label: Label = get_node_or_null("HUD/TopBar/ClockPanel/HBox/ClockLabel")
+@onready var energy_label: Label = get_node_or_null("HUD/TopBar/EnergyPanel/HBox/EnergyLabel")
+@onready var live_label: Label = get_node_or_null("HUD/TopBar/LivePanel/HBox/LiveLabel")
+@onready var status_ribbons: VBoxContainer = get_node_or_null("HUD/StatusRibbons")
 
 @onready var world_map_panel: PanelContainer = get_node_or_null("WorldMapPanel")
 @onready var world_map_grid: GridContainer = get_node_or_null("WorldMapPanel/VBox/Scroll/CardsGrid")
@@ -102,6 +111,7 @@ extends CanvasLayer
 var current_station_id: String = ""
 var current_multiplier: String = "1"
 var displayed_cash: float = 650.0
+var sim_time_minutes: float = 8.0 * 60.0 + 34.0
 
 func _ready() -> void:
 	_hide_all_modals()
@@ -160,8 +170,16 @@ func _ready() -> void:
 	if multi_max_btn != null: multi_max_btn.pressed.connect(func(): _set_multiplier("MAX"))
 	if upgrade_btn != null: upgrade_btn.pressed.connect(_on_upgrade_pressed)
 	if close_btn != null: close_btn.pressed.connect(func(): _close_modal(upgrade_panel))
-	if tab_upgrades_btn != null: tab_upgrades_btn.pressed.connect(func(): _toggle_modal(dining_panel, _refresh_dining_panel))
-	if tab_milestones_btn != null: tab_milestones_btn.pressed.connect(func(): _toggle_modal(quests_panel, _refresh_quests_panel))
+	if tab_upgrades_btn != null: tab_upgrades_btn.pressed.connect(func():
+		_play_click_sfx()
+		var gm = get_node_or_null("/root/GameManager")
+		var sid = current_station_id if current_station_id != "" else "milkshake_bar"
+		var lvl = gm.get_station_level(sid) if gm != null else 1
+		open_upgrade(sid, "Bar Top" if sid.begins_with("milkshake") else "Dining", lvl)
+	)
+	if tab_staff_btn != null: tab_staff_btn.pressed.connect(func():
+		_toggle_modal(staff_panel, _refresh_staff_panel)
+	)
 	
 	# Modal Close Buttons
 	if close_dining_btn != null: close_dining_btn.pressed.connect(func(): _close_modal(dining_panel))
@@ -175,10 +193,6 @@ func _ready() -> void:
 			var gm = get_node_or_null("/root/GameManager")
 			var lvl = gm.get_station_level("stove") if gm != null else 1
 			open_upgrade("stove", "Master Range Stoves", lvl)
-		)
-	if upgrade_tab_staff_btn != null:
-		upgrade_tab_staff_btn.pressed.connect(func():
-			_toggle_modal(staff_panel, _refresh_staff_panel)
 		)
 	if close_marketing_btn != null: close_marketing_btn.pressed.connect(func(): _close_modal(marketing_panel))
 	if close_quests_btn != null: close_quests_btn.pressed.connect(func(): _close_modal(quests_panel))
@@ -200,17 +214,28 @@ func _ready() -> void:
 		side_map_btn.pressed.connect(func():
 			_toggle_modal(world_map_panel, _refresh_world_map)
 		)
+	if side_ad_btn != null:
+		side_ad_btn.pressed.connect(func():
+			_play_click_sfx()
+			_on_boost_pressed()
+		)
+	if side_settings_btn != null:
+		side_settings_btn.pressed.connect(func():
+			_toggle_modal(marketing_panel, _refresh_marketing_panel)
+		)
+	if side_lightbulb_btn != null:
+		side_lightbulb_btn.pressed.connect(func():
+			_toggle_modal(quests_panel, _refresh_quests_panel)
+		)
+	if side_stats_btn != null:
+		side_stats_btn.pressed.connect(func():
+			_play_click_sfx()
+			if status_ribbons != null:
+				status_ribbons.visible = not status_ribbons.visible
+		)
 	if side_staff_btn != null:
 		side_staff_btn.pressed.connect(func():
 			_toggle_modal(staff_panel, _refresh_staff_panel)
-		)
-	if side_menu_btn != null:
-		side_menu_btn.pressed.connect(func():
-			_toggle_modal(kitchen_panel, _refresh_kitchen_panel)
-		)
-	if side_promo_btn != null:
-		side_promo_btn.pressed.connect(func():
-			_toggle_modal(marketing_panel, _refresh_marketing_panel)
 		)
 
 	# Connect GameManager signals
@@ -298,19 +323,24 @@ func _format_money(amount: float) -> String:
 
 # ─── Top Bar Updates ────────────────────────────────────────────────────────
 func _update_top_bar(c: float, g: int, stars: float, rest_name: String, lvl: int, xp: float, next_xp: float) -> void:
-	rest_name_label.text = rest_name
-	star_label.text = "★ %.1f" % stars
-	level_label.text = "Lv. %d" % lvl
-	xp_bar.max_value = next_xp
-	xp_bar.value = xp
-	gem_label.text = "%d" % g
-	cash_label.text = _format_money(c)
+	if rest_name_label != null: rest_name_label.text = rest_name
+	if star_label != null: star_label.text = "★ %.1f" % stars
+	if level_label != null: level_label.text = "Lv. %d" % lvl
+	if xp_bar != null:
+		xp_bar.max_value = next_xp
+		xp_bar.value = xp
+	if star_milestone_bar != null:
+		star_milestone_bar.max_value = next_xp
+		star_milestone_bar.value = xp
+	if gem_label != null: gem_label.text = "%d" % g
+	if cash_label != null: cash_label.text = _format_money(c)
 
 func _on_cash_changed(new_cash: float) -> void:
 	var tw = create_tween()
 	tw.tween_method(func(val: float):
 		displayed_cash = val
-		cash_label.text = _format_money(val)
+		if cash_label != null:
+			cash_label.text = _format_money(val)
 	, displayed_cash, new_cash, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	
 	if upgrade_panel != null and upgrade_panel.visible:
@@ -333,19 +363,36 @@ func _on_cash_changed(new_cash: float) -> void:
 		_refresh_shop_panel()
 
 func _on_gems_changed(new_gems: int) -> void:
-	gem_label.text = "%d" % new_gems
+	if gem_label != null: gem_label.text = "%d" % new_gems
 	if shop_panel != null and shop_panel.visible:
 		_refresh_shop_panel()
 
 func _on_cash_rate_updated(rate: float) -> void:
-	cash_rate_label.text = "+%s/s" % _format_money(rate)
+	if cash_rate_label != null: cash_rate_label.text = "+%s/s" % _format_money(rate)
 
 func _on_level_updated(lvl: int, cur_xp: float, max_xp: float) -> void:
-	level_label.text = "Lv. %d" % lvl
-	xp_bar.max_value = max_xp
-	xp_bar.value = cur_xp
+	if level_label != null: level_label.text = "Lv. %d" % lvl
+	if xp_bar != null:
+		xp_bar.max_value = max_xp
+		xp_bar.value = cur_xp
+	if star_milestone_bar != null:
+		star_milestone_bar.max_value = max_xp
+		star_milestone_bar.value = cur_xp
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	sim_time_minutes += delta * 4.0
+	if sim_time_minutes >= 24.0 * 60.0:
+		sim_time_minutes -= 24.0 * 60.0
+	var total_mins = int(sim_time_minutes)
+	var hours = int(total_mins / 60)
+	var mins = total_mins % 60
+	var am_pm = "AM" if hours < 12 else "PM"
+	var display_hour = hours % 12
+	if display_hour == 0:
+		display_hour = 12
+	if clock_label != null:
+		clock_label.text = "%02d:%02d %s" % [display_hour, mins, am_pm]
+
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null and gm.is_boosted:
 		var s = ceil(gm.boost_timer)
@@ -489,6 +536,7 @@ func _create_quest_card(q: Dictionary, gm: Node) -> PanelContainer:
 	return p
 
 # ─── Station Upgrade Logic (Click in 3D or from UI) ─────────────────────────
+# ─── Station Upgrade Logic (Click in 3D or from UI) ─────────────────────────
 func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 	current_station_id = station_id
 	var gm = get_node_or_null("/root/GameManager")
@@ -496,11 +544,10 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 		return
 	
 	if upgrade_title != null: upgrade_title.text = station_name
-	if upgrade_tier != null: upgrade_tier.text = gm.get_station_tier_title(station_id, level)
 	if upgrade_level != null: upgrade_level.text = "Level %d / %d" % [level, gm.max_level]
 	var inc = gm.get_station_income(station_id)
-	if upgrade_income != null: upgrade_income.text = "Income: +$%d / customer" % round(inc)
-	if upgrade_next_unlock != null: upgrade_next_unlock.text = gm.get_next_tier_desc(station_id, level)
+	if upgrade_income != null: upgrade_income.text = "💵 +$%d / cust   ⚡ +%d" % [round(inc), max(5, level * 2)]
+	if upgrade_desc != null: upgrade_desc.text = "Upgrade the %s to increase cash earned by the restaurant." % station_name
 	
 	var icon_char = "🍳"
 	if station_id.begins_with("table"):
@@ -515,17 +562,26 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 	if upgrade_icon != null:
 		upgrade_icon.text = icon_char
 	
-	if tab_category_btn != null:
-		if station_id == "stove" or station_id == "host_desk":
-			tab_category_btn.text = "🍳 KITCHEN & STATIONS  •  🌙 Closes 11:00 PM"
-		elif station_id.begins_with("milkshake"):
-			tab_category_btn.text = "🥤 RETRO MILKSHAKE BAR  •  🌙 Opens 11:00 AM"
-		elif station_id == "jukebox":
-			tab_category_btn.text = "🎵 RETRO JUKEBOX  •  🌙 Closes 11:00 PM"
-		elif station_id.begins_with("table") and int(station_id.trim_prefix("table_")) >= 7:
-			tab_category_btn.text = "🌿 GARDEN TERRACE  •  🌙 Closes 11:00 PM"
+	# Reddish-brown header bar zone title and operating hours
+	if zone_title_label != null:
+		if station_id.begins_with("milkshake"):
+			zone_title_label.text = "🥤 Milkshake Bar"
+		elif station_id == "stove":
+			zone_title_label.text = "🍳 Kitchen"
+		elif station_id == "host_desk":
+			zone_title_label.text = "🛎️ Lobby"
+		elif station_id == "parking":
+			zone_title_label.text = "🚗 Parking"
 		else:
-			tab_category_btn.text = "🪑 DINING ROOM BOOTHS  •  🌙 Closes 11:45 PM"
+			zone_title_label.text = "🪑 Dining"
+			
+	if hours_badge_label != null:
+		if station_id.begins_with("milkshake"):
+			hours_badge_label.text = "☀️ Opens: 11:00 AM"
+		elif station_id == "parking":
+			hours_badge_label.text = "☀️ 24 Hours Open"
+		else:
+			hours_badge_label.text = "🌙 Closes: 11:00 PM"
 
 	var next_milestone = 5 if level < 5 else (10 if level < 10 else 25)
 	var prev_milestone = 1 if level < 5 else (5 if level < 10 else 10)
@@ -543,32 +599,54 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 	_open_modal(upgrade_panel)
 
 func _refresh_upgrade_tiles(gm: Node) -> void:
-	if upgrade_tiles_hbox == null or gm == null:
+	if sub_upgrade_grid == null or gm == null:
 		return
-	for c in upgrade_tiles_hbox.get_children():
+	for c in sub_upgrade_grid.get_children():
 		c.queue_free()
 
-	var all_stations = [
-		{"id": "stove", "name": "Master Stoves", "short": "Stoves", "icon": "🍳"},
-		{"id": "host_desk", "name": "Host Desk", "short": "Host", "icon": "🛎️"},
-		{"id": "table_1", "name": "Booth Table 1", "short": "Booth 1", "icon": "🪑"},
-		{"id": "table_2", "name": "Booth Table 2", "short": "Booth 2", "icon": "🪑"},
-		{"id": "table_3", "name": "Booth Table 3", "short": "Booth 3", "icon": "🪑"},
-		{"id": "table_4", "name": "Booth Table 4", "short": "Booth 4", "icon": "🪑"},
-		{"id": "table_5", "name": "Booth Table 5", "short": "Booth 5", "icon": "🪑"},
-		{"id": "table_6", "name": "Booth Table 6", "short": "Booth 6", "icon": "🪑"},
-		{"id": "table_7", "name": "Booth Table 7", "short": "Booth 7", "icon": "🪑"},
-		{"id": "table_8", "name": "Booth Table 8", "short": "Booth 8", "icon": "🪑"},
-		{"id": "table_9", "name": "Booth Table 9", "short": "Booth 9", "icon": "🪑"},
-		{"id": "milkshake_bar", "name": "Bar Top Counter", "short": "Bar Top", "icon": "🥤"},
-		{"id": "milkshake_blender", "name": "Frappe Blenders", "short": "Blender", "icon": "🍨"},
-		{"id": "jukebox", "name": "Retro Jukebox", "short": "Jukebox", "icon": "🎵"},
-		{"id": "table_10", "name": "Booth Table 10", "short": "Booth 10", "icon": "🪑"},
-		{"id": "table_11", "name": "Booth Table 11", "short": "Booth 11", "icon": "🪑"},
-		{"id": "table_12", "name": "Booth Table 12", "short": "Booth 12", "icon": "🪑"}
-	]
+	# 2-row grid with 10 sub-upgrade items (5 per row)
+	var stations_list = []
+	if current_station_id.begins_with("milkshake"):
+		stations_list = [
+			{"id": "milkshake_bar", "name": "Bar Top", "short": "Bar Top", "icon": "🥤"},
+			{"id": "milkshake_blender", "name": "Frappes", "short": "Blender", "icon": "🍨"},
+			{"id": "jukebox", "name": "Jukebox", "short": "Music", "icon": "🎵"},
+			{"id": "table_1", "name": "Booth 1", "short": "Booth 1", "icon": "🪑"},
+			{"id": "table_2", "name": "Booth 2", "short": "Booth 2", "icon": "🪑"},
+			{"id": "table_3", "name": "Booth 3", "short": "Booth 3", "icon": "🪑"},
+			{"id": "table_4", "name": "Booth 4", "short": "Booth 4", "icon": "🪑"},
+			{"id": "table_10", "name": "Planters", "short": "Decor", "icon": "🌿"},
+			{"id": "table_11", "name": "Sports TV", "short": "TV Screen", "icon": "📺"},
+			{"id": "table_12", "name": "Sound Sys", "short": "Speakers", "icon": "📻"}
+		]
+	elif current_station_id == "stove":
+		stations_list = [
+			{"id": "stove", "name": "Master Stoves", "short": "Stoves", "icon": "🍳"},
+			{"id": "host_desk", "name": "Host Desk", "short": "Host", "icon": "🛎️"},
+			{"id": "table_1", "name": "Prep Station", "short": "Prep", "icon": "🔪"},
+			{"id": "table_2", "name": "Deep Fryer", "short": "Fryer", "icon": "🍟"},
+			{"id": "table_3", "name": "Dishwasher", "short": "Dishes", "icon": "🧼"},
+			{"id": "table_4", "name": "Cold Storage", "short": "Pantry", "icon": "🧊"},
+			{"id": "table_5", "name": "Spice Rack", "short": "Spices", "icon": "🧂"},
+			{"id": "table_6", "name": "Range Hood", "short": "Vent", "icon": "💨"},
+			{"id": "table_7", "name": "Order Rack", "short": "Tickets", "icon": "🧾"},
+			{"id": "table_8", "name": "Chef Cutlery", "short": "Knives", "icon": "🍽️"}
+		]
+	else:
+		stations_list = [
+			{"id": "table_1", "name": "Booth 1", "short": "Booth 1", "icon": "🪑"},
+			{"id": "table_2", "name": "Booth 2", "short": "Booth 2", "icon": "🪑"},
+			{"id": "table_3", "name": "Booth 3", "short": "Booth 3", "icon": "🪑"},
+			{"id": "table_4", "name": "Booth 4", "short": "Booth 4", "icon": "🪑"},
+			{"id": "table_5", "name": "Booth 5", "short": "Booth 5", "icon": "🪑"},
+			{"id": "table_6", "name": "Booth 6", "short": "Booth 6", "icon": "🪑"},
+			{"id": "milkshake_bar", "name": "Bar Top", "short": "Bar Top", "icon": "🥤"},
+			{"id": "stove", "name": "Stoves", "short": "Stoves", "icon": "🍳"},
+			{"id": "host_desk", "name": "Host Desk", "short": "Host", "icon": "🛎️"},
+			{"id": "jukebox", "name": "Jukebox", "short": "Music", "icon": "🎵"}
+		]
 
-	for st in all_stations:
+	for st in stations_list:
 		var sid: String = st["id"]
 		var is_unlocked: bool = true
 		if sid.begins_with("table"):
@@ -578,29 +656,31 @@ func _refresh_upgrade_tiles(gm: Node) -> void:
 		var is_selected: bool = (sid == current_station_id)
 
 		var tile_btn = Button.new()
-		tile_btn.custom_minimum_size = Vector2(74, 58)
+		tile_btn.custom_minimum_size = Vector2(70, 52)
 		
 		var sb = StyleBoxFlat.new()
 		sb.set_corner_radius_all(10)
 		sb.content_margin_top = 4.0
 		sb.content_margin_bottom = 4.0
-		sb.content_margin_left = 6.0
-		sb.content_margin_right = 6.0
+		sb.content_margin_left = 4.0
+		sb.content_margin_right = 4.0
 		if is_selected:
-			sb.bg_color = Color(0.85, 0.38, 0.18, 1.0)
+			sb.bg_color = Color(0.62, 0.24, 0.14, 1.0)
 			sb.border_width_left = 2
 			sb.border_width_top = 2
 			sb.border_width_right = 2
 			sb.border_width_bottom = 2
-			sb.border_color = Color(1.0, 0.88, 0.35, 1.0)
+			sb.border_color = Color(1.0, 1.0, 1.0, 1.0)
+			sb.shadow_color = Color(1.0, 0.8, 0.3, 0.4)
+			sb.shadow_size = 4
 		else:
-			sb.bg_color = Color(0.52, 0.20, 0.12, 0.95)
-			sb.border_width_bottom = 3
-			sb.border_color = Color(0.35, 0.12, 0.08, 1.0)
+			sb.bg_color = Color(0.42, 0.16, 0.10, 1.0)
+			sb.border_width_bottom = 2
+			sb.border_color = Color(0.28, 0.10, 0.06, 1.0)
 		tile_btn.add_theme_stylebox_override("normal", sb)
 
-		var badge_str = "Lv. %d" % lvl if is_unlocked else "🔒 LOCK"
-		tile_btn.text = "%s\n%s\n%s" % [st["icon"], st["short"], badge_str]
+		var badge_str = "MAX" if lvl >= gm.max_level else ("Lv. %d" % lvl if is_unlocked else "🔒 Lock")
+		tile_btn.text = "%s %s\n%s" % [st["icon"], st["short"], badge_str]
 		tile_btn.add_theme_font_size_override("font_size", 10)
 		tile_btn.add_theme_color_override("font_color", Color(1, 1, 1, 1) if is_unlocked else Color(0.7, 0.7, 0.7, 0.7))
 
@@ -608,7 +688,7 @@ func _refresh_upgrade_tiles(gm: Node) -> void:
 			_play_click_sfx()
 			open_upgrade(sid, st["name"], lvl)
 		)
-		upgrade_tiles_hbox.add_child(tile_btn)
+		sub_upgrade_grid.add_child(tile_btn)
 
 func _set_multiplier(mode: String) -> void:
 	_play_click_sfx()
@@ -622,13 +702,16 @@ func _refresh_upgrade_btn() -> void:
 	var gm = get_node_or_null("/root/GameManager")
 	if gm == null or current_station_id == "" or upgrade_btn == null:
 		return
+	var lvl = gm.get_station_level(current_station_id)
 	var info = gm.get_upgrade_multi_info(current_station_id, current_multiplier)
-	if info.levels <= 0:
-		upgrade_btn.text = "MAX LEVEL REACHED"
+	if lvl >= gm.max_level or info.levels <= 0:
+		upgrade_btn.text = "MAX LEVEL UPGRADE"
 		upgrade_btn.disabled = true
+		if upgrade_max_badge != null: upgrade_max_badge.visible = true
 	else:
-		upgrade_btn.text = "UPGRADE +%d LVL  ($%d)" % [info.levels, round(info.cost)]
+		upgrade_btn.text = "UPGRADE +%d LVL\n($%d)" % [info.levels, round(info.cost)]
 		upgrade_btn.disabled = not info.can_afford
+		if upgrade_max_badge != null: upgrade_max_badge.visible = false
 
 func _on_upgrade_pressed() -> void:
 	_play_click_sfx()
@@ -640,11 +723,9 @@ func _on_station_upgraded(station_id: String, new_lvl: int) -> void:
 	if station_id == current_station_id and upgrade_panel != null and upgrade_panel.visible:
 		var gm = get_node_or_null("/root/GameManager")
 		if gm != null:
-			if upgrade_tier != null: upgrade_tier.text = gm.get_station_tier_title(station_id, new_lvl)
 			if upgrade_level != null: upgrade_level.text = "Level %d / %d" % [new_lvl, gm.max_level]
 			var inc = gm.get_station_income(station_id)
-			if upgrade_income != null: upgrade_income.text = "Income: +$%d / customer" % round(inc)
-			if upgrade_next_unlock != null: upgrade_next_unlock.text = gm.get_next_tier_desc(station_id, new_lvl)
+			if upgrade_income != null: upgrade_income.text = "💵 +$%d / cust   ⚡ +%d" % [round(inc), max(5, new_lvl * 2)]
 			if upgrade_milestone_bar != null: upgrade_milestone_bar.value = new_lvl
 			_refresh_upgrade_btn()
 			_refresh_upgrade_tiles(gm)

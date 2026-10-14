@@ -223,19 +223,201 @@ content_margin_right = 14.0
 content_margin_bottom = 6.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_milestone_track"]
-bg_color = Color(0.08, 0.12, 0.18, 0.92)
+bg_color = Color(0.12, 0.15, 0.20, 0.98)
+border_width_bottom = 2
+border_color = Color(0.08, 0.10, 0.14, 1)
+content_margin_left = 12.0
+content_margin_top = 2.0
+content_margin_right = 12.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_blue_progress_fill"]
+bg_color = Color(0.24, 0.58, 0.88, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_avatar_purple"]
+bg_color = Color(0.18, 0.10, 0.28, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 3
+border_color = Color(0.72, 0.32, 0.95, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+shadow_color = Color(0.65, 0.25, 0.95, 0.3)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pill_blue_energy"]
+bg_color = Color(0.08, 0.14, 0.22, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 3
+border_color = Color(0.25, 0.75, 1.0, 0.9)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+shadow_color = Color(0.15, 0.65, 0.9, 0.25)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pill_clock"]
+bg_color = Color(0.10, 0.12, 0.16, 0.94)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.25, 0.38, 0.52, 0.8)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+border_width_bottom = 2
+border_color = Color(0.35, 0.40, 0.50, 0.8)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 10.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pill_live"]
+bg_color = Color(0.08, 0.16, 0.12, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 3
+border_color = Color(0.25, 0.88, 0.45, 0.9)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 10.0
+content_margin_bottom = 6.0
+shadow_color = Color(0.1, 0.8, 0.3, 0.25)
+shadow_size = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ribbon_red"]
+bg_color = Color(0.38, 0.08, 0.08, 0.94)
+border_width_left = 3
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.95, 0.25, 0.25, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 10.0
+content_margin_top = 4.0
+content_margin_right = 10.0
+content_margin_bottom = 4.0
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ribbon_green"]
+bg_color = Color(0.08, 0.32, 0.14, 0.94)
+border_width_left = 3
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.25, 0.95, 0.45, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 10.0
+content_margin_top = 4.0
+content_margin_right = 10.0
+content_margin_bottom = 4.0
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_header_burgundy"]
+bg_color = Color(0.55, 0.15, 0.12, 1.0)
+border_width_top = 1
+border_width_bottom = 2
+border_color = Color(0.75, 0.25, 0.18, 1.0)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 content_margin_left = 16.0
-content_margin_top = 2.0
+content_margin_top = 6.0
 content_margin_right = 16.0
+content_margin_bottom = 6.0
+shadow_color = Color(0, 0, 0, 0.25)
+shadow_size = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sub_tile"]
+bg_color = Color(0.42, 0.16, 0.10, 1.0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.65, 0.28, 0.18, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+shadow_color = Color(0, 0, 0, 0.25)
+shadow_size = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sub_tile_selected"]
+bg_color = Color(0.62, 0.24, 0.14, 1.0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 3
+border_color = Color(1.0, 1.0, 1.0, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+shadow_color = Color(1, 0.8, 0.3, 0.4)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_max_grey"]
+bg_color = Color(0.45, 0.48, 0.54, 1.0)
+border_width_bottom = 3
+border_color = Color(0.32, 0.35, 0.40, 1.0)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_badge_blue_max"]
+bg_color = Color(0.18, 0.58, 0.95, 1.0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 8.0
+content_margin_top = 2.0
+content_margin_right = 8.0
 content_margin_bottom = 2.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_floating_boost"]
@@ -334,6 +516,14 @@ content_margin_top = 8.0
 content_margin_right = 16.0
 content_margin_bottom = 10.0
 shadow_color = Color(0, 0, 0, 0.5)
+
+[sub_resource type="Gradient" id="Gradient_orange_gold"]
+colors = PackedColorArray(0.93, 0.42, 0.18, 0.98, 0.98, 0.74, 0.24, 0.98)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_orange_gold"]
+gradient = SubResource("Gradient_orange_gold")
+fill_to = Vector2(0, 1)
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stats_ribbon"]
 bg_color = Color(0.38, 0.12, 0.08, 0.95)
 border_width_bottom = 1
@@ -408,12 +598,21 @@ mouse_filter = 2
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_left = 260.0
-offset_top = 6.0
-offset_right = -160.0
-offset_bottom = 26.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 20.0
 grow_horizontal = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_milestone_track")
+
+[node name="FillBar" type="ProgressBar" parent="HUD/StarMilestoneBar"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_xp_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_blue_progress_fill")
+max_value = 100.0
+value = 65.0
+show_percentage = false
 
 [node name="HBox" type="HBoxContainer" parent="HUD/StarMilestoneBar"]
 layout_mode = 2
@@ -422,7 +621,7 @@ alignment = 1
 [node name="Star1" type="Label" parent="HUD/StarMilestoneBar/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.88, 0.2, 1)
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
 theme_override_font_sizes/font_size = 11
 text = "★ Star 1"
 horizontal_alignment = 1
@@ -430,7 +629,7 @@ horizontal_alignment = 1
 [node name="Star2" type="Label" parent="HUD/StarMilestoneBar/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.88, 0.2, 1)
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
 theme_override_font_sizes/font_size = 11
 text = "★ Star 2"
 horizontal_alignment = 1
@@ -438,7 +637,7 @@ horizontal_alignment = 1
 [node name="Star3" type="Label" parent="HUD/StarMilestoneBar/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.88, 0.2, 1)
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
 theme_override_font_sizes/font_size = 11
 text = "★ Star 3"
 horizontal_alignment = 1
@@ -446,7 +645,7 @@ horizontal_alignment = 1
 [node name="Star4" type="Label" parent="HUD/StarMilestoneBar/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.88, 0.2, 1)
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
 theme_override_font_sizes/font_size = 11
 text = "★ Star 4"
 horizontal_alignment = 1
@@ -454,7 +653,7 @@ horizontal_alignment = 1
 [node name="Star5" type="Label" parent="HUD/StarMilestoneBar/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.7, 0.82, 0.95, 1)
+theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
 theme_override_font_sizes/font_size = 11
 text = "★ Grand Diner"
 horizontal_alignment = 1
@@ -463,51 +662,34 @@ horizontal_alignment = 1
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_left = 16.0
-offset_top = 30.0
-offset_right = -16.0
-offset_bottom = 86.0
+offset_left = 12.0
+offset_top = 24.0
+offset_right = -12.0
+offset_bottom = 78.0
 grow_horizontal = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 8
 
 [node name="ProfilePanel" type="PanelContainer" parent="HUD/TopBar"]
+custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_pill_profile")
+theme_override_styles/panel = SubResource("StyleBoxFlat_avatar_purple")
 
 [node name="VBox" type="VBoxContainer" parent="HUD/TopBar/ProfilePanel"]
 layout_mode = 2
-theme_override_constants/separation = 2
+alignment = 1
 
-[node name="RestNameLabel" type="Label" parent="HUD/TopBar/ProfilePanel/VBox"]
+[node name="AvatarLabel" type="Label" parent="HUD/TopBar/ProfilePanel/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 14
-text = "Idle Diner"
+theme_override_font_sizes/font_size = 20
+text = "👩‍🍳"
+horizontal_alignment = 1
 
-[node name="HBox" type="HBoxContainer" parent="HUD/TopBar/ProfilePanel/VBox"]
+[node name="LevelLabel" type="Label" parent="HUD/TopBar/ProfilePanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="StarLabel" type="Label" parent="HUD/TopBar/ProfilePanel/VBox/HBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.88, 0.25, 1)
-theme_override_font_sizes/font_size = 13
-text = "★ 4.8"
-
-[node name="LevelLabel" type="Label" parent="HUD/TopBar/ProfilePanel/VBox/HBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.85, 1, 1)
-theme_override_font_sizes/font_size = 13
-text = "Lv. 1"
-
-[node name="XPBar" type="ProgressBar" parent="HUD/TopBar/ProfilePanel/VBox"]
-custom_minimum_size = Vector2(140, 6)
-layout_mode = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_xp_bg")
-theme_override_styles/fill = SubResource("StyleBoxFlat_xp_fill")
-max_value = 250.0
-value = 50.0
-show_percentage = false
+theme_override_colors/font_color = Color(1, 0.9, 0.4, 1)
+theme_override_font_sizes/font_size = 9
+text = "Lv. 12"
+horizontal_alignment = 1
 
 [node name="CashPanel" type="PanelContainer" parent="HUD/TopBar"]
 layout_mode = 2
@@ -515,11 +697,11 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_pill_green")
 
 [node name="HBox" type="HBoxContainer" parent="HUD/TopBar/CashPanel"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="Icon" type="Label" parent="HUD/TopBar/CashPanel/HBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 20
 text = "💵"
 
 [node name="VBox" type="VBoxContainer" parent="HUD/TopBar/CashPanel/HBox"]
@@ -529,14 +711,40 @@ theme_override_constants/separation = 0
 [node name="CashLabel" type="Label" parent="HUD/TopBar/CashPanel/HBox/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.35, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 18
-text = "$650"
+theme_override_font_sizes/font_size = 16
+text = "$119.8K"
 
 [node name="RateLabel" type="Label" parent="HUD/TopBar/CashPanel/HBox/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65, 0.95, 0.75, 0.9)
-theme_override_font_sizes/font_size = 11
-text = "+$0/s"
+theme_override_font_sizes/font_size = 10
+text = "📈 +$6.22K/s"
+
+[node name="EnergyPanel" type="PanelContainer" parent="HUD/TopBar"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_pill_blue_energy")
+
+[node name="HBox" type="HBoxContainer" parent="HUD/TopBar/EnergyPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Icon" type="Label" parent="HUD/TopBar/EnergyPanel/HBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "⚡"
+
+[node name="EnergyLabel" type="Label" parent="HUD/TopBar/EnergyPanel/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.92, 1, 1)
+theme_override_font_sizes/font_size = 15
+text = "833/880"
+
+[node name="AddEnergyBtn" type="Button" parent="HUD/TopBar/EnergyPanel/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_mini_plus")
+text = "+"
 
 [node name="GemPanel" type="PanelContainer" parent="HUD/TopBar"]
 layout_mode = 2
@@ -544,25 +752,64 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_pill_purple")
 
 [node name="HBox" type="HBoxContainer" parent="HUD/TopBar/GemPanel"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="Icon" type="Label" parent="HUD/TopBar/GemPanel/HBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 18
 text = "💎"
 
 [node name="GemLabel" type="Label" parent="HUD/TopBar/GemPanel/HBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.65, 1, 1)
-theme_override_font_sizes/font_size = 18
-text = "50"
+theme_override_font_sizes/font_size = 15
+text = "20,141"
 
 [node name="AddGemBtn" type="Button" parent="HUD/TopBar/GemPanel/HBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_mini_plus")
 text = "+"
+
+[node name="ClockPanel" type="PanelContainer" parent="HUD/TopBar"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_pill_clock")
+
+[node name="HBox" type="HBoxContainer" parent="HUD/TopBar/ClockPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Icon" type="Label" parent="HUD/TopBar/ClockPanel/HBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🕒"
+
+[node name="ClockLabel" type="Label" parent="HUD/TopBar/ClockPanel/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.92, 0.96, 1)
+theme_override_font_sizes/font_size = 13
+text = "08:34 AM"
+
+[node name="LivePanel" type="PanelContainer" parent="HUD/TopBar"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_pill_live")
+
+[node name="HBox" type="HBoxContainer" parent="HUD/TopBar/LivePanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="LiveDot" type="Label" parent="HUD/TopBar/LivePanel/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.25, 0.95, 0.45, 1)
+theme_override_font_sizes/font_size = 12
+text = "●"
+
+[node name="LiveLabel" type="Label" parent="HUD/TopBar/LivePanel/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 1, 0.9, 1)
+theme_override_font_sizes/font_size = 12
+text = "Live"
 
 [node name="Spacer" type="Control" parent="HUD/TopBar"]
 layout_mode = 2
@@ -571,23 +818,61 @@ size_flags_horizontal = 3
 [node name="BoostBtn" type="Button" parent="HUD/TopBar"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12, 0.08, 0.02, 1)
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 14
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_boost")
 text = "⚡ 2X RUSH"
 
 [node name="MapBtn" type="Button" parent="HUD/TopBar"]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_map")
 text = "🌍 MAP"
 
+[node name="StatusRibbons" type="VBoxContainer" parent="HUD"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 84.0
+offset_right = 210.0
+offset_bottom = 176.0
+theme_override_constants/separation = 4
+
+[node name="RibbonMarketing" type="PanelContainer" parent="HUD/StatusRibbons"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_ribbon_red")
+
+[node name="Label" type="Label" parent="HUD/StatusRibbons/RibbonMarketing"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.72, 0.72, 1)
+theme_override_font_sizes/font_size = 11
+text = "📉 - 50 Marketing"
+
+[node name="RibbonParking" type="PanelContainer" parent="HUD/StatusRibbons"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_ribbon_green")
+
+[node name="Label" type="Label" parent="HUD/StatusRibbons/RibbonParking"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 1, 0.75, 1)
+theme_override_font_sizes/font_size = 11
+text = "📈 + 25,830 Parking"
+
+[node name="RibbonCleaning" type="PanelContainer" parent="HUD/StatusRibbons"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_ribbon_red")
+
+[node name="Label" type="Label" parent="HUD/StatusRibbons/RibbonCleaning"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.72, 0.72, 1)
+theme_override_font_sizes/font_size = 11
+text = "🧹 - 300 Cleaning"
+
 [node name="QuestBanner" type="PanelContainer" parent="HUD"]
 layout_mode = 0
-offset_left = 16.0
-offset_top = 96.0
-offset_right = 320.0
-offset_bottom = 156.0
+offset_left = 14.0
+offset_top = 186.0
+offset_right = 310.0
+offset_bottom = 244.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_quest_card")
 
 [node name="HBox" type="HBoxContainer" parent="HUD/QuestBanner"]
@@ -748,42 +1033,56 @@ anchor_left = 1.0
 anchor_top = 0.5
 anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = -66.0
-offset_top = -140.0
+offset_left = -62.0
+offset_top = -158.0
 offset_right = -16.0
-offset_bottom = 140.0
+offset_bottom = 158.0
 grow_horizontal = 0
 grow_vertical = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 8
 alignment = 1
 
 [node name="SideMapBtn" type="Button" parent="HUD/RightDock"]
-custom_minimum_size = Vector2(48, 48)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")
 text = "🌍"
 
+[node name="SideAdBtn" type="Button" parent="HUD/RightDock"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")
+text = "📺"
+
+[node name="SideSettingsBtn" type="Button" parent="HUD/RightDock"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")
+text = "⚙️"
+
+[node name="SideLightbulbBtn" type="Button" parent="HUD/RightDock"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")
+text = "💡"
+
+[node name="SideStatsBtn" type="Button" parent="HUD/RightDock"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")
+text = "📊"
+
 [node name="SideStaffBtn" type="Button" parent="HUD/RightDock"]
-custom_minimum_size = Vector2(48, 48)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")
-text = "👥"
-
-[node name="SideMenuBtn" type="Button" parent="HUD/RightDock"]
-custom_minimum_size = Vector2(48, 48)
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")
-text = "🍽️"
-
-[node name="SidePromoBtn" type="Button" parent="HUD/RightDock"]
-custom_minimum_size = Vector2(48, 48)
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")
-text = "📢"
+text = "🔨"
 
 [node name="UpgradePanel" type="PanelContainer" parent="."]
 visible = false
@@ -793,12 +1092,18 @@ anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -390.0
-offset_top = -375.0
+offset_top = -455.0
 offset_right = 390.0
-offset_bottom = -8.0
+offset_bottom = -10.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_bottom_sheet")
+
+[node name="GradientBg" type="TextureRect" parent="UpgradePanel"]
+layout_mode = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_orange_gold")
+expand_mode = 1
 
 [node name="VBox" type="VBoxContainer" parent="UpgradePanel"]
 layout_mode = 2
@@ -812,16 +1117,8 @@ theme_override_constants/separation = 8
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
-text = "← UPGRADES"
-
-[node name="TabCategoryBtn" type="Button" parent="UpgradePanel/VBox/TopTabsHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.95, 0.85, 1)
-theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_active")
-text = "🍳 KITCHEN & DINING  •  🌙 Closes 11:00 PM"
+text = "← UPGRADES"
 
 [node name="TabStaffBtn" type="Button" parent="UpgradePanel/VBox/TopTabsHBox"]
 layout_mode = 2
@@ -830,20 +1127,47 @@ theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
 text = "👥 STAFF"
 
+[node name="Spacer" type="Control" parent="UpgradePanel/VBox/TopTabsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
 [node name="CloseBtn" type="Button" parent="UpgradePanel/VBox/TopTabsHBox"]
 custom_minimum_size = Vector2(34, 30)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
 text = "✕"
 
+[node name="HeaderBar" type="PanelContainer" parent="UpgradePanel/VBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_header_burgundy")
+
+[node name="HBox" type="HBoxContainer" parent="UpgradePanel/VBox/HeaderBar"]
+layout_mode = 2
+
+[node name="ZoneTitle" type="Label" parent="UpgradePanel/VBox/HeaderBar/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "🥤 Retro Milkshake Bar"
+
+[node name="Spacer" type="Control" parent="UpgradePanel/VBox/HeaderBar/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HoursBadge" type="Label" parent="UpgradePanel/VBox/HeaderBar/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.88, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "🌙 Closes: 11:00 PM"
+
 [node name="MilestoneBar" type="ProgressBar" parent="UpgradePanel/VBox"]
 custom_minimum_size = Vector2(0, 14)
 layout_mode = 2
 theme_override_styles/background = SubResource("StyleBoxFlat_xp_bg")
 theme_override_styles/fill = SubResource("StyleBoxFlat_cyan_fill")
-min_value = 1.0
-max_value = 5.0
-value = 1.0
+min_value = 0.0
+max_value = 100.0
+value = 100.0
 show_percentage = false
 
 [node name="StatsRibbon" type="PanelContainer" parent="UpgradePanel/VBox"]
@@ -857,19 +1181,19 @@ alignment = 1
 
 [node name="CashStat" type="Label" parent="UpgradePanel/VBox/StatsRibbon/HBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 1.0, 0.55, 1)
+theme_override_colors/font_color = Color(0.4, 1, 0.55, 1)
 theme_override_font_sizes/font_size = 13
-text = "💵 $4.13T"
+text = "💵 $8.51T"
 
 [node name="EnergyStat" type="Label" parent="UpgradePanel/VBox/StatsRibbon/HBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1.0, 0.88, 0.25, 1)
+theme_override_colors/font_color = Color(1, 0.88, 0.25, 1)
 theme_override_font_sizes/font_size = 13
 text = "⚡ 50"
 
 [node name="GemStat" type="Label" parent="UpgradePanel/VBox/StatsRibbon/HBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.85, 1.0, 1)
+theme_override_colors/font_color = Color(0.4, 0.85, 1, 1)
 theme_override_font_sizes/font_size = 13
 text = "💎 6"
 
@@ -877,98 +1201,107 @@ text = "💎 6"
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_white_card")
 
-[node name="HBox" type="HBoxContainer" parent="UpgradePanel/VBox/StationCard"]
+[node name="VBox" type="VBoxContainer" parent="UpgradePanel/VBox/StationCard"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HeaderHBox" type="HBoxContainer" parent="UpgradePanel/VBox/StationCard/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="UpgradePanel/VBox/StationCard/VBox/HeaderHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.14, 0.2, 1)
+theme_override_font_sizes/font_size = 15
+text = "Bar Top"
+
+[node name="LevelBadge" type="Label" parent="UpgradePanel/VBox/StationCard/VBox/HeaderHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
+theme_override_font_sizes/font_size = 12
+text = "Level 200"
+
+[node name="Spacer" type="Control" parent="UpgradePanel/VBox/StationCard/VBox/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MaxBadge" type="Label" parent="UpgradePanel/VBox/StationCard/VBox/HeaderHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_badge_blue_max")
+text = "MAX"
+
+[node name="BodyHBox" type="HBoxContainer" parent="UpgradePanel/VBox/StationCard/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="IconLabel" type="Label" parent="UpgradePanel/VBox/StationCard/HBox"]
-custom_minimum_size = Vector2(50, 50)
+[node name="IconLabel" type="Label" parent="UpgradePanel/VBox/StationCard/VBox/BodyHBox"]
+custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
-text = "🍳"
+text = "🥤"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="InfoVBox" type="VBoxContainer" parent="UpgradePanel/VBox/StationCard/HBox"]
+[node name="InfoVBox" type="VBoxContainer" parent="UpgradePanel/VBox/StationCard/VBox/BodyHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
 
-[node name="TitleLabel" type="Label" parent="UpgradePanel/VBox/StationCard/HBox/InfoVBox"]
+[node name="DescLabel" type="Label" parent="UpgradePanel/VBox/StationCard/VBox/BodyHBox/InfoVBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.12, 0.14, 0.2, 1)
-theme_override_font_sizes/font_size = 16
-text = "Master Range Stoves"
-
-[node name="TierBadgeLabel" type="Label" parent="UpgradePanel/VBox/StationCard/HBox/InfoVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.45, 0.1, 1)
-theme_override_font_sizes/font_size = 12
-text = "★ TIER 1 • RUSTIC PINE"
-
-[node name="LevelLabel" type="Label" parent="UpgradePanel/VBox/StationCard/HBox/InfoVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.35, 0.4, 0.5, 1)
-theme_override_font_sizes/font_size = 12
-text = "Level 1 / 25"
-
-[node name="IncomeLabel" type="Label" parent="UpgradePanel/VBox/StationCard/HBox/InfoVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.12, 0.65, 0.25, 1)
-theme_override_font_sizes/font_size = 13
-text = "Income: +$59 / customer"
-
-[node name="NextUnlockLabel" type="Label" parent="UpgradePanel/VBox/StationCard/HBox/InfoVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.45, 0.5, 0.6, 1)
+theme_override_colors/font_color = Color(0.35, 0.38, 0.45, 1)
 theme_override_font_sizes/font_size = 11
-text = "Next: Lv. 5 unlocks Linen Cloth & Wine"
+text = "Upgrade the Bar Top to increase cash earned by the bar."
 autowrap_mode = 2
 
-[node name="ControlsVBox" type="VBoxContainer" parent="UpgradePanel/VBox/StationCard/HBox"]
+[node name="IncomeLabel" type="Label" parent="UpgradePanel/VBox/StationCard/VBox/BodyHBox/InfoVBox"]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_colors/font_color = Color(0.12, 0.65, 0.25, 1)
+theme_override_font_sizes/font_size = 12
+text = "💵 +$1,158/cust   ⚡ +15"
+
+[node name="ControlsVBox" type="VBoxContainer" parent="UpgradePanel/VBox/StationCard/VBox/BodyHBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
 alignment = 1
 
-[node name="MultiHBox" type="HBoxContainer" parent="UpgradePanel/VBox/StationCard/HBox/ControlsVBox"]
+[node name="MultiHBox" type="HBoxContainer" parent="UpgradePanel/VBox/StationCard/VBox/BodyHBox/ControlsVBox"]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 4
 alignment = 1
 
-[node name="Multi1Btn" type="Button" parent="UpgradePanel/VBox/StationCard/HBox/ControlsVBox/MultiHBox"]
+[node name="Multi1Btn" type="Button" parent="UpgradePanel/VBox/StationCard/VBox/BodyHBox/ControlsVBox/MultiHBox"]
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_multi_btn")
 text = "1x"
 
-[node name="Multi10Btn" type="Button" parent="UpgradePanel/VBox/StationCard/HBox/ControlsVBox/MultiHBox"]
+[node name="Multi10Btn" type="Button" parent="UpgradePanel/VBox/StationCard/VBox/BodyHBox/ControlsVBox/MultiHBox"]
 modulate = Color(0.65, 0.7, 0.8, 0.7)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_multi_btn")
 text = "10x"
 
-[node name="MultiMaxBtn" type="Button" parent="UpgradePanel/VBox/StationCard/HBox/ControlsVBox/MultiHBox"]
+[node name="MultiMaxBtn" type="Button" parent="UpgradePanel/VBox/StationCard/VBox/BodyHBox/ControlsVBox/MultiHBox"]
 modulate = Color(0.65, 0.7, 0.8, 0.7)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_multi_btn")
 text = "MAX"
 
-[node name="UpgradeBtn" type="Button" parent="UpgradePanel/VBox/StationCard/HBox/ControlsVBox"]
-custom_minimum_size = Vector2(170, 44)
+[node name="UpgradeBtn" type="Button" parent="UpgradePanel/VBox/StationCard/VBox/BodyHBox/ControlsVBox"]
+custom_minimum_size = Vector2(170, 40)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn_green_3d")
-text = "UPGRADE +1 LVL\n($90)"
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_max_grey")
+text = "MAX LEVEL UPGRADE"
 
-[node name="TilesScroll" type="ScrollContainer" parent="UpgradePanel/VBox"]
-custom_minimum_size = Vector2(0, 68)
+[node name="SubUpgradeGrid" type="GridContainer" parent="UpgradePanel/VBox"]
 layout_mode = 2
-vertical_scroll_mode = 0
-
-[node name="TilesHBox" type="HBoxContainer" parent="UpgradePanel/VBox/TilesScroll"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
+columns = 5
 
 [node name="DiningPanel" type="PanelContainer" parent="."]
 visible = false

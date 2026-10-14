@@ -20,6 +20,10 @@ class GameState extends ChangeNotifier {
 
   double get prestigeMultiplier => 1.0 + (prestigeStars * 0.25);
   double get totalRevenueMultiplier => revenueMultiplier * prestigeMultiplier;
+  double get cashPerSecond =>
+      stations.fold(0.0, (sum, s) => sum + (s.actionDuration > 0 ? s.income / s.actionDuration : 0.0)) *
+      totalRevenueMultiplier;
+  void triggerVipEvent() => _triggerVipEvent();
   bool get canPrestige => totalEarned >= 15000.0;
 
   int get starsToEarnOnPrestige {
