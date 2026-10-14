@@ -195,17 +195,17 @@ transform = Transform3D(0, 0, 0.75, 0, 0.75, 0, -0.75, 0, 0, -0.68, 0, 0)
 [node name="CompanionDiners" type="Node3D" parent="."]
 
 [node name="DinerNorth" parent="CompanionDiners" instance=ExtResource("12_char_north")]
-transform = Transform3D(-0.9, 0, 0, 0, 0.9, 0, 0, 0, -0.9, 0, 0.05, -0.68)
+transform = Transform3D(-0.9, 0, 0, 0, 0.9, 0, 0, 0, -0.9, 0, 0.36, -0.68)
 script = ExtResource("15_decor_char")
 anim_name = "sit"
 
 [node name="DinerSouth" parent="CompanionDiners" instance=ExtResource("13_char_south")]
-transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0.05, 0.68)
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0.36, 0.68)
 script = ExtResource("15_decor_char")
 anim_name = "sit"
 
 [node name="SeatMarker" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0.68)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.36, 0.68)
 
 [node name="TableMenu" parent="." instance=ExtResource("5_menu")]
 transform = Transform3D(0.38, 0, 0, 0, 0.38, 0, 0, 0, 0.38, 0.06, 0.73, -0.1)

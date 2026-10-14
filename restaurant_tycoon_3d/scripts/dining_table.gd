@@ -58,6 +58,8 @@ func _ready() -> void:
 		if chair_east != null: chair_east.visible = true
 		if chair_west != null: chair_west.visible = true
 	else:
+		if booth_decor != null: booth_decor.visible = true
+		if companion_diners != null: companion_diners.visible = true
 		if terrace_decor != null: terrace_decor.visible = false
 		if chair_north != null: chair_north.visible = false
 		if chair_south != null: chair_south.visible = false
@@ -87,7 +89,7 @@ func _ready() -> void:
 		gm.cash_changed.connect(_on_cash_changed)
 		is_unlocked = gm.is_table_unlocked(table_id)
 		if is_unlocked:
-			update_level_display(gm.get_station_level(table_id))
+			_set_unlocked_visual(gm.get_station_level(table_id))
 		else:
 			_set_locked_visual(gm.get_table_unlock_cost(table_id))
 
@@ -148,12 +150,64 @@ func _set_locked_visual(cost: float) -> void:
 		action_badge.text = "TAP TO UNLOCK ($%d)" % round(cost)
 		action_badge.modulate = Color(0.35, 1.0, 0.55) if can_afford else Color(1.0, 0.45, 0.45)
 
+const BOOTH_CHARACTERS: Dictionary = {
+	"table_1": ["res://assets/models/characters/character-female-a.glb", "res://assets/models/characters/character-male-b.glb"],
+	"table_2": ["res://assets/models/characters/character-male-c.glb", "res://assets/models/characters/character-female-b.glb"],
+	"table_3": ["res://assets/models/characters/character-female-c.glb", "res://assets/models/characters/character-male-d.glb"],
+	"table_4": ["res://assets/models/characters/character-male-a.glb", "res://assets/models/characters/character-female-d.glb"],
+	"table_5": ["res://assets/models/characters/character-female-e.glb", "res://assets/models/characters/character-male-e.glb"],
+	"table_6": ["res://assets/models/characters/character-male-f.glb", "res://assets/models/characters/character-female-f.glb"]
+}
+
+var _booth_chars_setup: bool = false
+
+func _setup_unique_booth_pair() -> void:
+	if _booth_chars_setup or is_terrace_table or companion_diners == null:
+		return
+	_booth_chars_setup = true
+	var pair = BOOTH_CHARACTERS.get(table_id, [])
+	if pair.size() < 2:
+		return
+	
+	var north_scn = load(pair[0])
+	if north_scn != null:
+		var old_n = companion_diners.get_node_or_null("DinerNorth")
+		if old_n != null:
+			old_n.queue_free()
+		var new_n = north_scn.instantiate()
+		new_n.name = "DinerNorth"
+		new_n.position = Vector3(0, 0.36, -0.68)
+		new_n.rotation_degrees = Vector3(0, 180, 0)
+		new_n.scale = Vector3(0.9, 0.9, 0.9)
+		new_n.set_script(load("res://scripts/decor_character.gd"))
+		new_n.set("anim_name", "sit")
+		companion_diners.add_child(new_n)
+		
+	var south_scn = load(pair[1])
+	if south_scn != null:
+		var old_s = companion_diners.get_node_or_null("DinerSouth")
+		if old_s != null:
+			old_s.queue_free()
+		var new_s = south_scn.instantiate()
+		new_s.name = "DinerSouth"
+		new_s.position = Vector3(0, 0.36, 0.68)
+		new_s.rotation_degrees = Vector3(0, 0, 0)
+		new_s.scale = Vector3(0.9, 0.9, 0.9)
+		new_s.set_script(load("res://scripts/decor_character.gd"))
+		new_s.set("anim_name", "sit")
+		companion_diners.add_child(new_s)
+
 func _set_unlocked_visual(lvl: int) -> void:
 	is_unlocked = true
 	visible = true
 	if table_mesh != null: table_mesh.visible = true
 	if booth_decor != null: booth_decor.visible = not is_terrace_table
-	if companion_diners != null: companion_diners.visible = not is_terrace_table
+	if companion_diners != null:
+		companion_diners.visible = not is_terrace_table
+		var dn = companion_diners.get_node_or_null("DinerNorth")
+		if dn != null: dn.visible = true
+		var ds = companion_diners.get_node_or_null("DinerSouth")
+		if ds != null and not is_occupied: ds.visible = true
 	if terrace_decor != null: terrace_decor.visible = is_terrace_table
 	var show_chairs: bool = is_terrace_table
 	if chair_north != null: chair_north.visible = show_chairs
@@ -167,6 +221,9 @@ func _set_unlocked_visual(lvl: int) -> void:
 	if pepper_shaker != null: pepper_shaker.visible = true
 	if pendant_lamp != null: pendant_lamp.visible = not is_terrace_table
 	if table_omni_light != null: table_omni_light.visible = true
+	if not is_terrace_table and food_dish != null:
+		food_dish.visible = true
+	_setup_unique_booth_pair()
 	update_level_display(lvl)
 
 func update_level_display(lvl: int) -> void:
