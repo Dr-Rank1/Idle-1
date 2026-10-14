@@ -265,6 +265,7 @@ func _setup_custom_textures() -> void:
 	_setup_kitchen_fidelity()
 	_setup_breakroom_fidelity()
 	_setup_manager_office_fidelity()
+	_setup_courtyard_fidelity()
 
 func _setup_lounge_fidelity() -> void:
 	var rec_room = find_child("ReceptionRoom", true, false)
@@ -830,10 +831,26 @@ func spawn_customer_from_car(car_exit_pos: Vector3) -> Node3D:
 	cust.table_ref = free_table
 	
 	cust.current_state = cust.State.WALKING_TO_HOST
-	var sidewalk_pt = Vector3(car_exit_pos.x, 0.0, 11.2)
-	cust.set_waypoints([sidewalk_pt, cust.DOOR_POS, cust.HOST_POS])
+	var sidewalk_pt = Vector3(car_exit_pos.x, 0.0, 13.8)
+	var walkway_entry = Vector3(-1.5, 0.0, 13.8)
+	var walkway_approach = Vector3(-1.5, 0.0, 11.5)
+	cust.set_waypoints([sidewalk_pt, walkway_entry, walkway_approach, cust.DOOR_POS, cust.HOST_POS])
 	cust.order_placed.connect(_on_customer_order_placed)
 	return cust
+
+func _setup_courtyard_fidelity() -> void:
+	var courtyard = find_child("EntranceCourtyard", true, false)
+	if courtyard == null:
+		return
+
+	var warm_wood = StandardMaterial3D.new()
+	warm_wood.albedo_color = Color(0.48, 0.28, 0.16, 1.0)
+	warm_wood.roughness = 0.5
+
+	for b_name in ["CourtyardBenchWest", "CourtyardBenchEast"]:
+		var bench = courtyard.get_node_or_null(b_name)
+		if bench != null:
+			_apply_material_to_node(bench, warm_wood)
 
 func _setup_breakroom_fidelity() -> void:
 	var breakroom = find_child("StaffBreakroom", true, false)

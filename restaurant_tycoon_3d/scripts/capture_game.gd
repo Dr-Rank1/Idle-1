@@ -40,4 +40,12 @@ func _init():
 	var img_exp = root.get_viewport().get_texture().get_image()
 	img_exp.save_png("c:/Users/Ian/Documents/Apps/Idle-1/expansion_view.png")
 
+	# Focus camera on parking lot to capture exterior, parking bays, courtyard, and helipad
+	if cam != null and cam.has_method("focus_zone"):
+		cam.focus_zone("parking")
+	for i in range(30):
+		await process_frame
+	var img_park = root.get_viewport().get_texture().get_image()
+	img_park.save_png("c:/Users/Ian/Documents/Apps/Idle-1/parking_view.png")
+
 	quit(0)

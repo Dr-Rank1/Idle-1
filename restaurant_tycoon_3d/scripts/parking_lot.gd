@@ -6,18 +6,27 @@ signal car_departed(stall_index: int)
 @export var car_scenes: Array[PackedScene] = []
 
 const STALL_POSITIONS: Array[Vector3] = [
-	Vector3(-8.1, 0.0, 15.2),
-	Vector3(-4.3, 0.0, 15.2),
-	Vector3(3.3, 0.0, 15.2),
-	Vector3(7.1, 0.0, 15.2)
+	Vector3(-8.2, 0.0, 15.0), # West group bay 1
+	Vector3(-4.8, 0.0, 15.0), # West group bay 2
+	Vector3(1.8, 0.0, 15.0),  # East group bay 3
+	Vector3(5.2, 0.0, 15.0),  # East group bay 4
+	Vector3(8.6, 0.0, 15.0)   # East group bay 5
+]
+
+const STALL_ROTATIONS: Array[float] = [
+	deg_to_rad(155.0),
+	deg_to_rad(155.0),
+	deg_to_rad(155.0),
+	deg_to_rad(155.0),
+	deg_to_rad(155.0)
 ]
 
 const ROAD_Z: float = 18.2
 const SPAWN_X: float = -22.0
 const EXIT_X: float = 22.0
 
-# Stall states: null if empty, or CarInstance if occupied
-var stalls: Array = [null, null, null, null]
+# Stall states: null if empty, or CarInstance if occupied (5 bays)
+var stalls: Array = [null, null, null, null, null]
 var active_cars: Array = []
 var car_spawn_timer: float = 2.0
 
@@ -52,6 +61,7 @@ func _ready() -> void:
 	_spawn_initial_parked_car(0)
 	_spawn_initial_parked_car(1)
 	_spawn_initial_parked_car(2)
+	_spawn_initial_parked_car(3)
 
 func _spawn_initial_parked_car(stall_idx: int) -> void:
 	if stall_idx < 0 or stall_idx >= STALL_POSITIONS.size() or car_scenes.size() == 0:
@@ -60,7 +70,8 @@ func _spawn_initial_parked_car(stall_idx: int) -> void:
 	var car_node = scn.instantiate()
 	car_node.scale = Vector3(1.15, 1.15, 1.15)
 	car_node.position = STALL_POSITIONS[stall_idx]
-	car_node.rotation.y = PI
+	var rot = STALL_ROTATIONS[stall_idx] if stall_idx < STALL_ROTATIONS.size() else PI
+	car_node.rotation.y = rot
 	add_child(car_node)
 	
 	var inst = CarInstance.new()
@@ -85,7 +96,7 @@ func _process(delta: float) -> void:
 
 func _get_free_stall_index() -> int:
 	var gm = get_node_or_null("/root/GameManager")
-	var max_stalls = 4
+	var max_stalls = 5
 	if gm != null and "unlocked_stalls" in gm:
 		max_stalls = gm.unlocked_stalls
 		
@@ -132,13 +143,14 @@ func _update_cars(delta: float) -> void:
 					car.state = "TURNING"
 					
 			"TURNING":
-				# Rotate to face parking stall (facing North -Z) and move into stall
-				car.node.rotation.y = lerp_angle(car.node.rotation.y, PI, 10.0 * delta)
+				# Rotate to face angled parking stall and move into stall
+				var target_rot = STALL_ROTATIONS[car.stall_index] if car.stall_index >= 0 and car.stall_index < STALL_ROTATIONS.size() else PI
+				car.node.rotation.y = lerp_angle(car.node.rotation.y, target_rot, 10.0 * delta)
 				car.node.position.z = move_toward(car.node.position.z, car.target_stall_pos.z, car.speed * 0.6 * delta)
 				car.node.position.x = move_toward(car.node.position.x, car.target_stall_pos.x, car.speed * 0.4 * delta)
 				if abs(car.node.position.z - car.target_stall_pos.z) < 0.15:
 					car.node.position = car.target_stall_pos
-					car.node.rotation.y = PI
+					car.node.rotation.y = target_rot
 					car.state = "PARKED"
 					_on_car_parked(car)
 					
