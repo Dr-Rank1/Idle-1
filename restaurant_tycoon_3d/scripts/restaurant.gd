@@ -223,16 +223,27 @@ func _setup_custom_textures() -> void:
 		if bubble_node != null and bubble_node is Sprite3D:
 			bubble_node.texture = chair_bubble_tex
 
-	# Milkshake Bar Floor Diamond Checkers
+	# Milkshake Bar High-Contrast Diamond Checkerboard Floor
 	var shake_floor = find_child("MilkshakeFloor", true, false)
-	if shake_floor != null and shake_floor is MeshInstance3D and tile_img != null:
+	var shake_tile_path = ProjectSettings.globalize_path("res://assets/textures/diner_diamond_tiles.png")
+	var shake_tile_img = Image.load_from_file(shake_tile_path)
+	if shake_floor != null and shake_floor is MeshInstance3D and shake_tile_img != null:
+		# Process pixels to make dark squares rich dark charcoal/slate for authentic high-contrast 50s diner look
+		for y in range(shake_tile_img.get_height()):
+			for x in range(shake_tile_img.get_width()):
+				var col = shake_tile_img.get_pixel(x, y)
+				if col.get_luminance() < 0.85:
+					shake_tile_img.set_pixel(x, y, Color(0.24, 0.27, 0.30, 1.0))
+				else:
+					shake_tile_img.set_pixel(x, y, Color(0.96, 0.98, 0.98, 1.0))
+		var shake_tex = ImageTexture.create_from_image(shake_tile_img)
 		var shake_mat = StandardMaterial3D.new()
-		shake_mat.albedo_texture = ImageTexture.create_from_image(tile_img)
-		shake_mat.roughness = 0.85
-		shake_mat.uv1_scale = Vector3(3.5, 3.0, 1)
+		shake_mat.albedo_texture = shake_tex
+		shake_mat.roughness = 0.35
+		shake_mat.uv1_scale = Vector3(1.8, 1.6, 1.0)
 		shake_floor.material_override = shake_mat
 
-	# The Milk Shake Neon Sign
+	# The Milk Shake Neon Sign (Emission multiplier 3.5)
 	var shake_neon_path = ProjectSettings.globalize_path("res://assets/textures/the_milk_shake_neon.png")
 	var shake_neon_img = Image.load_from_file(shake_neon_path)
 	if shake_neon_img != null:
@@ -245,20 +256,23 @@ func _setup_custom_textures() -> void:
 			mat.emission_texture = shake_neon_tex
 			mat.emission_energy_multiplier = 3.5
 			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 			neon_node.material_override = mat
 
-	# Vinyl Records on Milkshake Wall
+	# Decorative Vinyl Records on North and West Walls
 	var vinyl_path = ProjectSettings.globalize_path("res://assets/textures/vinyl_record.png")
 	var vinyl_img = Image.load_from_file(vinyl_path)
 	if vinyl_img != null:
 		var vinyl_tex = ImageTexture.create_from_image(vinyl_img)
-		for v_name in ["VinylRecord1", "VinylRecord2", "VinylRecord3"]:
+		for v_name in ["VinylRecord1", "VinylRecord2", "VinylRecord3", "VinylRecord4", "VinylRecordWest1", "VinylRecordWest2"]:
 			var v_node = find_child(v_name, true, false)
 			if v_node != null and v_node is MeshInstance3D:
 				var v_mat = StandardMaterial3D.new()
 				v_mat.albedo_texture = vinyl_tex
 				v_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-				v_mat.roughness = 0.4
+				v_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+				v_mat.roughness = 0.25
+				v_mat.metallic = 0.4
 				v_node.material_override = v_mat
 
 	_setup_lounge_fidelity()
@@ -469,107 +483,443 @@ func _setup_milkshake_fidelity() -> void:
 	if shake_bar == null:
 		return
 
-	# Long Retro Diner Fountain Counter along back wall (matching crop_middle_08s.jpg)
-	var f_root = shake_bar.get_node_or_null("FidelityFountainCounter")
-	if f_root == null:
-		f_root = Node3D.new()
-		f_root.name = "FidelityFountainCounter"
-		shake_bar.add_child(f_root)
+	# Remove any old conflicting or mock-up children except MilkshakeFloor
+	for child in shake_bar.get_children():
+		if child.name != "MilkshakeFloor" and child.name != "FidelityMilkshakeDiner":
+			child.queue_free()
 
-		# Mint Green Counter Body with chrome trim
-		var f_body = CSGBox3D.new()
-		f_body.size = Vector3(4.8, 0.94, 0.65)
-		f_body.position = Vector3(-1.4, 0.47, -2.85)
-		var mint_mat = StandardMaterial3D.new()
-		mint_mat.albedo_color = Color(0.44, 0.78, 0.72, 1.0)
-		mint_mat.roughness = 0.35
-		f_body.material = mint_mat
-		f_root.add_child(f_body)
+	var f_root = shake_bar.get_node_or_null("FidelityMilkshakeDiner")
+	if f_root != null:
+		f_root.queue_free()
 
-		# Polished Stainless Steel Countertop
-		var f_top = CSGBox3D.new()
-		f_top.size = Vector3(5.0, 0.05, 0.78)
-		f_top.position = Vector3(-1.4, 0.965, -2.85)
-		var chrome_mat = StandardMaterial3D.new()
-		chrome_mat.albedo_color = Color(0.92, 0.94, 0.96, 1.0)
-		chrome_mat.metallic = 0.85
-		chrome_mat.roughness = 0.2
-		f_top.material = chrome_mat
-		f_root.add_child(f_top)
+	f_root = Node3D.new()
+	f_root.name = "FidelityMilkshakeDiner"
+	shake_bar.add_child(f_root)
 
-		# Stools along the counter
-		var stool_scn = load("res://assets/models/furniture/stoolBar.glb")
-		if stool_scn != null:
-			for i in range(6):
-				var sx = -3.2 + i * 0.72
-				var st = stool_scn.instantiate()
-				st.position = Vector3(sx, 0.0, -2.2)
-				st.scale = Vector3(1.1, 1.1, 1.1)
-				f_root.add_child(st)
+	# Shared materials
+	var mint_mat = StandardMaterial3D.new()
+	mint_mat.albedo_color = Color(0.44, 0.78, 0.72, 1.0)
+	mint_mat.roughness = 0.35
 
-		# Milkshake Drinks on the Counter
-		var sundae_scn = load("res://assets/models/food/sundae.glb")
-		var frappe_scn = load("res://assets/models/food/frappe.glb")
-		var soda_scn = load("res://assets/models/food/soda-glass.glb")
-		for i in range(4):
-			var dx = -3.0 + i * 1.0
-			var item = null
-			if i % 3 == 0 and sundae_scn != null: item = sundae_scn.instantiate()
-			elif i % 3 == 1 and frappe_scn != null: item = frappe_scn.instantiate()
-			elif soda_scn != null: item = soda_scn.instantiate()
-			if item != null:
-				item.position = Vector3(dx, 0.99, -2.85)
-				item.scale = Vector3(0.42, 0.42, 0.42)
-				f_root.add_child(item)
+	var chrome_mat = StandardMaterial3D.new()
+	chrome_mat.albedo_color = Color(0.92, 0.94, 0.96, 1.0)
+	chrome_mat.metallic = 0.95
+	chrome_mat.roughness = 0.15
 
-		# Retro Pink Cone Pendant Lamps over the 4 diner tables
-		var cord_mat = StandardMaterial3D.new()
-		cord_mat.albedo_color = Color(0.15, 0.15, 0.18, 1.0)
-		cord_mat.metallic = 0.5
-		var pink_mat = StandardMaterial3D.new()
-		pink_mat.albedo_color = Color(0.96, 0.45, 0.60, 1.0)
-		pink_mat.roughness = 0.4
-		var bulb_mat = StandardMaterial3D.new()
-		bulb_mat.albedo_color = Color(1.0, 0.95, 0.85, 1.0)
-		bulb_mat.emission_enabled = true
-		bulb_mat.emission = Color(1.0, 0.9, 0.7, 1.0)
-		bulb_mat.emission_energy_multiplier = 2.0
+	var dark_chrome_mat = StandardMaterial3D.new()
+	dark_chrome_mat.albedo_color = Color(0.25, 0.26, 0.28, 1.0)
+	dark_chrome_mat.metallic = 0.85
+	dark_chrome_mat.roughness = 0.3
 
-		var table_positions = [
-			Vector3(0.5, 0.0, -1.6),
-			Vector3(2.7, 0.0, -1.6),
-			Vector3(0.5, 0.0, 1.2),
-			Vector3(2.7, 0.0, 1.2)
-		]
-		for tp in table_positions:
-			var lamp_root = Node3D.new()
-			lamp_root.position = Vector3(tp.x, 2.2, tp.z)
-			f_root.add_child(lamp_root)
+	# 1. Long Mint-Green Soda Fountain Counter along West Wall (oriented along Z-axis)
+	# Center at local X = -2.2, Z = 0.0 (world X = -9.7, Z = -7.0)
+	var counter_body = CSGBox3D.new()
+	counter_body.size = Vector3(0.68, 0.92, 5.2)
+	counter_body.position = Vector3(-2.2, 0.46, 0.0)
+	counter_body.material = mint_mat
+	f_root.add_child(counter_body)
 
-			var cord = CSGCylinder3D.new()
-			cord.radius = 0.012
-			cord.height = 0.8
-			cord.position = Vector3(0, 0.4, 0)
-			cord.material = cord_mat
-			lamp_root.add_child(cord)
+	# Horizontal Chrome Trim Bands
+	var trim_lower = CSGBox3D.new()
+	trim_lower.size = Vector3(0.72, 0.05, 5.24)
+	trim_lower.position = Vector3(-2.2, 0.22, 0.0)
+	trim_lower.material = chrome_mat
+	f_root.add_child(trim_lower)
 
-			var cone = MeshInstance3D.new()
-			var cmesh = CylinderMesh.new()
-			cmesh.top_radius = 0.06
-			cmesh.bottom_radius = 0.28
-			cmesh.height = 0.18
-			cone.mesh = cmesh
-			cone.position = Vector3(0, 0.0, 0)
-			cone.material_override = pink_mat
-			lamp_root.add_child(cone)
+	var trim_upper = CSGBox3D.new()
+	trim_upper.size = Vector3(0.72, 0.05, 5.24)
+	trim_upper.position = Vector3(-2.2, 0.68, 0.0)
+	trim_upper.material = chrome_mat
+	f_root.add_child(trim_upper)
 
-			var spot = SpotLight3D.new()
-			spot.rotation_degrees = Vector3(-90, 0, 0)
-			spot.light_color = Color(1.0, 0.92, 0.8, 1.0)
-			spot.light_energy = 0.75
-			spot.spot_range = 3.2
-			spot.spot_angle = 45.0
-			lamp_root.add_child(spot)
+	var kickplate = CSGBox3D.new()
+	kickplate.size = Vector3(0.70, 0.08, 5.21)
+	kickplate.position = Vector3(-2.2, 0.04, 0.0)
+	kickplate.material = dark_chrome_mat
+	f_root.add_child(kickplate)
+
+	# Polished Stainless Steel Countertop
+	var counter_top = CSGBox3D.new()
+	counter_top.size = Vector3(0.82, 0.06, 5.36)
+	counter_top.position = Vector3(-2.2, 0.95, 0.0)
+	counter_top.material = chrome_mat
+	f_root.add_child(counter_top)
+
+	# Polished Chrome Foot Rail along customer base
+	var foot_rail = CSGCylinder3D.new()
+	foot_rail.radius = 0.025
+	foot_rail.height = 5.0
+	foot_rail.rotation_degrees = Vector3(90, 0, 0)
+	foot_rail.position = Vector3(-1.82, 0.14, 0.0)
+	foot_rail.material = chrome_mat
+	f_root.add_child(foot_rail)
+
+	# Back preparation counter along West wall (local X = -3.5)
+	var back_counter = CSGBox3D.new()
+	back_counter.size = Vector3(0.50, 0.88, 5.0)
+	back_counter.position = Vector3(-3.5, 0.44, 0.0)
+	back_counter.material = mint_mat
+	f_root.add_child(back_counter)
+
+	var back_top = CSGBox3D.new()
+	back_top.size = Vector3(0.56, 0.05, 5.1)
+	back_top.position = Vector3(-3.5, 0.905, 0.0)
+	back_top.material = chrome_mat
+	f_root.add_child(back_top)
+
+	# Chrome Wall Shelving behind counter
+	for sy in [1.40, 1.85]:
+		var shelf = CSGBox3D.new()
+		shelf.size = Vector3(0.28, 0.035, 3.2)
+		shelf.position = Vector3(-3.65, sy, 0.0)
+		shelf.material = chrome_mat
+		f_root.add_child(shelf)
+
+	# 6 Bar Stools along customer aisle (local X = -1.35)
+	var stool_scn = load("res://assets/models/furniture/stoolBar.glb")
+	var stool_z_list = [-2.1, -1.25, -0.4, 0.45, 1.3, 2.15]
+	if stool_scn != null:
+		for i in range(stool_z_list.size()):
+			var sz = stool_z_list[i]
+			var st = stool_scn.instantiate()
+			st.position = Vector3(-1.35, 0.0, sz)
+			st.rotation_degrees = Vector3(0, -90, 0)
+			st.scale = Vector3(1.15, 1.15, 1.15)
+			f_root.add_child(st)
+
+	# Diner Attendant behind the counter
+	var staff_scn = load("res://assets/models/characters/character-male-d.glb")
+	if staff_scn != null:
+		var staff = staff_scn.instantiate()
+		staff.position = Vector3(-2.85, 0.0, 0.0)
+		staff.rotation_degrees = Vector3(0, 90, 0)
+		staff.scale = Vector3(1.15, 1.15, 1.15)
+		var decor_script = load("res://scripts/decor_character.gd")
+		staff.set_script(decor_script)
+		staff.set("anim_name", "idle")
+		f_root.add_child(staff)
+
+	# Seated customer at the bar (on Stool 2)
+	var bar_guest_scn = load("res://assets/models/characters/character-female-b.glb")
+	if bar_guest_scn != null:
+		var bguest = bar_guest_scn.instantiate()
+		bguest.position = Vector3(-1.35, 0.42, -1.25)
+		bguest.rotation_degrees = Vector3(0, -90, 0)
+		bguest.scale = Vector3(0.95, 0.95, 0.95)
+		var decor_script = load("res://scripts/decor_character.gd")
+		bguest.set_script(decor_script)
+		bguest.set("anim_name", "sit")
+		f_root.add_child(bguest)
+
+	# 2 Chrome Milkshake Blenders on Counter
+	for bz in [-1.9, -1.3]:
+		var blender = Node3D.new()
+		blender.position = Vector3(-2.2, 0.98, bz)
+		f_root.add_child(blender)
+
+		var b_base = CSGCylinder3D.new()
+		b_base.radius = 0.08
+		b_base.height = 0.12
+		b_base.position = Vector3(0, 0.06, 0)
+		b_base.material = chrome_mat
+		blender.add_child(b_base)
+
+		var b_cup = CSGCylinder3D.new()
+		b_cup.radius = 0.06
+		b_cup.height = 0.22
+		b_cup.position = Vector3(0, 0.23, 0)
+		b_cup.material = chrome_mat
+		blender.add_child(b_cup)
+
+		var b_lid = CSGCylinder3D.new()
+		b_lid.radius = 0.065
+		b_lid.height = 0.03
+		b_lid.position = Vector3(0, 0.355, 0)
+		b_lid.material = dark_chrome_mat
+		blender.add_child(b_lid)
+
+	# Soda Taps Dispenser on Counter
+	var tap_root = Node3D.new()
+	tap_root.position = Vector3(-2.2, 0.98, 0.0)
+	f_root.add_child(tap_root)
+
+	var tap_tower = CSGCylinder3D.new()
+	tap_tower.radius = 0.07
+	tap_tower.height = 0.35
+	tap_tower.position = Vector3(0, 0.175, 0)
+	tap_tower.material = chrome_mat
+	tap_root.add_child(tap_tower)
+
+	var tap_head = CSGBox3D.new()
+	tap_head.size = Vector3(0.12, 0.10, 0.32)
+	tap_head.position = Vector3(0.04, 0.32, 0)
+	tap_head.material = chrome_mat
+	tap_root.add_child(tap_head)
+
+	for ti in range(3):
+		var handle = CSGCylinder3D.new()
+		handle.radius = 0.015
+		handle.height = 0.12
+		handle.position = Vector3(0.08, 0.40, -0.09 + ti * 0.09)
+		handle.rotation_degrees = Vector3(0, 0, -25)
+		var h_mat = StandardMaterial3D.new()
+		h_mat.albedo_color = Color(0.9, 0.2, 0.2) if ti == 0 else (Color(0.2, 0.8, 0.6) if ti == 1 else Color(0.95, 0.8, 0.2))
+		handle.material = h_mat
+		tap_root.add_child(handle)
+
+	# Cake Dome Display on Counter
+	var dome_root = Node3D.new()
+	dome_root.position = Vector3(-2.2, 0.98, 1.4)
+	f_root.add_child(dome_root)
+
+	var dome_base = CSGCylinder3D.new()
+	dome_base.radius = 0.16
+	dome_base.height = 0.03
+	dome_base.position = Vector3(0, 0.015, 0)
+	dome_base.material = chrome_mat
+	dome_root.add_child(dome_base)
+
+	var cake_mesh = CSGCylinder3D.new()
+	cake_mesh.radius = 0.12
+	cake_mesh.height = 0.10
+	cake_mesh.position = Vector3(0, 0.08, 0)
+	var cake_mat = StandardMaterial3D.new()
+	cake_mat.albedo_color = Color(0.95, 0.55, 0.65, 1.0)
+	cake_mesh.material = cake_mat
+	dome_root.add_child(cake_mesh)
+
+	var glass_dome = CSGSphere3D.new()
+	glass_dome.radius = 0.15
+	glass_dome.position = Vector3(0, 0.14, 0)
+	var glass_mat = StandardMaterial3D.new()
+	glass_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glass_mat.albedo_color = Color(0.85, 0.95, 1.0, 0.3)
+	glass_mat.roughness = 0.1
+	glass_dome.material = glass_mat
+	dome_root.add_child(glass_dome)
+
+	# Sundaes and Frappes on Counter
+	var sundae_scn = load("res://assets/models/food/sundae.glb")
+	var frappe_scn = load("res://assets/models/food/frappe.glb")
+	var soda_scn = load("res://assets/models/food/soda-glass.glb")
+
+	if sundae_scn != null:
+		var sd1 = sundae_scn.instantiate()
+		sd1.position = Vector3(-2.2, 0.98, -0.7)
+		sd1.scale = Vector3(0.42, 0.42, 0.42)
+		f_root.add_child(sd1)
+
+		var sd2 = sundae_scn.instantiate()
+		sd2.position = Vector3(-2.2, 0.98, 2.3)
+		sd2.scale = Vector3(0.42, 0.42, 0.42)
+		f_root.add_child(sd2)
+
+	if frappe_scn != null:
+		var fr1 = frappe_scn.instantiate()
+		fr1.position = Vector3(-2.2, 0.98, 0.7)
+		fr1.scale = Vector3(0.42, 0.42, 0.42)
+		f_root.add_child(fr1)
+
+	if soda_scn != null:
+		var so1 = soda_scn.instantiate()
+		so1.position = Vector3(-2.2, 0.98, -2.4)
+		so1.scale = Vector3(0.42, 0.42, 0.42)
+		f_root.add_child(so1)
+
+	# 2. The 4 Square Diner Tables in 2x2 Grid with Mint Tablecloths & Chrome Rims
+	var chair_scn = load("res://assets/kaykit_restaurant/gltf/chair_A.gltf")
+	var diner_chair_mat = StandardMaterial3D.new()
+	diner_chair_mat.albedo_color = Color(0.18, 0.20, 0.22, 1.0)
+	diner_chair_mat.metallic = 0.8
+	diner_chair_mat.roughness = 0.3
+
+	var diner_cushion_mat = StandardMaterial3D.new()
+	diner_cushion_mat.albedo_color = Color(0.44, 0.78, 0.72, 1.0)
+	diner_cushion_mat.roughness = 0.4
+
+	# Overhead Lamp materials
+	var cord_mat = StandardMaterial3D.new()
+	cord_mat.albedo_color = Color(0.15, 0.15, 0.18, 1.0)
+	cord_mat.metallic = 0.7
+	var pink_mat = StandardMaterial3D.new()
+	pink_mat.albedo_color = Color(0.96, 0.45, 0.60, 1.0)
+	pink_mat.roughness = 0.35
+	var bulb_mat = StandardMaterial3D.new()
+	bulb_mat.albedo_color = Color(1.0, 0.95, 0.85, 1.0)
+	bulb_mat.emission_enabled = true
+	bulb_mat.emission = Color(1.0, 0.92, 0.8, 1.0)
+	bulb_mat.emission_energy_multiplier = 2.5
+
+	var table_positions = [
+		Vector3(0.5, 0.0, -1.9),
+		Vector3(2.6, 0.0, -1.9),
+		Vector3(0.5, 0.0, 0.8),
+		Vector3(2.6, 0.0, 0.8)
+	]
+
+	for t_idx in range(table_positions.size()):
+		var tp = table_positions[t_idx]
+		var tbl = Node3D.new()
+		tbl.name = "DinerTable%d" % (t_idx + 1)
+		tbl.position = tp
+		f_root.add_child(tbl)
+
+		# Chrome Pedestal Base
+		var base_disc = CSGCylinder3D.new()
+		base_disc.radius = 0.28
+		base_disc.height = 0.03
+		base_disc.position = Vector3(0, 0.015, 0)
+		base_disc.material = chrome_mat
+		tbl.add_child(base_disc)
+
+		var pillar = CSGCylinder3D.new()
+		pillar.radius = 0.05
+		pillar.height = 0.72
+		pillar.position = Vector3(0, 0.36, 0)
+		pillar.material = chrome_mat
+		tbl.add_child(pillar)
+
+		# Square Tabletop with Mint Tablecloth
+		var top_cloth = CSGBox3D.new()
+		top_cloth.size = Vector3(1.15, 0.04, 1.15)
+		top_cloth.position = Vector3(0, 0.73, 0)
+		top_cloth.material = mint_mat
+		tbl.add_child(top_cloth)
+
+		# Chrome Edge Rim surrounding tabletop
+		var chrome_rim = CSGBox3D.new()
+		chrome_rim.size = Vector3(1.18, 0.048, 1.18)
+		chrome_rim.position = Vector3(0, 0.73, 0)
+		chrome_rim.material = chrome_mat
+		var rim_cut = CSGBox3D.new()
+		rim_cut.operation = CSGBox3D.OPERATION_SUBTRACTION
+		rim_cut.size = Vector3(1.12, 0.06, 1.12)
+		chrome_rim.add_child(rim_cut)
+		tbl.add_child(chrome_rim)
+
+		# Table Dessert
+		var dessert_item = null
+		if t_idx == 0 and sundae_scn != null: dessert_item = sundae_scn.instantiate()
+		elif t_idx == 1 and frappe_scn != null: dessert_item = frappe_scn.instantiate()
+		elif t_idx == 2 and sundae_scn != null: dessert_item = sundae_scn.instantiate()
+		elif soda_scn != null: dessert_item = soda_scn.instantiate()
+		if dessert_item != null:
+			dessert_item.position = Vector3(0, 0.76, 0)
+			dessert_item.scale = Vector3(0.42, 0.42, 0.42)
+			tbl.add_child(dessert_item)
+
+		# 4 Diner Chairs around table
+		if chair_scn != null:
+			var chair_offsets = [
+				Vector3(0, 0, -0.68),
+				Vector3(0, 0, 0.68),
+				Vector3(-0.68, 0, 0),
+				Vector3(0.68, 0, 0)
+			]
+			var chair_rots = [0, 180, -90, 90]
+			for c_i in range(4):
+				var ch = chair_scn.instantiate()
+				ch.position = chair_offsets[c_i]
+				ch.rotation_degrees = Vector3(0, chair_rots[c_i], 0)
+				ch.scale = Vector3(0.9, 0.9, 0.9)
+				tbl.add_child(ch)
+
+				# Style chair frame dark charcoal / chrome
+				for child in ch.get_children():
+					if child is MeshInstance3D:
+						child.material_override = diner_chair_mat
+					for grand in child.get_children():
+						if grand is MeshInstance3D:
+							grand.material_override = diner_chair_mat
+
+				# Mint vinyl seat cushion
+				var cushion = CSGBox3D.new()
+				cushion.size = Vector3(0.42, 0.06, 0.42)
+				cushion.position = Vector3(0, 0.46, 0)
+				cushion.material = diner_cushion_mat
+				ch.add_child(cushion)
+
+				# Mint vinyl backrest
+				var backrest = CSGBox3D.new()
+				backrest.size = Vector3(0.38, 0.28, 0.05)
+				backrest.position = Vector3(0, 0.72, -0.18)
+				backrest.material = diner_cushion_mat
+				ch.add_child(backrest)
+
+		# Overhead Pastel Pink Cone Pendant Lamp
+		var lamp_root = Node3D.new()
+		lamp_root.position = Vector3(tp.x, 2.25, tp.z)
+		f_root.add_child(lamp_root)
+
+		var cord = CSGCylinder3D.new()
+		cord.radius = 0.012
+		cord.height = 0.75
+		cord.position = Vector3(0, 0.375, 0)
+		cord.material = cord_mat
+		lamp_root.add_child(cord)
+
+		var cone = MeshInstance3D.new()
+		var cmesh = CylinderMesh.new()
+		cmesh.top_radius = 0.06
+		cmesh.bottom_radius = 0.28
+		cmesh.height = 0.18
+		cone.mesh = cmesh
+		cone.position = Vector3(0, 0.0, 0)
+		cone.material_override = pink_mat
+		lamp_root.add_child(cone)
+
+		var bulb = MeshInstance3D.new()
+		var bmesh = SphereMesh.new()
+		bmesh.radius = 0.06
+		bmesh.height = 0.12
+		bulb.mesh = bmesh
+		bulb.position = Vector3(0, -0.05, 0)
+		bulb.material_override = bulb_mat
+		lamp_root.add_child(bulb)
+
+		var spot = SpotLight3D.new()
+		spot.rotation_degrees = Vector3(-90, 0, 0)
+		spot.light_color = Color(1.0, 0.92, 0.80, 1.0)
+		spot.light_energy = 0.9
+		spot.spot_range = 3.5
+		spot.spot_angle = 45.0
+		lamp_root.add_child(spot)
+
+	# Seated diner guests at tables
+	var guest_scn1 = load("res://assets/models/characters/character-female-c.glb")
+	if guest_scn1 != null:
+		var g1 = guest_scn1.instantiate()
+		g1.position = Vector3(0.5, 0.42, -2.58)
+		g1.rotation_degrees = Vector3(0, 0, 0)
+		g1.scale = Vector3(0.95, 0.95, 0.95)
+		var decor_script = load("res://scripts/decor_character.gd")
+		g1.set_script(decor_script)
+		g1.set("anim_name", "sit")
+		f_root.add_child(g1)
+
+	var guest_scn2 = load("res://assets/models/characters/character-male-b.glb")
+	if guest_scn2 != null:
+		var g2 = guest_scn2.instantiate()
+		g2.position = Vector3(0.5, 0.42, 1.48)
+		g2.rotation_degrees = Vector3(0, 180, 0)
+		g2.scale = Vector3(0.95, 0.95, 0.95)
+		var decor_script = load("res://scripts/decor_character.gd")
+		g2.set_script(decor_script)
+		g2.set("anim_name", "sit")
+		f_root.add_child(g2)
+
+	# Decorative Potted Plants in Corners
+	var plant_scn = load("res://assets/models/furniture/pottedPlant.glb")
+	if plant_scn != null:
+		var p1 = plant_scn.instantiate()
+		p1.position = Vector3(-3.3, 0.0, -2.8)
+		p1.scale = Vector3(1.4, 1.4, 1.4)
+		f_root.add_child(p1)
+
+		var p2 = plant_scn.instantiate()
+		p2.position = Vector3(3.5, 0.0, -2.8)
+		p2.scale = Vector3(1.4, 1.4, 1.4)
+		f_root.add_child(p2)
 
 func _setup_kitchen_fidelity() -> void:
 	# 1. Add Silver Dome Heat Lamps above Pass Counter

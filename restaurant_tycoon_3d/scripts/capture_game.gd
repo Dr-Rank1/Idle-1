@@ -66,4 +66,19 @@ func _init():
 	var img_lounge = root.get_viewport().get_texture().get_image()
 	img_lounge.save_png("c:/Users/Ian/Documents/Apps/Idle-1/lounge_view.png")
 
+	# Focus camera on milkshake bar to capture 1:1 fidelity details of Milkshake & Soda Diner
+	if cam != null:
+		var orig_pos = cam.target_position
+		var orig_size = cam.size
+		cam.target_position = Vector3(7.7, 15.0, 9.8)
+		cam.position = Vector3(7.7, 15.0, 9.8)
+		cam.size = 10.5
+		for i in range(30):
+			await process_frame
+		var img_shake = root.get_viewport().get_texture().get_image()
+		img_shake.save_png("c:/Users/Ian/Documents/Apps/Idle-1/milkshake_view.png")
+		cam.target_position = orig_pos
+		cam.position = orig_pos
+		cam.size = orig_size
+
 	quit(0)
