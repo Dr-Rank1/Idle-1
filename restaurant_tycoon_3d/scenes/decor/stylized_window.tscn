@@ -1,0 +1,31 @@
+[gd_scene load_steps=6 format=3 uid="uid://stylwindow123"]
+
+[sub_resource type="StandardMaterial3D" id="Material_frame_mint"]
+albedo_color = Color(0.26, 0.72, 0.66, 1)
+roughness = 0.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_frame"]
+material = SubResource("Material_frame_mint")
+size = Vector3(1.35, 1.15, 0.14)
+
+[sub_resource type="StandardMaterial3D" id="Material_glass"]
+albedo_color = Color(0.72, 0.88, 0.98, 0.7)
+roughness = 0.15
+metallic = 0.1
+
+[sub_resource type="BoxMesh" id="BoxMesh_glass"]
+material = SubResource("Material_glass")
+size = Vector3(1.15, 0.95, 0.04)
+
+[node name="StylizedWindow" type="Node3D"]
+
+[node name="FrameOuter" type="CSGBox3D" parent="."]
+size = Vector3(1.35, 1.15, 0.14)
+material = SubResource("Material_frame_mint")
+
+[node name="FrameHole" type="CSGBox3D" parent="FrameOuter"]
+operation = 2
+size = Vector3(1.15, 0.95, 0.2)
+
+[node name="GlassPane" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_glass")

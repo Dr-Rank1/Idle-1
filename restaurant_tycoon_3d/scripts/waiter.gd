@@ -32,7 +32,7 @@ var home_pos: Vector3 = Vector3(0.5, 0.0, -0.8)
 
 func _ready() -> void:
 	home_pos = position
-	serving_tray.visible = false
+	serving_tray.visible = true
 	if status_bubble != null:
 		status_bubble.visible = false
 	anim_player = find_child("AnimationPlayer", true, false)

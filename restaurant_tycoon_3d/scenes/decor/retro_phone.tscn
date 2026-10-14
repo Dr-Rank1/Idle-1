@@ -1,0 +1,35 @@
+[gd_scene load_steps=5 format=3 uid="uid://retrophon123"]
+
+[sub_resource type="StandardMaterial3D" id="Material_phone_black"]
+albedo_color = Color(0.12, 0.13, 0.15, 1)
+roughness = 0.45
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+material = SubResource("Material_phone_black")
+size = Vector3(0.26, 0.08, 0.22)
+
+[sub_resource type="StandardMaterial3D" id="Material_dial_plate"]
+albedo_color = Color(0.86, 0.86, 0.84, 1)
+roughness = 0.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_keypad"]
+material = SubResource("Material_dial_plate")
+size = Vector3(0.18, 0.015, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_handset"]
+material = SubResource("Material_phone_black")
+size = Vector3(0.28, 0.05, 0.07)
+
+[node name="RetroPhone" type="Node3D"]
+
+[node name="Base" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
+mesh = SubResource("BoxMesh_body")
+
+[node name="Keypad" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.984808, 0.173648, 0, -0.173648, 0.984808, 0, 0.08, 0.02)
+mesh = SubResource("BoxMesh_keypad")
+
+[node name="Handset" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, 0, 0.11, -0.04)
+mesh = SubResource("BoxMesh_handset")

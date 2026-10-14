@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3 uid="uid://roofrivets123"]
+
+[ext_resource type="Script" path="res://scripts/roof_rivets.gd" id="1_script"]
+
+[sub_resource type="StandardMaterial3D" id="Material_rivet"]
+albedo_color = Color(0.30, 0.33, 0.38, 1)
+roughness = 0.4
+metallic = 0.55
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_rivet"]
+material = SubResource("Material_rivet")
+top_radius = 0.045
+bottom_radius = 0.055
+height = 0.025
+
+[sub_resource type="MultiMesh" id="MultiMesh_rivets"]
+transform_format = 1
+mesh = SubResource("CylinderMesh_rivet")
+instance_count = 60
+
+[node name="RoofRivets" type="MultiMeshInstance3D"]
+multimesh = SubResource("MultiMesh_rivets")
+script = ExtResource("1_script")

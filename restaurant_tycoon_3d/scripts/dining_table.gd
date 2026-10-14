@@ -81,38 +81,11 @@ func _on_cash_changed(_cash_val: float) -> void:
 
 func _set_locked_visual(cost: float) -> void:
 	is_unlocked = false
-	if is_terrace_table:
-		visible = false
-		return
-	if tier2_decor != null: tier2_decor.visible = false
-	if tier3_decor != null: tier3_decor.visible = false
-	if food_dish != null: food_dish.visible = false
-	if dirty_dishes != null: dirty_dishes.visible = false
-	
-	# Keep furniture visible but hide tableware so the restaurant doesn't look like an empty rug
-	if table_mesh != null: table_mesh.visible = true
-	if chair_left != null: chair_left.visible = true
-	if chair_right != null: chair_right.visible = true
-	if table_menu != null: table_menu.visible = false
-	if salt_shaker != null: salt_shaker.visible = false
-	if pepper_shaker != null: pepper_shaker.visible = false
-	if pendant_lamp != null: pendant_lamp.visible = false
-	if table_omni_light != null: table_omni_light.visible = false
-	
-	if level_label != null:
-		level_label.text = "🔒 UNLOCK TABLE"
-		level_label.font_size = 22
-		level_label.modulate = Color(1.0, 0.85, 0.25, 1.0)
-		level_label.outline_modulate = Color(0.2, 0.1, 0.0, 0.95)
-		
-	if action_badge != null:
-		action_badge.visible = true
-		action_badge.text = "💰 $%d" % round(cost)
-		action_badge.modulate = Color(1.0, 0.95, 0.4, 1.0)
-		action_badge.outline_modulate = Color(0.25, 0.15, 0.0, 0.95)
+	visible = false
 
 func _set_unlocked_visual(lvl: int) -> void:
 	is_unlocked = true
+	visible = true
 	if table_mesh != null: table_mesh.visible = true
 	if chair_left != null: chair_left.visible = true
 	if chair_right != null: chair_right.visible = true
