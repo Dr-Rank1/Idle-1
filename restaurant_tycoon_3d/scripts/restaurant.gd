@@ -43,6 +43,12 @@ func _ready() -> void:
 		if table.has_signal("table_clicked"):
 			table.table_clicked.connect(_on_table_clicked)
 			
+	# Remove any legacy static queue guests so dynamic queuing is unobstructed
+	for node_name in ["HostQueueGuest1", "HostQueueGuest2", "HostQueueGuest3"]:
+		var static_guest = find_child(node_name, true, false)
+		if static_guest:
+			static_guest.queue_free()
+			
 	if kitchen_container != null:
 		for st in kitchen_container.get_children():
 			if st.has_signal("station_clicked"):
@@ -1463,6 +1469,9 @@ func _check_seat_waiting_customers() -> void:
 	var cust = waiting_customers.pop_front()
 	var free_table: Node3D = available.pick_random()
 	cust.assign_table_from_lobby(free_table)
+	var hostess = find_child("Hostess", true, false)
+	if hostess != null and hostess.has_method("greet_customer"):
+		hostess.greet_customer()
 
 func _get_tables_targeted_by_waiters() -> Array[Node3D]:
 	var targeted: Array[Node3D] = []

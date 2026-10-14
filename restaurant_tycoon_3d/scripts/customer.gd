@@ -32,6 +32,7 @@ var waypoints: Array = []
 @onready var patience_root: Node3D = $PatienceRoot
 @onready var patience_fill: MeshInstance3D = $PatienceRoot/PatienceFill
 @onready var radial_ring: MeshInstance3D = get_node_or_null("RadialRing")
+@onready var celebration_particles: CPUParticles3D = get_node_or_null("CelebrationParticles")
 
 var anim_player: AnimationPlayer = null
 var table_ref: Node3D = null
@@ -64,8 +65,8 @@ var ordered_dish: Dictionary = {}
 var is_vip_critic: bool = false
 var critic_badge: Label3D = null
 
-# Landmark Waypoints for clean dining hall entrance navigation (matching res1_30s.jpg)
-const DOOR_POS: Vector3 = Vector3(-1.5, 0.0, 10.8)
+# Landmark Waypoints for clean dining hall entrance navigation (matching res1_30s.jpg & res1_08s.jpg)
+const DOOR_POS: Vector3 = Vector3(-1.5, 0.0, 10.5)
 const HOST_POS: Vector3 = Vector3(-1.5, 0.0, 6.8)
 const ARCH_POS: Vector3 = Vector3(-1.5, 0.0, 4.5)
 const AISLE_POS: Vector3 = Vector3(3.5, 0.0, 4.5)
@@ -345,8 +346,7 @@ func _handle_customer_walkout() -> void:
 		
 	global_position.y = 0.0
 	_play_anim("walk")
-	var aisle_out = Vector3(0.0, 0.0, position.z)
-	set_waypoints([aisle_out, ARCH_POS, HOST_POS, DOOR_POS, EXIT_POS])
+	set_waypoints(_get_waypoints_from_table(position))
 
 func _spawn_floating_text(txt: String, col: Color) -> void:
 	var label = Label3D.new()
@@ -441,16 +441,49 @@ func set_as_waiting_in_lobby(spot: Vector3) -> void:
 	set_waypoints([DOOR_POS, spot])
 
 func _get_waypoints_to_table(seat_pos: Vector3) -> Array:
-	if seat_pos.x > 10.0:
-		return [Vector3(-1.5, 0.0, 4.5), Vector3(9.5, 0.0, 4.5), Vector3(seat_pos.x, 0.0, 4.5), seat_pos]
+	var pts: Array = [ARCH_POS]
+	if seat_pos.x <= 3.0:
+		# Column 1 (Tables 1, 2, 3) via west aisle
+		pts.append(Vector3(-0.1, 0.0, 4.5))
+		pts.append(Vector3(-0.1, 0.0, seat_pos.z))
+	elif seat_pos.x <= 6.8:
+		# Column 2 (Tables 4, 5, 6) via central aisle
+		pts.append(AISLE_POS)
+		pts.append(Vector3(3.5, 0.0, seat_pos.z))
+	elif seat_pos.x <= 10.8:
+		# Column 3 (Tables 7, 8, 9) via east central aisle
+		pts.append(AISLE_POS)
+		pts.append(Vector3(7.3, 0.0, 4.5))
+		pts.append(Vector3(7.3, 0.0, seat_pos.z))
 	else:
-		return [Vector3(-1.5, 0.0, seat_pos.z), seat_pos]
+		# Column 4 (Tables 10, 11, 12) via expansion aisle
+		pts.append(AISLE_POS)
+		pts.append(Vector3(11.5, 0.0, 4.5))
+		pts.append(Vector3(11.5, 0.0, seat_pos.z))
+	pts.append(seat_pos)
+	return pts
 
 func _get_waypoints_from_table(curr_pos: Vector3) -> Array:
-	if curr_pos.x > 10.0:
-		return [Vector3(curr_pos.x, 0.0, 4.5), Vector3(9.5, 0.0, 4.5), Vector3(-1.5, 0.0, 4.5), HOST_POS, DOOR_POS, EXIT_POS]
+	var pts: Array = []
+	if curr_pos.x <= 3.0:
+		pts.append(Vector3(-0.1, 0.0, curr_pos.z))
+		pts.append(Vector3(-0.1, 0.0, 4.5))
+	elif curr_pos.x <= 6.8:
+		pts.append(Vector3(3.5, 0.0, curr_pos.z))
+		pts.append(AISLE_POS)
+	elif curr_pos.x <= 10.8:
+		pts.append(Vector3(7.3, 0.0, curr_pos.z))
+		pts.append(Vector3(7.3, 0.0, 4.5))
+		pts.append(AISLE_POS)
 	else:
-		return [Vector3(-1.5, 0.0, curr_pos.z), HOST_POS, DOOR_POS, EXIT_POS]
+		pts.append(Vector3(11.5, 0.0, curr_pos.z))
+		pts.append(Vector3(11.5, 0.0, 4.5))
+		pts.append(AISLE_POS)
+	pts.append(ARCH_POS)
+	pts.append(HOST_POS)
+	pts.append(DOOR_POS)
+	pts.append(EXIT_POS)
+	return pts
 
 func assign_table_from_lobby(target_table: Node3D) -> void:
 	if current_state != State.WAITING_IN_LOBBY and current_state != State.AT_HOST:
@@ -470,6 +503,10 @@ func assign_table_from_lobby(target_table: Node3D) -> void:
 	current_state = State.WALKING_TO_TABLE
 	set_bubble_text("💭")
 	set_waypoints(_get_waypoints_to_table(seat_pos))
+	
+	var hostess = get_tree().root.find_child("Hostess", true, false)
+	if hostess != null and hostess.has_method("greet_customer"):
+		hostess.greet_customer()
 
 func _on_timer_complete() -> void:
 	match current_state:
@@ -532,6 +569,8 @@ func on_food_delivered() -> void:
 			gm.award_critic_review(true, bounty)
 		_spawn_floating_text("⭐⭐⭐⭐⭐ 5-STAR CRITIC REVIEW! +$%d ⭐" % bounty, Color(1.0, 0.88, 0.2, 1.0))
 		set_bubble_text("⭐⭐⭐⭐⭐")
+		if celebration_particles != null:
+			celebration_particles.restart()
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
 			am.play_sfx("upgrade", 0.0, 4.0)
@@ -541,6 +580,9 @@ func on_food_delivered() -> void:
 			gm.add_cash(tip, global_position + Vector3(0, 2.2, 0))
 		_spawn_floating_text("+$%d Speedy Tip! ⚡" % tip, Color(0.35, 1.0, 0.5, 1.0))
 		set_bubble_badge("fork_knife")
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("coin", 0.05, 1.1)
 	else:
 		set_bubble_badge("fork_knife")
 		
