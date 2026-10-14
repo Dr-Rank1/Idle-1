@@ -73,11 +73,25 @@ func _check_spawn_hired_staff() -> void:
 		add_child(w3)
 		waiters.append(w3)
 
+	# Check Sous Chef Antoine
+	if gm.is_staff_hired("chef_sous") and not _has_sous_chef():
+		var chef_scn = load("res://scenes/chef.tscn")
+		if chef_scn != null and kitchen_container != null:
+			var sc = chef_scn.instantiate()
+			sc.name = "ChefSous"
+			sc.transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.8, 0, -7.5)
+			kitchen_container.add_child(sc)
+
 func _has_waiter(sid: String) -> bool:
 	for w in waiters:
 		if is_instance_valid(w) and w.get("staff_id") == sid:
 			return true
 	return false
+
+func _has_sous_chef() -> bool:
+	if kitchen_container == null:
+		return false
+	return kitchen_container.find_child("ChefSous", true, false) != null
 
 func _on_staff_updated(staff_id: String) -> void:
 	_check_spawn_hired_staff()
