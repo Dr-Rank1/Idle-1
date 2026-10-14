@@ -146,6 +146,10 @@ func _ready() -> void:
 		gm.campaign_updated.connect(_on_campaign_updated)
 		gm.offline_earnings_available.connect(_on_offline_earnings_available)
 		gm.critic_review_awarded.connect(_on_critic_review_awarded)
+		gm.menu_updated.connect(func():
+			if kitchen_panel != null and kitchen_panel.visible:
+				_refresh_kitchen_panel()
+		)
 		
 		displayed_cash = gm.cash
 		_update_top_bar(gm.cash, gm.gems, gm.star_rating, gm.restaurant_name, gm.restaurant_level, gm.restaurant_xp, gm.xp_to_next_level)
@@ -636,6 +640,74 @@ func _refresh_kitchen_panel() -> void:
 	
 	kitchen_vbox.add_child(_create_kitchen_card("stove", "Master Range Stoves", "🍳", gm))
 	kitchen_vbox.add_child(_create_kitchen_card("host_desk", "Reception Host Desk", "🛎️", gm))
+
+	# Section Header: Menu & Recipes
+	var sep = HSeparator.new()
+	kitchen_vbox.add_child(sep)
+	
+	var menu_header = Label.new()
+	menu_header.text = "📖 BISTRO MENU & RECIPES"
+	menu_header.add_theme_font_size_override("font_size", 16)
+	menu_header.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35, 1.0))
+	kitchen_vbox.add_child(menu_header)
+
+	for dish_id in ["burger", "pasta", "pizza", "sushi"]:
+		if gm.menu_items.has(dish_id):
+			kitchen_vbox.add_child(_create_recipe_card(gm.menu_items[dish_id], gm))
+
+func _create_recipe_card(item: Dictionary, gm: Node) -> PanelContainer:
+	var p = PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _get_card_style())
+	
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 12)
+	p.add_child(hbox)
+	
+	var icon = Label.new()
+	icon.text = item.get("icon", "🍽️")
+	icon.add_theme_font_size_override("font_size", 28)
+	hbox.add_child(icon)
+	
+	var vb = VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(vb)
+	
+	var name_lbl = Label.new()
+	name_lbl.text = item.get("name", "Dish")
+	name_lbl.add_theme_font_size_override("font_size", 15)
+	name_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	vb.add_child(name_lbl)
+	
+	var desc_lbl = Label.new()
+	var price_val = item.get("price", 45.0)
+	var is_unlocked = item.get("unlocked", false)
+	if is_unlocked:
+		desc_lbl.text = "$%d / Order • Active on Table Menus" % round(price_val)
+		desc_lbl.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55, 1))
+	else:
+		desc_lbl.text = "Earns $%d / Order • %s" % [round(price_val), item.get("desc", "")]
+		desc_lbl.add_theme_color_override("font_color", Color(0.75, 0.82, 0.9, 0.8))
+	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(desc_lbl)
+	
+	var btn = Button.new()
+	if is_unlocked:
+		btn.text = "SERVING\n($%d)" % round(price_val)
+		btn.disabled = true
+		btn.add_theme_stylebox_override("normal", _get_green_btn_style())
+	else:
+		var cost = item.get("unlock_cost", 180.0)
+		btn.text = "UNLOCK\n($%d)" % round(cost)
+		btn.disabled = gm.cash < cost
+		btn.add_theme_stylebox_override("normal", _get_gold_btn_style())
+		btn.pressed.connect(func():
+			_play_click_sfx()
+			if gm.unlock_dish(item.get("id")):
+				_refresh_kitchen_panel()
+		)
+	hbox.add_child(btn)
+	return p
 
 func _create_kitchen_card(st_id: String, st_name: String, icon_str: String, gm: Node) -> PanelContainer:
 	var p = PanelContainer.new()
