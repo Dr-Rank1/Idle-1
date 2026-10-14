@@ -505,7 +505,7 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 	var icon_char = "🍳"
 	if station_id.begins_with("table"):
 		var tnum = int(station_id.trim_prefix("table_"))
-		icon_char = "🌿" if tnum >= 6 else "🪑"
+		icon_char = "🌿" if tnum >= 10 else "🪑"
 	elif station_id == "host_desk":
 		icon_char = "🛎️"
 	elif station_id.begins_with("milkshake"):
@@ -557,11 +557,15 @@ func _refresh_upgrade_tiles(gm: Node) -> void:
 		{"id": "table_4", "name": "Booth Table 4", "short": "Booth 4", "icon": "🪑"},
 		{"id": "table_5", "name": "Booth Table 5", "short": "Booth 5", "icon": "🪑"},
 		{"id": "table_6", "name": "Booth Table 6", "short": "Booth 6", "icon": "🪑"},
+		{"id": "table_7", "name": "Booth Table 7", "short": "Booth 7", "icon": "🪑"},
+		{"id": "table_8", "name": "Booth Table 8", "short": "Booth 8", "icon": "🪑"},
+		{"id": "table_9", "name": "Booth Table 9", "short": "Booth 9", "icon": "🪑"},
 		{"id": "milkshake_bar", "name": "Bar Top Counter", "short": "Bar Top", "icon": "🥤"},
 		{"id": "milkshake_blender", "name": "Frappe Blenders", "short": "Blender", "icon": "🍨"},
 		{"id": "jukebox", "name": "Retro Jukebox", "short": "Jukebox", "icon": "🎵"},
-		{"id": "table_7", "name": "Patio Table 7", "short": "Patio 7", "icon": "🌿"},
-		{"id": "table_8", "name": "Patio Table 8", "short": "Patio 8", "icon": "🌿"}
+		{"id": "table_10", "name": "Patio Table 10", "short": "Patio 10", "icon": "🌿"},
+		{"id": "table_11", "name": "Patio Table 11", "short": "Patio 11", "icon": "🌿"},
+		{"id": "table_12", "name": "Patio Table 12", "short": "Patio 12", "icon": "🌿"}
 	]
 
 	for st in all_stations:
@@ -659,7 +663,7 @@ func _refresh_dining_panel() -> void:
 	if gm == null:
 		return
 	
-	for i in range(1, 6): # Indoor tables 1 to 5
+	for i in range(1, 10): # Indoor tables 1 to 9
 		var tid = "table_%d" % i
 		var card = _create_table_card(tid, i, gm)
 		dining_vbox.add_child(card)
@@ -773,7 +777,7 @@ func _refresh_terrace_panel() -> void:
 		vb.add_child(btn)
 		terrace_vbox.add_child(card)
 	else:
-		for tid in ["table_6", "table_7", "table_8"]:
+		for tid in ["table_10", "table_11", "table_12"]:
 			var card = _create_table_card(tid, int(tid.trim_prefix("table_")), gm)
 			terrace_vbox.add_child(card)
 

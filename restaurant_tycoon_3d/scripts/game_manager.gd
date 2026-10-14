@@ -742,12 +742,12 @@ func unlock_terrace() -> bool:
 		return true
 	if spend_cash(TERRACE_UNLOCK_COST):
 		terrace_unlocked = true
-		unlocked_tables["table_6"] = true
-		unlocked_tables["table_7"] = true
-		unlocked_tables["table_8"] = true
-		table_unlocked.emit("table_6")
-		table_unlocked.emit("table_7")
-		table_unlocked.emit("table_8")
+		unlocked_tables["table_10"] = true
+		unlocked_tables["table_11"] = true
+		unlocked_tables["table_12"] = true
+		table_unlocked.emit("table_10")
+		table_unlocked.emit("table_11")
+		table_unlocked.emit("table_12")
 		terrace_unlocked_changed.emit(true)
 		add_xp(200.0)
 		save_game()
@@ -794,12 +794,21 @@ func award_critic_review(is_positive: bool, bounty: float = 0.0) -> void:
 
 func get_station_tier_title(station_id: String, lvl: int) -> String:
 	if station_id.begins_with("table"):
-		if lvl >= 10:
-			return "👑 TIER 3 • ROYAL VIP SUITE"
-		elif lvl >= 5:
-			return "★ TIER 2 • GOURMET BISTRO"
+		var tnum = int(station_id.trim_prefix("table_"))
+		if tnum >= 10:
+			if lvl >= 10:
+				return "👑 TIER 3 • SUNSET TERRACE CABANA"
+			elif lvl >= 5:
+				return "★ TIER 2 • SUNNY PATIO UMBRELLA"
+			else:
+				return "🌿 TIER 1 • OUTDOOR GARDEN TABLE"
 		else:
-			return "☕ TIER 1 • RUSTIC PINE TABLE"
+			if lvl >= 10:
+				return "👑 TIER 3 • LUXURY LEATHER QUAD-BOOTH"
+			elif lvl >= 5:
+				return "★ TIER 2 • RETRO DINER QUAD-BOOTH"
+			else:
+				return "🪑 TIER 1 • CLASSIC CRIMSON BOOTH"
 	elif station_id.begins_with("stove"):
 		if lvl >= 10:
 			return "👑 TIER 3 • MASTER CHEF SUITE"
