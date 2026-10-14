@@ -104,7 +104,7 @@ var world_restaurants: Dictionary = {
 
 # ─── Sectors & Expansions ───────────────────────────────────────────────────
 var unlocked_stalls: int = 2
-var terrace_unlocked: bool = false
+var terrace_unlocked: bool = true
 const TERRACE_UNLOCK_COST: float = 380.0
 
 # ─── Tycoon Level & XP ──────────────────────────────────────────────────────
@@ -128,9 +128,9 @@ var unlocked_tables: Dictionary = {
 	"table_7": true,
 	"table_8": true,
 	"table_9": true,
-	"table_10": false,
-	"table_11": false,
-	"table_12": false,
+	"table_10": true,
+	"table_11": true,
+	"table_12": true,
 }
 
 var table_unlock_costs: Dictionary = {

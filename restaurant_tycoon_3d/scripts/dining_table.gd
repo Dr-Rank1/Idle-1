@@ -104,7 +104,7 @@ func _process(delta: float) -> void:
 			action_badge.scale = Vector3(pulse, pulse, pulse)
 	if booth_bubble_root != null:
 		var offset = float(abs(table_id.hash()) % 10)
-		booth_bubble_root.position.y = 1.38 + sin(time_passed * 3.2 + offset) * 0.05
+		booth_bubble_root.position.y = 1.65 + sin(time_passed * 3.2 + offset) * 0.05
 
 func _on_cash_changed(_cash_val: float) -> void:
 	var gm = get_node_or_null("/root/GameManager")
@@ -260,33 +260,53 @@ func _setup_unique_booth_diners() -> void:
 	
 	# Ambient Tycoon Diner Speech Bubble (Matching res1_08s.jpg & res1_12s.jpg)
 	var t_idx = int(table_id.trim_prefix("table_"))
-	var bubble_icon = "⏳ 🍽️" if (t_idx % 2 != 0) else "⏳ 💵"
-	var bubble_pos = Vector3(-0.35, 1.38, -0.65) if (t_idx % 2 != 0) else Vector3(0.35, 1.38, 0.65)
+	var bubble_pos = Vector3(-0.35, 1.65, -0.65) if (t_idx % 2 != 0) else Vector3(0.35, 1.65, 0.65)
 	
 	booth_bubble_root = Node3D.new()
 	booth_bubble_root.name = "BoothBubble"
 	booth_bubble_root.position = bubble_pos
 	add_child(booth_bubble_root)
 	
+	# Circular Icon Bubble (Fork & Knife or Hourglass)
 	var b_spr = Sprite3D.new()
 	b_spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	b_spr.double_sided = false
-	b_spr.pixel_size = 0.0036
-	var b_path = ProjectSettings.globalize_path("res://assets/textures/speech_bubble_pill.png")
+	b_spr.pixel_size = 0.0030
+	var icon_name = "bubble_fork_knife.png" if (t_idx % 2 != 0) else "bubble_hourglass.png"
+	var b_path = ProjectSettings.globalize_path("res://assets/textures/" + icon_name)
 	var b_img = Image.load_from_file(b_path)
 	if b_img != null:
 		b_spr.texture = ImageTexture.create_from_image(b_img)
 	booth_bubble_root.add_child(b_spr)
 	
-	var b_lbl = Label3D.new()
-	b_lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	b_lbl.double_sided = false
-	b_lbl.position = Vector3(0, 0.04, 0.01)
-	b_lbl.text = bubble_icon
-	b_lbl.font_size = 28
-	b_lbl.outline_size = 0
-	b_lbl.modulate = Color(0.12, 0.14, 0.18, 1)
-	booth_bubble_root.add_child(b_lbl)
+	# Floating Green Cash Stack Graphic on alternating booths (matching res1_08s.jpg)
+	if t_idx in [1, 3, 5, 8]:
+		var cash_root = Node3D.new()
+		cash_root.name = "CashBonusVisual"
+		cash_root.position = Vector3(0.62 if t_idx % 2 != 0 else -0.62, 0.35, 0)
+		booth_bubble_root.add_child(cash_root)
+		
+		var cash_spr = Sprite3D.new()
+		cash_spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		cash_spr.double_sided = false
+		cash_spr.pixel_size = 0.0024
+		var c_path = ProjectSettings.globalize_path("res://assets/textures/bubble_cash_stack.png")
+		var c_img = Image.load_from_file(c_path)
+		if c_img != null:
+			cash_spr.texture = ImageTexture.create_from_image(c_img)
+		cash_root.add_child(cash_spr)
+		
+		var cash_lbl = Label3D.new()
+		cash_lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		cash_lbl.double_sided = false
+		cash_lbl.position = Vector3(0.48, 0, 0.01)
+		var amounts = ["$100", "$2.8T", "$172T", "$1.03T"]
+		cash_lbl.text = amounts[t_idx % amounts.size()]
+		cash_lbl.font_size = 24
+		cash_lbl.outline_size = 6
+		cash_lbl.modulate = Color(0.4, 1.0, 0.55, 1)
+		cash_lbl.outline_modulate = Color(0.04, 0.16, 0.06, 0.95)
+		cash_root.add_child(cash_lbl)
 
 func _set_unlocked_visual(lvl: int) -> void:
 	is_unlocked = true

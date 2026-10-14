@@ -103,19 +103,19 @@ background_mode = 1
 background_color = Color(0.55, 0.78, 0.95, 1)
 ambient_light_source = 2
 ambient_light_color = Color(0.98, 0.96, 0.92, 1)
-ambient_light_energy = 0.72
+ambient_light_energy = 0.55
 tonemap_mode = 2
-tonemap_exposure = 1.02
+tonemap_exposure = 1.04
 ssao_enabled = true
-ssao_radius = 1.0
-ssao_intensity = 1.2
+ssao_radius = 1.2
+ssao_intensity = 1.8
 glow_enabled = true
 glow_intensity = 0.12
 glow_bloom = 0.04
 adjustment_enabled = true
 adjustment_brightness = 1.02
-adjustment_contrast = 1.04
-adjustment_saturation = 1.15
+adjustment_contrast = 1.06
+adjustment_saturation = 1.22
 
 [sub_resource type="StandardMaterial3D" id="Material_asphalt"]
 albedo_color = Color(0.20, 0.21, 0.24, 1)
@@ -554,11 +554,11 @@ environment = SubResource("Environment_main")
 
 [node name="DirectionalLight3D_Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.819152, -0.469846, 0.32899, 0, 0.573576, 0.819152, -0.573576, -0.67101, 0.469846, 0, 18, 0)
-light_color = Color(1, 0.98, 0.94, 1)
-light_energy = 0.72
+light_color = Color(1, 0.96, 0.90, 1)
+light_energy = 0.95
 shadow_enabled = true
-shadow_bias = 0.02
-shadow_blur = 1.8
+shadow_bias = 0.012
+shadow_blur = 1.2
 directional_shadow_mode = 0
 directional_shadow_max_distance = 54.0
 
