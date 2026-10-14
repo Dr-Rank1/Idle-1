@@ -30,6 +30,7 @@ var occupying_customer: Node = null
 @onready var tier2_decor: Node3D = get_node_or_null("Tier2Decor")
 @onready var tier3_decor: Node3D = get_node_or_null("Tier3Decor")
 @onready var upgrade_particles: CPUParticles3D = get_node_or_null("UpgradeParticles")
+@onready var timer_ring: MeshInstance3D = get_node_or_null("TimerRing")
 
 var time_passed: float = 0.0
 var initial_badge_y: float = 1.35
@@ -80,6 +81,9 @@ func _on_cash_changed(_cash_val: float) -> void:
 
 func _set_locked_visual(cost: float) -> void:
 	is_unlocked = false
+	if is_terrace_table:
+		visible = false
+		return
 	if tier2_decor != null: tier2_decor.visible = false
 	if tier3_decor != null: tier3_decor.visible = false
 	if food_dish != null: food_dish.visible = false
@@ -131,7 +135,9 @@ func update_level_display(lvl: int) -> void:
 		can_upgrade = gm.cash >= upgrade_cost and lvl < gm.max_level
 		
 	if is_dirty:
+		if badge_root != null: badge_root.visible = true
 		if level_label != null:
+			level_label.visible = true
 			level_label.text = "🧽 Dirty Table"
 			level_label.font_size = 20
 			level_label.modulate = Color(0.95, 0.6, 0.2, 1.0)
@@ -142,39 +148,15 @@ func update_level_display(lvl: int) -> void:
 		return
 
 	if is_occupied:
-		if level_label != null:
-			level_label.text = "🍽️ Seated"
-			level_label.font_size = 18
-			level_label.modulate = Color(0.8, 0.9, 1.0, 0.9)
-		if action_badge != null:
-			action_badge.visible = false
+		if badge_root != null: badge_root.visible = false
 		return
 
 	# Idle & ready table
 	if tier2_decor != null: tier2_decor.visible = lvl >= 5
 	if tier3_decor != null: tier3_decor.visible = lvl >= 10
 	
-	if level_label != null:
-		if lvl >= 10:
-			level_label.text = "👑 VIP Lv. %d" % lvl
-			level_label.modulate = Color(0.95, 0.45, 1.0, 1.0)
-		elif lvl >= 5:
-			level_label.text = "★ Gourmet Lv. %d" % lvl
-			level_label.modulate = Color(1.0, 0.85, 0.25, 1.0)
-		else:
-			level_label.text = "Bistro Lv. %d" % lvl
-			level_label.modulate = Color(0.35, 1.0, 0.55, 1.0)
-		level_label.font_size = 22
-		level_label.outline_size = 6
-
-	if action_badge != null:
-		if can_upgrade:
-			action_badge.visible = true
-			action_badge.text = "⬆ UPGRADE  ($%d)" % round(upgrade_cost)
-			action_badge.modulate = Color(0.25, 1.0, 0.5, 1.0)
-			action_badge.outline_modulate = Color(0.04, 0.25, 0.08, 0.95)
-		else:
-			action_badge.visible = false
+	if badge_root != null:
+		badge_root.visible = false
 
 func _on_table_unlocked(id: String) -> void:
 	if id == table_id:
@@ -251,7 +233,19 @@ func clear_food() -> void:
 	if food_dish != null:
 		food_dish.visible = false
 
+func set_eating_progress(progress_val: float) -> void:
+	if timer_ring != null:
+		timer_ring.visible = true
+		var mat = timer_ring.get_active_material(0)
+		if mat is ShaderMaterial:
+			mat.set_shader_parameter("progress", clamp(progress_val, 0.0, 1.0))
+
+func hide_timer_ring() -> void:
+	if timer_ring != null:
+		timer_ring.visible = false
+
 func vacate() -> void:
+	hide_timer_ring()
 	is_occupied = false
 	occupying_customer = null
 	clear_food()

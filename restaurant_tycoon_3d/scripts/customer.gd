@@ -178,6 +178,9 @@ func _physics_process(delta: float) -> void:
 	
 	if state_timer > 0.0:
 		state_timer -= delta
+		if current_state == State.EATING and table_ref != null and table_ref.has_method("set_eating_progress"):
+			var prog: float = 1.0 - (state_timer / 3.2)
+			table_ref.set_eating_progress(prog)
 		if state_timer <= 0.0:
 			_on_timer_complete()
 
@@ -372,6 +375,8 @@ func _on_timer_complete() -> void:
 				set_waypoints([DOOR_POS, EXIT_POS])
 				
 		State.EATING:
+			if table_ref != null and table_ref.has_method("hide_timer_ring"):
+				table_ref.hide_timer_ring()
 			current_state = State.CHEERING
 			_play_anim("emote-yes")
 			set_bubble_text("❤️")

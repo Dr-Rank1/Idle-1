@@ -1,0 +1,133 @@
+[gd_scene load_steps=12 format=3 uid="uid://execbookcase123"]
+
+[sub_resource type="StandardMaterial3D" id="Material_bookcase_wood"]
+albedo_color = Color(0.45, 0.22, 0.10, 1)
+roughness = 0.55
+
+[sub_resource type="BoxMesh" id="BoxMesh_shelf"]
+material = SubResource("Material_bookcase_wood")
+size = Vector3(3.2, 0.08, 0.42)
+
+[sub_resource type="BoxMesh" id="BoxMesh_side"]
+material = SubResource("Material_bookcase_wood")
+size = Vector3(0.08, 2.5, 0.42)
+
+[sub_resource type="BoxMesh" id="BoxMesh_back"]
+material = SubResource("Material_bookcase_wood")
+size = Vector3(3.2, 2.5, 0.04)
+
+[sub_resource type="StandardMaterial3D" id="Material_book_red"]
+albedo_color = Color(0.85, 0.20, 0.20, 1)
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Material_book_blue"]
+albedo_color = Color(0.20, 0.55, 0.88, 1)
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Material_book_yellow"]
+albedo_color = Color(0.95, 0.80, 0.20, 1)
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Material_book_green"]
+albedo_color = Color(0.22, 0.70, 0.35, 1)
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Material_white_prop"]
+albedo_color = Color(0.95, 0.95, 0.95, 1)
+roughness = 0.3
+
+[sub_resource type="BoxMesh" id="BoxMesh_book_cluster"]
+size = Vector3(0.55, 0.38, 0.28)
+
+[sub_resource type="SphereMesh" id="SphereMesh_globe"]
+material = SubResource("Material_white_prop")
+radius = 0.16
+height = 0.32
+
+[node name="ExecutiveBookcase" type="Node3D"]
+
+[node name="BackPanel" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, -0.19)
+mesh = SubResource("BoxMesh_back")
+
+[node name="SideLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.56, 1.25, 0)
+mesh = SubResource("BoxMesh_side")
+
+[node name="SideRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.56, 1.25, 0)
+mesh = SubResource("BoxMesh_side")
+
+[node name="ShelfBottom" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
+mesh = SubResource("BoxMesh_shelf")
+
+[node name="Shelf1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
+mesh = SubResource("BoxMesh_shelf")
+
+[node name="Shelf2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.28, 0)
+mesh = SubResource("BoxMesh_shelf")
+
+[node name="Shelf3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, 0)
+mesh = SubResource("BoxMesh_shelf")
+
+[node name="ShelfTop" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.48, 0)
+mesh = SubResource("BoxMesh_shelf")
+
+[node name="BooksBottomRed" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1, 0.26, 0.02)
+material_override = SubResource("Material_book_red")
+mesh = SubResource("BoxMesh_book_cluster")
+
+[node name="BooksBottomBlue" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.45, 0.26, 0.02)
+material_override = SubResource("Material_book_blue")
+mesh = SubResource("BoxMesh_book_cluster")
+
+[node name="BooksBottomYellow" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.45, 0.26, 0.02)
+material_override = SubResource("Material_book_yellow")
+mesh = SubResource("BoxMesh_book_cluster")
+
+[node name="BooksBottomGreen" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.26, 0.02)
+material_override = SubResource("Material_book_green")
+mesh = SubResource("BoxMesh_book_cluster")
+
+[node name="BooksMidYellow" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.0, 0.88, 0.02)
+material_override = SubResource("Material_book_yellow")
+mesh = SubResource("BoxMesh_book_cluster")
+
+[node name="BooksMidRed" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.35, 0.88, 0.02)
+material_override = SubResource("Material_book_red")
+mesh = SubResource("BoxMesh_book_cluster")
+
+[node name="BooksMidBlue" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 0.88, 0.02)
+material_override = SubResource("Material_book_blue")
+mesh = SubResource("BoxMesh_book_cluster")
+
+[node name="Globe" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.82, 0.02)
+mesh = SubResource("SphereMesh_globe")
+
+[node name="BooksTopBlue" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.85, 1.5, 0.02)
+material_override = SubResource("Material_book_blue")
+mesh = SubResource("BoxMesh_book_cluster")
+
+[node name="BooksTopGreen" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 1.5, 0.02)
+material_override = SubResource("Material_book_green")
+mesh = SubResource("BoxMesh_book_cluster")
+
+[node name="BooksTopRed" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 1.5, 0.02)
+material_override = SubResource("Material_book_red")
+mesh = SubResource("BoxMesh_book_cluster")

@@ -60,15 +60,15 @@ func _clamp_target() -> void:
 func focus_zone(zone: String) -> void:
 	match zone:
 		"parking":
-			target_position = Vector3(-2.0, 15.5, 21.0)
+			target_position = Vector3(4.0, 18.5, 24.0)
 		"dining":
-			target_position = Vector3(3.2, 16.5, 16.0)
+			target_position = Vector3(9.5, 18.5, 20.0)
 		"kitchen":
-			target_position = Vector3(-4.0, 14.5, 8.5)
+			target_position = Vector3(4.5, 18.5, 15.5)
 		"terrace":
-			target_position = Vector3(14.0, 16.0, 14.5)
+			target_position = Vector3(14.5, 18.5, 18.5)
 		"overview":
-			target_position = Vector3(5.8, 21.0, 26.8)
+			target_position = Vector3(10.5, 18.5, 22.0)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -105,8 +105,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		_clamp_target()
 
 func _zoom(amount: float) -> void:
-	var cam_dir: Vector3 = transform.basis.z.normalized()
-	var new_pos = target_position + cam_dir * amount
-	var dist = new_pos.length()
-	if dist >= min_zoom_dist and dist <= max_zoom_dist:
-		target_position = new_pos
+	if projection == PROJECTION_ORTHOGONAL:
+		size = clamp(size + amount * 1.5, 14.0, 36.0)
+	else:
+		var cam_dir: Vector3 = transform.basis.z.normalized()
+		var new_pos = target_position + cam_dir * amount
+		var dist = new_pos.length()
+		if dist >= min_zoom_dist and dist <= max_zoom_dist:
+			target_position = new_pos
