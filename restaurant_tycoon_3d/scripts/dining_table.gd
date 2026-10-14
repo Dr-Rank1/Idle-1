@@ -48,26 +48,15 @@ func _ready() -> void:
 	if food_dish != null: food_dish.visible = false
 	if dirty_dishes != null: dirty_dishes.visible = false
 	if timer_ring != null: timer_ring.visible = false
-	if is_terrace_table and pendant_lamp != null:
-		pendant_lamp.visible = false
-	if is_terrace_table:
-		if booth_decor != null: booth_decor.visible = false
-		if companion_diners != null: companion_diners.visible = false
-		if terrace_decor != null: terrace_decor.visible = is_unlocked
-		if chair_north != null: chair_north.visible = true
-		if chair_south != null: chair_south.visible = true
-		if chair_east != null: chair_east.visible = true
-		if chair_west != null: chair_west.visible = true
-	else:
-		if booth_decor != null: booth_decor.visible = true
-		if companion_diners != null: companion_diners.visible = true
-		if terrace_decor != null: terrace_decor.visible = false
-		if chair_north != null: chair_north.visible = false
-		if chair_south != null: chair_south.visible = false
-		if chair_east != null: chair_east.visible = false
-		if chair_west != null: chair_west.visible = false
-		if chair_left != null: chair_left.visible = false
-		if chair_right != null: chair_right.visible = false
+	if booth_decor != null: booth_decor.visible = true
+	if companion_diners != null: companion_diners.visible = true
+	if terrace_decor != null: terrace_decor.visible = false
+	if chair_north != null: chair_north.visible = false
+	if chair_south != null: chair_south.visible = false
+	if chair_east != null: chair_east.visible = false
+	if chair_west != null: chair_west.visible = false
+	if chair_left != null: chair_left.visible = false
+	if chair_right != null: chair_right.visible = false
 	if timer_ring != null and timer_ring.mesh != null and timer_ring.mesh.material != null:
 		var ring_mat = timer_ring.mesh.material.duplicate()
 		timer_ring.material_override = ring_mat
@@ -208,13 +197,31 @@ const BOOTH_CHARACTERS: Dictionary = {
 		"res://assets/models/characters/character-female-c.glb",
 		"res://assets/models/characters/character-male-f.glb",
 		"res://assets/models/characters/character-female-f.glb"
+	],
+	"table_10": [
+		"res://assets/models/characters/character-female-b.glb",
+		"res://assets/models/characters/character-male-c.glb",
+		"res://assets/models/characters/character-female-e.glb",
+		"res://assets/models/characters/character-male-a.glb"
+	],
+	"table_11": [
+		"res://assets/models/characters/character-female-d.glb",
+		"res://assets/models/characters/character-male-f.glb",
+		"res://assets/models/characters/character-male-b.glb",
+		"res://assets/models/characters/character-female-a.glb"
+	],
+	"table_12": [
+		"res://assets/models/characters/character-female-c.glb",
+		"res://assets/models/characters/character-male-e.glb",
+		"res://assets/models/characters/character-female-f.glb",
+		"res://assets/models/characters/character-male-d.glb"
 	]
 }
 
 var _booth_chars_setup: bool = false
 
 func _setup_unique_booth_diners() -> void:
-	if _booth_chars_setup or is_terrace_table or companion_diners == null:
+	if _booth_chars_setup or companion_diners == null:
 		return
 	_booth_chars_setup = true
 	var chars = BOOTH_CHARACTERS.get(table_id, [])
@@ -280,7 +287,7 @@ func _setup_unique_booth_diners() -> void:
 	booth_bubble_root.add_child(b_spr)
 	
 	# Floating Green Cash Stack Graphic on alternating booths (matching res1_08s.jpg)
-	if t_idx in [1, 3, 5, 8]:
+	if t_idx in [1, 3, 5, 8, 11]:
 		var cash_root = Node3D.new()
 		cash_root.name = "CashBonusVisual"
 		cash_root.position = Vector3(0.62 if t_idx % 2 != 0 else -0.62, 0.35, 0)
@@ -312,28 +319,27 @@ func _set_unlocked_visual(lvl: int) -> void:
 	is_unlocked = true
 	visible = true
 	if table_mesh != null: table_mesh.visible = true
-	if booth_decor != null: booth_decor.visible = not is_terrace_table
+	if booth_decor != null: booth_decor.visible = true
 	if companion_diners != null:
-		companion_diners.visible = not is_terrace_table
+		companion_diners.visible = true
 		for c in companion_diners.get_children():
 			if c.name == "DinerSouthRight" and is_occupied:
 				c.visible = false
 			else:
 				c.visible = true
-	if terrace_decor != null: terrace_decor.visible = is_terrace_table
-	var show_chairs: bool = is_terrace_table
-	if chair_north != null: chair_north.visible = show_chairs
-	if chair_south != null: chair_south.visible = show_chairs
-	if chair_east != null: chair_east.visible = show_chairs
-	if chair_west != null: chair_west.visible = show_chairs
-	if chair_left != null: chair_left.visible = show_chairs
-	if chair_right != null: chair_right.visible = show_chairs
+	if terrace_decor != null: terrace_decor.visible = false
+	if chair_north != null: chair_north.visible = false
+	if chair_south != null: chair_south.visible = false
+	if chair_east != null: chair_east.visible = false
+	if chair_west != null: chair_west.visible = false
+	if chair_left != null: chair_left.visible = false
+	if chair_right != null: chair_right.visible = false
 	if table_menu != null: table_menu.visible = true
 	if salt_shaker != null: salt_shaker.visible = true
 	if pepper_shaker != null: pepper_shaker.visible = true
-	if pendant_lamp != null: pendant_lamp.visible = not is_terrace_table
+	if pendant_lamp != null: pendant_lamp.visible = true
 	if table_omni_light != null: table_omni_light.visible = true
-	if not is_terrace_table and food_dish != null:
+	if food_dish != null:
 		food_dish.visible = true
 	_setup_unique_booth_diners()
 	update_level_display(lvl)
@@ -492,10 +498,10 @@ func vacate() -> void:
 	occupying_customer = null
 	clear_food()
 	var diner_sr = get_node_or_null("CompanionDiners/DinerSouthRight")
-	if diner_sr != null and not is_terrace_table:
+	if diner_sr != null:
 		diner_sr.visible = true
 	var diner_s = get_node_or_null("CompanionDiners/DinerSouth")
-	if diner_s != null and not is_terrace_table:
+	if diner_s != null:
 		diner_s.visible = true
 	
 	is_dirty = true

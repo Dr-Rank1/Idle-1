@@ -62,7 +62,7 @@ func focus_zone(zone: String) -> void:
 		"parking":
 			target_position = Vector3(10.5, 14.5, 22.0)
 		"dining":
-			target_position = Vector3(14.2, 15.0, 16.8)
+			target_position = Vector3(15.2, 15.0, 16.8)
 		"kitchen":
 			target_position = Vector3(16.5, 14.5, 9.5)
 		"milkshake":
@@ -70,7 +70,7 @@ func focus_zone(zone: String) -> void:
 		"terrace":
 			target_position = Vector3(20.5, 14.5, 16.5)
 		"overview":
-			target_position = Vector3(14.2, 15.0, 16.8)
+			target_position = Vector3(15.2, 15.0, 16.8)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:

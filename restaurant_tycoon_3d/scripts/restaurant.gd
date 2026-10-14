@@ -76,6 +76,20 @@ func _setup_custom_textures() -> void:
 			mat.uv1_scale = Vector3(2.5, 2.5, 1)
 			dining_floor_node.material_override = mat
 
+	# South-East Expansion Warm Cream-and-Tan Diamond Checkerboard Floor
+	var exp_tile_path = ProjectSettings.globalize_path("res://assets/textures/expansion_diamond_tiles.png")
+	var exp_tile_img = Image.load_from_file(exp_tile_path)
+	if exp_tile_img != null:
+		var exp_tex = ImageTexture.create_from_image(exp_tile_img)
+		var exp_floor_node = find_child("TerraceFloor", true, false)
+		if exp_floor_node != null and exp_floor_node is MeshInstance3D:
+			var exp_mat = StandardMaterial3D.new()
+			exp_mat.albedo_texture = exp_tex
+			exp_mat.roughness = 0.85
+			# 5.5m width x 11.0m length -> 1.0 repeat in X and 2.0 in Z gives ~0.69m tiles matching dining room exactly
+			exp_mat.uv1_scale = Vector3(1.0, 2.0, 1.0)
+			exp_floor_node.material_override = exp_mat
+
 	# Kitchen Commercial Slate Floor
 	var slate_path = ProjectSettings.globalize_path("res://assets/textures/kitchen_slate_tiles.png")
 	var slate_img = Image.load_from_file(slate_path)

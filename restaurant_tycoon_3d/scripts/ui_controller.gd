@@ -563,9 +563,9 @@ func _refresh_upgrade_tiles(gm: Node) -> void:
 		{"id": "milkshake_bar", "name": "Bar Top Counter", "short": "Bar Top", "icon": "🥤"},
 		{"id": "milkshake_blender", "name": "Frappe Blenders", "short": "Blender", "icon": "🍨"},
 		{"id": "jukebox", "name": "Retro Jukebox", "short": "Jukebox", "icon": "🎵"},
-		{"id": "table_10", "name": "Patio Table 10", "short": "Patio 10", "icon": "🌿"},
-		{"id": "table_11", "name": "Patio Table 11", "short": "Patio 11", "icon": "🌿"},
-		{"id": "table_12", "name": "Patio Table 12", "short": "Patio 12", "icon": "🌿"}
+		{"id": "table_10", "name": "Booth Table 10", "short": "Booth 10", "icon": "🪑"},
+		{"id": "table_11", "name": "Booth Table 11", "short": "Booth 11", "icon": "🪑"},
+		{"id": "table_12", "name": "Booth Table 12", "short": "Booth 12", "icon": "🪑"}
 	]
 
 	for st in all_stations:

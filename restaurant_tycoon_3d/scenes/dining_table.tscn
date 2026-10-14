@@ -1,8 +1,7 @@
-[gd_scene load_steps=22 format=3 uid="uid://dtable12345"]
+[gd_scene load_steps=20 format=3 uid="uid://dtable12345"]
 
 [ext_resource type="Script" path="res://scripts/dining_table.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://assets/kaykit_restaurant/gltf/table_round_A_small.gltf" id="2_table"]
-[ext_resource type="PackedScene" path="res://assets/kaykit_restaurant/gltf/chair_A.gltf" id="3_chair"]
 [ext_resource type="PackedScene" path="res://assets/models/food/burger-cheese.glb" id="4_food"]
 [ext_resource type="PackedScene" path="res://assets/kaykit_restaurant/gltf/menu.gltf" id="5_menu"]
 [ext_resource type="PackedScene" path="res://assets/models/food/shaker-salt.glb" id="6_salt"]
@@ -15,7 +14,6 @@
 [ext_resource type="PackedScene" path="res://assets/models/characters/character-female-b.glb" id="13_char_south"]
 [ext_resource type="PackedScene" path="res://assets/models/characters/character-male-b.glb" id="14_char_east"]
 [ext_resource type="Script" path="res://scripts/decor_character.gd" id="15_decor_char"]
-[ext_resource type="PackedScene" path="res://scenes/decor/parasol_umbrella.tscn" id="16_parasol"]
 
 [sub_resource type="StandardMaterial3D" id="Material_partition_wall"]
 albedo_color = Color(0.96, 0.96, 0.96, 1)
@@ -266,18 +264,6 @@ mesh = SubResource("BoxMesh_cloth")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.70, 0)
 mesh = SubResource("BoxMesh_chrome_trim")
 
-[node name="ChairNorth" parent="." instance=ExtResource("3_chair")]
-transform = Transform3D(-0.75, 0, 0, 0, 0.75, 0, 0, 0, -0.75, 0, 0, -0.68)
-
-[node name="ChairSouth" parent="." instance=ExtResource("3_chair")]
-transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0.68)
-
-[node name="ChairEast" parent="." instance=ExtResource("3_chair")]
-transform = Transform3D(0, 0, -0.75, 0, 0.75, 0, 0.75, 0, 0, 0.68, 0, 0)
-
-[node name="ChairWest" parent="." instance=ExtResource("3_chair")]
-transform = Transform3D(0, 0, 0.75, 0, 0.75, 0, -0.75, 0, 0, -0.68, 0, 0)
-
 [node name="CompanionDiners" type="Node3D" parent="."]
 
 [node name="DinerNorth" parent="CompanionDiners" instance=ExtResource("12_char_north")]
@@ -320,12 +306,6 @@ visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.05, 0)
 visible = false
 mesh = SubResource("QuadMesh_timer_ring")
-
-[node name="TerraceDecor" type="Node3D" parent="."]
-visible = false
-
-[node name="Parasol" parent="TerraceDecor" instance=ExtResource("16_parasol")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="TableOmniLight" type="OmniLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)

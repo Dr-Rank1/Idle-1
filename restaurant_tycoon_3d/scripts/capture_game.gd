@@ -30,4 +30,14 @@ func _init():
 	var out_path = "c:/Users/Ian/Documents/Apps/Idle-1/gameplay_view.png"
 	var err = img.save_png(out_path)
 	print("Snapshot result:", err)
+
+	# Focus camera on terrace to capture expansion booths in full view
+	var cam = root.find_child("Camera3D", true, false)
+	if cam != null and cam.has_method("focus_zone"):
+		cam.focus_zone("terrace")
+	for i in range(30):
+		await process_frame
+	var img_exp = root.get_viewport().get_texture().get_image()
+	img_exp.save_png("c:/Users/Ian/Documents/Apps/Idle-1/expansion_view.png")
+
 	quit(0)
