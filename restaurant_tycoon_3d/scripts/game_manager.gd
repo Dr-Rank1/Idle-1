@@ -48,8 +48,8 @@ var unlocked_tables: Dictionary = {
 	"table_2": true,
 	"table_3": true,
 	"table_4": true,
-	"table_5": false,
-	"table_6": false,
+	"table_5": true,
+	"table_6": true,
 	"table_7": false,
 	"table_8": false,
 }
@@ -59,10 +59,10 @@ var table_unlock_costs: Dictionary = {
 	"table_2": 0.0,
 	"table_3": 0.0,
 	"table_4": 0.0,
-	"table_5": 280.0,
-	"table_6": 450.0,
-	"table_7": 700.0,
-	"table_8": 1100.0,
+	"table_5": 0.0,
+	"table_6": 0.0,
+	"table_7": 450.0,
+	"table_8": 800.0,
 }
 
 # ─── Station Levels ────────────────────────────────────────────────────────

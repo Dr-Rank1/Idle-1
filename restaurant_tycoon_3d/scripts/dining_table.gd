@@ -21,6 +21,7 @@ var occupying_customer: Node = null
 @onready var table_mesh: Node3D = $TableMesh
 @onready var booth_decor: Node3D = get_node_or_null("BoothDecor")
 @onready var companion_diners: Node3D = get_node_or_null("CompanionDiners")
+@onready var terrace_decor: Node3D = get_node_or_null("TerraceDecor")
 @onready var chair_north: Node3D = get_node_or_null("ChairNorth")
 @onready var chair_south: Node3D = get_node_or_null("ChairSouth")
 @onready var chair_east: Node3D = get_node_or_null("ChairEast")
@@ -45,12 +46,15 @@ var pending_cash_amount: float = 0.0
 func _ready() -> void:
 	if food_dish != null: food_dish.visible = false
 	if dirty_dishes != null: dirty_dishes.visible = false
+	if timer_ring != null: timer_ring.visible = false
 	if is_terrace_table and pendant_lamp != null:
 		pendant_lamp.visible = false
-	if is_terrace_table and booth_decor != null:
-		booth_decor.visible = false
-	if is_terrace_table and companion_diners != null:
-		companion_diners.visible = false
+	if is_terrace_table:
+		if booth_decor != null: booth_decor.visible = false
+		if companion_diners != null: companion_diners.visible = false
+		if terrace_decor != null: terrace_decor.visible = is_unlocked
+	else:
+		if terrace_decor != null: terrace_decor.visible = false
 	if timer_ring != null and timer_ring.mesh != null and timer_ring.mesh.material != null:
 		var ring_mat = timer_ring.mesh.material.duplicate()
 		timer_ring.material_override = ring_mat
@@ -97,6 +101,7 @@ func _set_locked_visual(cost: float) -> void:
 	visible = false
 	if booth_decor != null: booth_decor.visible = false
 	if companion_diners != null: companion_diners.visible = false
+	if terrace_decor != null: terrace_decor.visible = false
 
 func _set_unlocked_visual(lvl: int) -> void:
 	is_unlocked = true
@@ -104,6 +109,7 @@ func _set_unlocked_visual(lvl: int) -> void:
 	if table_mesh != null: table_mesh.visible = true
 	if booth_decor != null: booth_decor.visible = not is_terrace_table
 	if companion_diners != null: companion_diners.visible = not is_terrace_table
+	if terrace_decor != null: terrace_decor.visible = is_terrace_table
 	if chair_north != null: chair_north.visible = true
 	if chair_south != null: chair_south.visible = true
 	if chair_east != null: chair_east.visible = true

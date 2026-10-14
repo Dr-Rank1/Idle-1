@@ -1,0 +1,69 @@
+[gd_scene load_steps=8 format=3 uid="uid://stanchion123"]
+
+[sub_resource type="StandardMaterial3D" id="Material_brass"]
+albedo_color = Color(0.94, 0.82, 0.32, 1)
+metallic = 0.8
+roughness = 0.2
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_post_base"]
+material = SubResource("Material_brass")
+top_radius = 0.16
+bottom_radius = 0.18
+height = 0.05
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_post_shaft"]
+material = SubResource("Material_brass")
+top_radius = 0.035
+bottom_radius = 0.035
+height = 0.88
+
+[sub_resource type="SphereMesh" id="SphereMesh_finial_ball"]
+material = SubResource("Material_brass")
+radius = 0.065
+height = 0.13
+
+[sub_resource type="StandardMaterial3D" id="Material_velvet_rope"]
+albedo_color = Color(0.72, 0.08, 0.14, 1)
+roughness = 0.85
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_rope_straight"]
+material = SubResource("Material_velvet_rope")
+top_radius = 0.03
+bottom_radius = 0.03
+height = 1.76
+
+[node name="VelvetStanchion" type="Node3D"]
+
+[node name="PostLeft" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.9, 0, 0)
+
+[node name="Base" type="MeshInstance3D" parent="PostLeft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, 0)
+mesh = SubResource("CylinderMesh_post_base")
+
+[node name="Shaft" type="MeshInstance3D" parent="PostLeft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.46, 0)
+mesh = SubResource("CylinderMesh_post_shaft")
+
+[node name="Ball" type="MeshInstance3D" parent="PostLeft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.93, 0)
+mesh = SubResource("SphereMesh_finial_ball")
+
+[node name="PostRight" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.9, 0, 0)
+
+[node name="Base" type="MeshInstance3D" parent="PostRight"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, 0)
+mesh = SubResource("CylinderMesh_post_base")
+
+[node name="Shaft" type="MeshInstance3D" parent="PostRight"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.46, 0)
+mesh = SubResource("CylinderMesh_post_shaft")
+
+[node name="Ball" type="MeshInstance3D" parent="PostRight"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.93, 0)
+mesh = SubResource("SphereMesh_finial_ball")
+
+[node name="Rope" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0.76, 0)
+mesh = SubResource("CylinderMesh_rope_straight")

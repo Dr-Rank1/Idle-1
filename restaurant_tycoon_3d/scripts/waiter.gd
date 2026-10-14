@@ -27,8 +27,8 @@ var is_cleaning_job: bool = false
 var anim_player: AnimationPlayer = null
 
 const KITCHEN_PASS_POS: Vector3 = Vector3(0.3, 0.0, -2.1)
-const DINING_AISLE_POS: Vector3 = Vector3(0.5, 0.0, 1.5)
-var home_pos: Vector3 = Vector3(0.5, 0.0, -0.8)
+const DINING_AISLE_POS: Vector3 = Vector3(0.2, 0.0, 1.5)
+var home_pos: Vector3 = Vector3(0.2, 0.0, -0.4)
 
 func _ready() -> void:
 	home_pos = position
@@ -80,7 +80,7 @@ func clean_dirty_table(table: Node3D) -> void:
 		var target_z = target_table.global_position.z
 		var target_x = target_table.global_position.x
 		var lane_z = target_z + 0.65
-		var aisle_x = 4.6 if target_x > 4.0 else 0.0
+		var aisle_x = 5.0 if target_x > 5.0 else 0.2
 		var table_approach = Vector3(aisle_x, 0.0, lane_z)
 		var table_dest = Vector3(target_x, 0.0, lane_z)
 		waypoints = [DINING_AISLE_POS, table_approach, table_dest]
@@ -141,7 +141,7 @@ func _on_all_waypoints_reached() -> void:
 				var target_z = target_table.global_position.z
 				var target_x = target_table.global_position.x
 				var lane_z = target_z + 0.65
-				var aisle_x = 4.6 if target_x > 4.0 else 0.0
+				var aisle_x = 5.0 if target_x > 5.0 else 0.2
 				var table_approach = Vector3(aisle_x, 0.0, lane_z)
 				var table_dest = Vector3(target_x, 0.0, lane_z)
 				waypoints = [DINING_AISLE_POS, table_approach, table_dest]
@@ -171,7 +171,7 @@ func _on_all_waypoints_reached() -> void:
 			
 			current_state = State.RETURNING
 			var curr_x = position.x
-			var aisle_x = 4.6 if curr_x > 4.0 else 0.0
+			var aisle_x = 5.0 if curr_x > 5.0 else 0.2
 			var ret_approach = Vector3(aisle_x, 0.0, position.z)
 			waypoints = [ret_approach, DINING_AISLE_POS, home_pos]
 			_play_anim("walk")
