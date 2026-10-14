@@ -541,6 +541,10 @@ func _on_timer_complete() -> void:
 				if gm.has_method("record_customer_served"):
 					gm.record_customer_served()
 			
+			var am = get_node_or_null("/root/AudioManager")
+			if am != null and am.has_method("play_sfx"):
+				am.play_sfx("coin", 0.06, 1.05)
+			
 			if table_ref != null and table_ref.has_method("vacate"):
 				table_ref.vacate()
 			

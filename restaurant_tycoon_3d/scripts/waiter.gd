@@ -26,22 +26,33 @@ var is_cleaning_job: bool = false
 
 var anim_player: AnimationPlayer = null
 
-const KITCHEN_PASS_POS: Vector3 = Vector3(3.5, 0.0, -3.2)
-const DINING_AISLE_POS: Vector3 = Vector3(3.5, 0.0, 3.5)
+# Kitchen Pass counter is located at Z = -3.4m under silver dome heat lamps (X = 6.5)
+const KITCHEN_PASS_POS: Vector3 = Vector3(6.5, 0.0, -3.1)
+const NORTH_CROSS_AISLE_Z: float = -1.0
 var home_pos: Vector3 = Vector3(3.5, 0.0, 0.5)
 
 func _ready() -> void:
 	home_pos = position
+	home_pos.y = 0.0
 	serving_tray.visible = false
 	if status_bubble != null:
 		status_bubble.visible = false
-	anim_player = find_child("AnimationPlayer", true, false)
+	anim_player = _find_anim_player(self)
 	_play_anim("idle")
 	
 	_update_speed()
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
 		gm.staff_updated.connect(_on_staff_updated)
+
+func _find_anim_player(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node
+	for child in node.get_children():
+		var found = _find_anim_player(child)
+		if found != null:
+			return found
+	return null
 
 func _update_speed() -> void:
 	var gm = get_node_or_null("/root/GameManager")
@@ -55,9 +66,111 @@ func _on_staff_updated(id: String) -> void:
 	if id == staff_id:
 		_update_speed()
 
-func _play_anim(anim_name: String) -> void:
+func _play_anim(anim_name: String, loop: bool = false) -> void:
 	if anim_player != null and anim_player.has_animation(anim_name):
+		var anim = anim_player.get_animation(anim_name)
+		if anim != null:
+			if loop or anim_name in ["idle", "sit", "walk"]:
+				anim.loop_mode = Animation.LOOP_LINEAR
+			else:
+				anim.loop_mode = Animation.LOOP_NONE
 		anim_player.play(anim_name)
+
+func _get_aisle_x(x_val: float) -> float:
+	if x_val > 10.0:
+		return 11.2
+	elif x_val > 6.0:
+		return 6.9
+	else:
+		return 3.3
+
+func _get_table_aisle_and_approach(table: Node3D) -> Dictionary:
+	var tx = table.global_position.x
+	var tz = table.global_position.z
+	var aisle_x: float = 3.3
+	var approach_x: float = 2.6
+	
+	if tx <= 3.0:
+		# Col 1 (Tables 1, 2, 3 at X = 1.2): aisle on the right
+		aisle_x = 3.3
+		approach_x = 2.6
+	elif tx <= 6.8:
+		# Col 2 (Tables 4, 5, 6 at X = 5.0): central transit aisle
+		aisle_x = 3.5
+		approach_x = 3.6
+	elif tx <= 10.8:
+		# Col 3 (Tables 7, 8, 9 at X = 8.8): east transit aisle
+		aisle_x = 6.9
+		approach_x = 7.3
+	else:
+		# Col 4 (Tables 10, 11, 12 at X = 13.25): expansion aisle
+		aisle_x = 11.2
+		approach_x = 11.8
+		
+	return {
+		"aisle_x": aisle_x,
+		"approach_pos": Vector3(approach_x, 0.0, tz)
+	}
+
+func _get_waypoints_to_pass(from_pos: Vector3) -> Array:
+	var pts: Array = []
+	var cur_aisle_x = _get_aisle_x(from_pos.x)
+	if abs(from_pos.x - cur_aisle_x) > 0.35:
+		pts.append(Vector3(cur_aisle_x, 0.0, from_pos.z))
+	if from_pos.z > NORTH_CROSS_AISLE_Z + 0.2:
+		pts.append(Vector3(cur_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+	if abs(cur_aisle_x - 6.5) > 0.35:
+		pts.append(Vector3(6.5, 0.0, NORTH_CROSS_AISLE_Z))
+	pts.append(KITCHEN_PASS_POS)
+	return pts
+
+func _get_waypoints_from_pass_to_table(table: Node3D) -> Array:
+	var pts: Array = []
+	var info = _get_table_aisle_and_approach(table)
+	var dest_aisle_x: float = info["aisle_x"]
+	var approach: Vector3 = info["approach_pos"]
+	
+	pts.append(Vector3(6.5, 0.0, NORTH_CROSS_AISLE_Z))
+	if abs(dest_aisle_x - 6.5) > 0.35:
+		pts.append(Vector3(dest_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+	pts.append(Vector3(dest_aisle_x, 0.0, approach.z))
+	pts.append(approach)
+	return pts
+
+func _get_waypoints_to_clean_table(from_pos: Vector3, table: Node3D) -> Array:
+	var pts: Array = []
+	var cur_aisle_x = _get_aisle_x(from_pos.x)
+	var info = _get_table_aisle_and_approach(table)
+	var dest_aisle_x: float = info["aisle_x"]
+	var approach: Vector3 = info["approach_pos"]
+	
+	if abs(cur_aisle_x - dest_aisle_x) < 0.4:
+		pts.append(Vector3(cur_aisle_x, 0.0, approach.z))
+		pts.append(approach)
+	else:
+		if abs(from_pos.x - cur_aisle_x) > 0.35:
+			pts.append(Vector3(cur_aisle_x, 0.0, from_pos.z))
+		if from_pos.z > NORTH_CROSS_AISLE_Z + 0.2:
+			pts.append(Vector3(cur_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+		pts.append(Vector3(dest_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+		pts.append(Vector3(dest_aisle_x, 0.0, approach.z))
+		pts.append(approach)
+	return pts
+
+func _get_waypoints_to_home(from_pos: Vector3) -> Array:
+	var pts: Array = []
+	var cur_aisle_x = _get_aisle_x(from_pos.x)
+	var home_aisle_x = _get_aisle_x(home_pos.x)
+	
+	if abs(cur_aisle_x - home_aisle_x) < 0.4:
+		pts.append(Vector3(home_aisle_x, 0.0, from_pos.z))
+		pts.append(home_pos)
+	else:
+		pts.append(Vector3(cur_aisle_x, 0.0, from_pos.z))
+		pts.append(Vector3(cur_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+		pts.append(Vector3(home_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+		pts.append(home_pos)
+	return pts
 
 func serve_order(table: Node3D) -> void:
 	if current_state != State.IDLE:
@@ -65,7 +178,7 @@ func serve_order(table: Node3D) -> void:
 	target_table = table
 	is_cleaning_job = false
 	current_state = State.WALKING_TO_KITCHEN
-	waypoints = [KITCHEN_PASS_POS]
+	waypoints = _get_waypoints_to_pass(position)
 	serving_tray.visible = false
 	_play_anim("walk")
 
@@ -76,25 +189,8 @@ func clean_dirty_table(table: Node3D) -> void:
 	is_cleaning_job = true
 	current_state = State.WALKING_TO_TABLE
 	serving_tray.visible = false
-	if is_instance_valid(target_table):
-		var target_z = target_table.global_position.z
-		var target_x = target_table.global_position.x
-		var lane_z = target_z + 0.65
-		var aisle_x = _get_aisle_x(target_x)
-		var table_approach = Vector3(aisle_x, 0.0, lane_z)
-		var table_dest = Vector3(target_x, 0.0, lane_z)
-		waypoints = [DINING_AISLE_POS, table_approach, table_dest]
+	waypoints = _get_waypoints_to_clean_table(position, table)
 	_play_anim("walk")
-
-func _get_aisle_x(target_x: float) -> float:
-	if target_x > 10.0:
-		return 10.5
-	elif target_x > 6.5:
-		return 6.9
-	elif target_x > 2.5:
-		return 3.1
-	else:
-		return -0.2
 
 func _physics_process(delta: float) -> void:
 	if waypoints.size() > 0:
@@ -103,7 +199,7 @@ func _physics_process(delta: float) -> void:
 		to_target.y = 0.0
 		var dist: float = to_target.length()
 		
-		if dist > 0.22:
+		if dist > 0.24:
 			var dir: Vector3 = to_target.normalized()
 			var desired_vel: Vector3 = dir * move_speed
 			velocity = velocity.move_toward(desired_vel, 14.0 * delta)
@@ -134,7 +230,8 @@ func _physics_process(delta: float) -> void:
 func _on_all_waypoints_reached() -> void:
 	match current_state:
 		State.WALKING_TO_KITCHEN:
-			rotation.y = -PI * 0.5
+			# Look directly North into the kitchen pass counter at Z = -3.4m under silver heat lamps
+			rotation.y = PI
 			serving_tray.visible = true
 			serving_tray.scale = Vector3(0.2, 0.2, 0.2)
 			var tw = create_tween()
@@ -146,15 +243,16 @@ func _on_all_waypoints_reached() -> void:
 			
 			await get_tree().create_timer(0.35).timeout
 			
+			if not is_instance_valid(target_table) or target_table.get("is_occupied") != true:
+				# Order cancelled or table vacated
+				serving_tray.visible = false
+				current_state = State.RETURNING
+				waypoints = _get_waypoints_to_home(position)
+				_play_anim("walk")
+				return
+				
 			current_state = State.WALKING_TO_TABLE
-			if is_instance_valid(target_table):
-				var target_z = target_table.global_position.z
-				var target_x = target_table.global_position.x
-				var lane_z = target_z + 0.65
-				var aisle_x = _get_aisle_x(target_x)
-				var table_approach = Vector3(aisle_x, 0.0, lane_z)
-				var table_dest = Vector3(target_x, 0.0, lane_z)
-				waypoints = [DINING_AISLE_POS, table_approach, table_dest]
+			waypoints = _get_waypoints_from_pass_to_table(target_table)
 			_play_anim("walk")
 			
 		State.WALKING_TO_TABLE:
@@ -165,9 +263,10 @@ func _on_all_waypoints_reached() -> void:
 				var to_tbl = target_table.global_position - position
 				rotation.y = atan2(to_tbl.x, to_tbl.z)
 				if is_cleaning_job:
-					_play_anim("emote-yes")
-					await get_tree().create_timer(0.65).timeout
-					if target_table.has_method("clean_table"):
+					# Play 1.8-second table-wiping animation, despawn dirty plates, reset is_dirty = false
+					_play_anim("interact-right", true)
+					await get_tree().create_timer(1.8).timeout
+					if is_instance_valid(target_table) and target_table.has_method("clean_table"):
 						target_table.clean_table()
 					is_cleaning_job = false
 				else:
@@ -185,10 +284,7 @@ func _on_all_waypoints_reached() -> void:
 				serving_tray.visible = false
 			
 			current_state = State.RETURNING
-			var curr_x = position.x
-			var aisle_x = _get_aisle_x(curr_x)
-			var ret_approach = Vector3(aisle_x, 0.0, position.z)
-			waypoints = [ret_approach, DINING_AISLE_POS, home_pos]
+			waypoints = _get_waypoints_to_home(position)
 			_play_anim("walk")
 			
 		State.RETURNING:

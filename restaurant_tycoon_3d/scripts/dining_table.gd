@@ -479,17 +479,27 @@ func update_level_display(lvl: int) -> void:
 		can_upgrade = gm.cash >= upgrade_cost and lvl < gm.max_level
 		
 	if is_dirty:
-		if badge_root != null: badge_root.visible = true
+		if badge_root != null:
+			badge_root.visible = true
+			badge_root.position.y = initial_badge_y
 		if level_label != null:
 			level_label.visible = true
 			level_label.text = "🧽 Dirty Table"
-			level_label.font_size = 20
-			level_label.modulate = Color(0.95, 0.6, 0.2, 1.0)
+			level_label.font_size = 24
+			level_label.outline_size = 6
+			level_label.modulate = Color(1.0, 0.72, 0.2, 1.0)
+			level_label.outline_modulate = Color(0.2, 0.1, 0.0, 0.95)
 		if action_badge != null:
 			action_badge.visible = true
-			action_badge.text = "🧽 TAP TO CLEAN!"
-			action_badge.modulate = Color(1.0, 0.8, 0.25, 1.0)
+			action_badge.text = "🧽 Clean Table"
+			action_badge.font_size = 18
+			action_badge.outline_size = 5
+			action_badge.modulate = Color(1.0, 0.85, 0.35, 1.0)
+			action_badge.position = Vector3(0, -0.32, 0)
 		return
+
+	if action_badge != null:
+		action_badge.visible = false
 
 	if is_occupied:
 		if badge_root != null: badge_root.visible = false
@@ -629,36 +639,60 @@ func vacate() -> void:
 	if diner_s != null:
 		diner_s.visible = true
 	if booth_bubble_root != null:
-		booth_bubble_root.visible = true
+		booth_bubble_root.visible = false
 	
 	is_dirty = true
-	if dirty_dishes != null:
-		dirty_dishes.visible = true
-		dirty_dishes.scale = Vector3(0.1, 0.1, 0.1)
-		var tw = create_tween()
-		tw.tween_property(dirty_dishes, "scale", Vector3(0.44, 0.44, 0.44), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_spawn_dirty_dishes()
 		
 	var gm = get_node_or_null("/root/GameManager")
 	var lvl = gm.get_station_level(table_id) if gm != null else 1
 	update_level_display(lvl)
 
+func _spawn_dirty_dishes() -> void:
+	if dirty_dishes == null:
+		var dirty_scn = load("res://assets/kaykit_restaurant/gltf/plate_dirty.gltf")
+		if dirty_scn != null:
+			dirty_dishes = dirty_scn.instantiate()
+			dirty_dishes.name = "DirtyDishes"
+			dirty_dishes.position = Vector3(0, 0.73, 0)
+			add_child(dirty_dishes)
+	if dirty_dishes != null:
+		dirty_dishes.visible = true
+		dirty_dishes.position = Vector3(0, 0.73, 0)
+		dirty_dishes.scale = Vector3(0.08, 0.08, 0.08)
+		var tw = create_tween()
+		tw.tween_property(dirty_dishes, "scale", Vector3(0.44, 0.44, 0.44), 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
 func clean_table() -> void:
 	if not is_dirty:
 		return
 	is_dirty = false
+	
 	if dirty_dishes != null:
-		dirty_dishes.visible = false
+		var tw = create_tween()
+		tw.tween_property(dirty_dishes, "scale", Vector3(0.05, 0.05, 0.05), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_callback(func():
+			if is_instance_valid(dirty_dishes):
+				dirty_dishes.visible = false
+		)
+	
+	if badge_root != null:
+		badge_root.visible = false
+	if action_badge != null:
+		action_badge.visible = false
+	if booth_bubble_root != null:
+		booth_bubble_root.visible = true
 	
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
-		gm.add_cash(5.0, global_position + Vector3(0, 1.4, 0)) # Tap bonus!
+		gm.add_cash(10.0, global_position + Vector3(0, 1.6, 0)) # Bussing revenue
 		var lvl = gm.get_station_level(table_id)
 		update_level_display(lvl)
 		
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("play_sfx"):
-		am.play_sfx("coin", 0.05)
-	_spawn_floating_text("✨ Clean & Ready! +$5 ✨", Color(0.4, 0.9, 1.0, 1.0))
+		am.play_sfx("coin", 0.05, 1.15)
+	_spawn_floating_text("✨ Table Reset! +$10 ✨", Color(0.35, 1.0, 0.55, 1.0))
 
 func _on_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:

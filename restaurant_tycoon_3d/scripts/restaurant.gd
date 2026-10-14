@@ -29,6 +29,8 @@ const WAITING_SPOTS: Array[Vector3] = [
 
 func _ready() -> void:
 	waiter_scene = load("res://scenes/waiter.tscn")
+	if floating_cash_scene == null:
+		floating_cash_scene = load("res://scenes/floating_cash.tscn")
 	
 	if waiter_1 != null:
 		waiters.append(waiter_1)
@@ -1491,7 +1493,15 @@ func _find_unclaimed_dirty_table(targeted: Array[Node3D]) -> Node3D:
 func _dispatch_waiter_tasks() -> void:
 	var targeted = _get_tables_targeted_by_waiters()
 
-	# 1. High priority: Orders (serving freshly prepared meals to seated diners)
+	# 1. Top priority: Busboy clearing dirty tables & wiping booths to return them to active seating
+	for w in waiters:
+		if is_instance_valid(w) and w.get("current_state") == w.State.IDLE:
+			var dirty_tbl = _find_unclaimed_dirty_table(targeted)
+			if dirty_tbl != null:
+				w.clean_dirty_table(dirty_tbl)
+				targeted.append(dirty_tbl)
+
+	# 2. Secondary priority: Serving freshly prepared meals from kitchen pass to seated diners
 	if pending_orders.size() > 0:
 		for w in waiters:
 			if is_instance_valid(w) and w.get("current_state") == w.State.IDLE:
@@ -1501,14 +1511,6 @@ func _dispatch_waiter_tasks() -> void:
 					targeted.append(target_tbl)
 					if pending_orders.size() == 0:
 						break
-
-	# 2. Secondary priority: Busboy clearing dirty dishes & resetting tables
-	for w in waiters:
-		if is_instance_valid(w) and w.get("current_state") == w.State.IDLE:
-			var dirty_tbl = _find_unclaimed_dirty_table(targeted)
-			if dirty_tbl != null:
-				w.clean_dirty_table(dirty_tbl)
-				targeted.append(dirty_tbl)
 
 func _get_available_tables() -> Array[Node3D]:
 	var available: Array[Node3D] = []
