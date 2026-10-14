@@ -71,6 +71,17 @@ extends CanvasLayer
 @onready var quests_vbox: VBoxContainer = $QuestsPanel/VBox/Scroll/VBox
 @onready var close_quests_btn: Button = $QuestsPanel/VBox/CloseBtn
 
+# ─── World Map & Right Action Dock ──────────────────────────────────────────
+@onready var map_btn: Button = get_node_or_null("HUD/TopBar/MapBtn")
+@onready var side_map_btn: Button = get_node_or_null("HUD/RightDock/SideMapBtn")
+@onready var side_staff_btn: Button = get_node_or_null("HUD/RightDock/SideStaffBtn")
+@onready var side_menu_btn: Button = get_node_or_null("HUD/RightDock/SideMenuBtn")
+@onready var side_promo_btn: Button = get_node_or_null("HUD/RightDock/SidePromoBtn")
+
+@onready var world_map_panel: PanelContainer = get_node_or_null("WorldMapPanel")
+@onready var world_map_grid: GridContainer = get_node_or_null("WorldMapPanel/VBox/Scroll/CardsGrid")
+@onready var close_world_map_btn: Button = get_node_or_null("WorldMapPanel/VBox/TopHBox/CloseWorldMapBtn")
+
 var current_station_id: String = ""
 var current_multiplier: String = "1"
 var displayed_cash: float = 650.0
@@ -130,6 +141,28 @@ func _ready() -> void:
 	if close_staff_btn != null: close_staff_btn.pressed.connect(func(): _close_modal(staff_panel))
 	if close_marketing_btn != null: close_marketing_btn.pressed.connect(func(): _close_modal(marketing_panel))
 	if close_quests_btn != null: close_quests_btn.pressed.connect(func(): _close_modal(quests_panel))
+	if close_world_map_btn != null: close_world_map_btn.pressed.connect(func(): _close_modal(world_map_panel))
+
+	if map_btn != null:
+		map_btn.pressed.connect(func():
+			_toggle_modal(world_map_panel, _refresh_world_map)
+		)
+	if side_map_btn != null:
+		side_map_btn.pressed.connect(func():
+			_toggle_modal(world_map_panel, _refresh_world_map)
+		)
+	if side_staff_btn != null:
+		side_staff_btn.pressed.connect(func():
+			_toggle_modal(staff_panel, _refresh_staff_panel)
+		)
+	if side_menu_btn != null:
+		side_menu_btn.pressed.connect(func():
+			_toggle_modal(kitchen_panel, _refresh_kitchen_panel)
+		)
+	if side_promo_btn != null:
+		side_promo_btn.pressed.connect(func():
+			_toggle_modal(marketing_panel, _refresh_marketing_panel)
+		)
 
 	# Connect GameManager signals
 	var gm = get_node_or_null("/root/GameManager")
@@ -146,6 +179,11 @@ func _ready() -> void:
 		gm.campaign_updated.connect(_on_campaign_updated)
 		gm.offline_earnings_available.connect(_on_offline_earnings_available)
 		gm.critic_review_awarded.connect(_on_critic_review_awarded)
+		if gm.has_signal("world_restaurants_updated"):
+			gm.world_restaurants_updated.connect(func():
+				if world_map_panel != null and world_map_panel.visible:
+					_refresh_world_map()
+			)
 		gm.menu_updated.connect(func():
 			if kitchen_panel != null and kitchen_panel.visible:
 				_refresh_kitchen_panel()
@@ -169,6 +207,7 @@ func _hide_all_modals() -> void:
 	if staff_panel != null: staff_panel.visible = false
 	if marketing_panel != null: marketing_panel.visible = false
 	if quests_panel != null: quests_panel.visible = false
+	if world_map_panel != null: world_map_panel.visible = false
 
 func _open_modal(panel: PanelContainer) -> void:
 	if panel == null: return
@@ -238,6 +277,8 @@ func _on_cash_changed(new_cash: float) -> void:
 		_refresh_staff_panel()
 	if marketing_panel != null and marketing_panel.visible:
 		_refresh_marketing_panel()
+	if world_map_panel != null and world_map_panel.visible:
+		_refresh_world_map()
 
 func _on_gems_changed(new_gems: int) -> void:
 	gem_label.text = "%d" % new_gems
@@ -1107,3 +1148,134 @@ func _on_critic_review_awarded(stars: float, is_positive: bool) -> void:
 	tw.tween_property(banner, "scale", Vector2(0.3, 0.3), 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	tw.parallel().tween_property(banner, "modulate:a", 0.0, 0.25)
 	tw.tween_callback(banner.queue_free)
+
+# ─── World Map Display ──────────────────────────────────────────────────────
+func _refresh_world_map() -> void:
+	if world_map_grid == null:
+		return
+	for c in world_map_grid.get_children():
+		c.queue_free()
+
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+
+	var rests = gm.get_world_restaurants()
+	for rest_id in rests.keys():
+		var r = rests[rest_id]
+		var card = PanelContainer.new()
+		card.custom_minimum_size = Vector2(360, 160)
+		
+		var card_style = StyleBoxFlat.new()
+		card_style.bg_color = Color(0.12, 0.17, 0.28, 0.95)
+		card_style.border_width_left = 2
+		card_style.border_width_top = 2
+		card_style.border_width_right = 2
+		card_style.border_width_bottom = 4
+		card_style.border_color = r.get("color", Color(0.3, 0.5, 0.8, 1.0))
+		card_style.corner_radius_top_left = 14
+		card_style.corner_radius_top_right = 14
+		card_style.corner_radius_bottom_right = 14
+		card_style.corner_radius_bottom_left = 14
+		card_style.content_margin_left = 16.0
+		card_style.content_margin_top = 12.0
+		card_style.content_margin_right = 16.0
+		card_style.content_margin_bottom = 12.0
+		card.add_theme_stylebox_override("panel", card_style)
+
+		var card_vbox = VBoxContainer.new()
+		card_vbox.add_theme_constant_override("separation", 6)
+		card.add_child(card_vbox)
+
+		# Header: Icon + Name + Stars
+		var head_hbox = HBoxContainer.new()
+		head_hbox.add_theme_constant_override("separation", 8)
+		card_vbox.add_child(head_hbox)
+
+		var icon_lbl = Label.new()
+		icon_lbl.text = r.get("icon", "🍽️")
+		icon_lbl.add_theme_font_size_override("font_size", 24)
+		head_hbox.add_child(icon_lbl)
+
+		var name_lbl = Label.new()
+		name_lbl.text = r.get("name", "Restaurant")
+		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_lbl.add_theme_font_size_override("font_size", 16)
+		name_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+		head_hbox.add_child(name_lbl)
+
+		var stars_lbl = Label.new()
+		var s_count = int(r.get("stars", 1))
+		stars_lbl.text = "★".repeat(s_count) + "☆".repeat(5 - s_count)
+		stars_lbl.add_theme_font_size_override("font_size", 13)
+		stars_lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.25, 1))
+		head_hbox.add_child(stars_lbl)
+
+		# Tagline & Theme
+		var tag_lbl = Label.new()
+		tag_lbl.text = r.get("tagline", "")
+		tag_lbl.add_theme_font_size_override("font_size", 11)
+		tag_lbl.add_theme_color_override("font_color", Color(0.7, 0.82, 0.95, 0.85))
+		card_vbox.add_child(tag_lbl)
+
+		# Multiplier & Stats
+		var mult_lbl = Label.new()
+		var mult_val = float(r.get("multiplier", 1.0))
+		mult_lbl.text = "⚡ %s Revenue Multiplier" % ("%.1fx" % mult_val if mult_val < 10.0 else "%dx" % round(mult_val))
+		mult_lbl.add_theme_font_size_override("font_size", 12)
+		mult_lbl.add_theme_color_override("font_color", Color(0.4, 0.95, 0.6, 1))
+		card_vbox.add_child(mult_lbl)
+
+		# Bottom Action Button
+		var btn = Button.new()
+		btn.custom_minimum_size = Vector2(0, 36)
+		
+		var is_active = (gm.active_restaurant_id == rest_id)
+		var is_unlocked = bool(r.get("unlocked", false))
+		var cost = float(r.get("cost", 0.0))
+
+		if is_active:
+			btn.text = "🟢 CURRENT LOCATION"
+			btn.disabled = true
+			var btn_style = StyleBoxFlat.new()
+			btn_style.bg_color = Color(0.12, 0.45, 0.25, 0.9)
+			btn_style.corner_radius_top_left = 10
+			btn_style.corner_radius_top_right = 10
+			btn_style.corner_radius_bottom_right = 10
+			btn_style.corner_radius_bottom_left = 10
+			btn.add_theme_stylebox_override("disabled", btn_style)
+			btn.add_theme_color_override("font_disabled_color", Color(0.7, 1.0, 0.8, 1))
+		elif is_unlocked:
+			btn.text = "✈️ VISIT / SWITCH"
+			var btn_style = StyleBoxFlat.new()
+			btn_style.bg_color = Color(0.2, 0.55, 0.85, 1)
+			btn_style.corner_radius_top_left = 10
+			btn_style.corner_radius_top_right = 10
+			btn_style.corner_radius_bottom_right = 10
+			btn_style.corner_radius_bottom_left = 10
+			btn.add_theme_stylebox_override("normal", btn_style)
+			btn.pressed.connect(func():
+				_play_click_sfx()
+				gm.switch_to_restaurant(rest_id)
+				_close_modal(world_map_panel)
+			)
+		else:
+			var can_afford = (gm.cash >= cost)
+			btn.text = "🔒 UNLOCK (%s)" % _format_money(cost)
+			btn.disabled = not can_afford
+			var btn_style = StyleBoxFlat.new()
+			btn_style.bg_color = Color(0.95, 0.6, 0.15, 1) if can_afford else Color(0.3, 0.35, 0.45, 0.6)
+			btn_style.corner_radius_top_left = 10
+			btn_style.corner_radius_top_right = 10
+			btn_style.corner_radius_bottom_right = 10
+			btn_style.corner_radius_bottom_left = 10
+			btn.add_theme_stylebox_override("normal", btn_style)
+			btn.pressed.connect(func():
+				_play_click_sfx()
+				if gm.unlock_world_restaurant(rest_id):
+					_refresh_world_map()
+			)
+
+		card_vbox.add_child(btn)
+		world_map_grid.add_child(card)
+

@@ -55,10 +55,16 @@ func _ready() -> void:
 		if terrace_decor != null: terrace_decor.visible = is_unlocked
 		if chair_north != null: chair_north.visible = true
 		if chair_south != null: chair_south.visible = true
+		if chair_east != null: chair_east.visible = true
+		if chair_west != null: chair_west.visible = true
 	else:
 		if terrace_decor != null: terrace_decor.visible = false
 		if chair_north != null: chair_north.visible = false
 		if chair_south != null: chair_south.visible = false
+		if chair_east != null: chair_east.visible = false
+		if chair_west != null: chair_west.visible = false
+		if chair_left != null: chair_left.visible = false
+		if chair_right != null: chair_right.visible = false
 	if timer_ring != null and timer_ring.mesh != null and timer_ring.mesh.material != null:
 		var ring_mat = timer_ring.mesh.material.duplicate()
 		timer_ring.material_override = ring_mat
@@ -149,12 +155,13 @@ func _set_unlocked_visual(lvl: int) -> void:
 	if booth_decor != null: booth_decor.visible = not is_terrace_table
 	if companion_diners != null: companion_diners.visible = not is_terrace_table
 	if terrace_decor != null: terrace_decor.visible = is_terrace_table
-	if chair_north != null: chair_north.visible = true
-	if chair_south != null: chair_south.visible = true
-	if chair_east != null: chair_east.visible = true
-	if chair_west != null: chair_west.visible = true
-	if chair_left != null: chair_left.visible = true
-	if chair_right != null: chair_right.visible = true
+	var show_chairs: bool = is_terrace_table
+	if chair_north != null: chair_north.visible = show_chairs
+	if chair_south != null: chair_south.visible = show_chairs
+	if chair_east != null: chair_east.visible = show_chairs
+	if chair_west != null: chair_west.visible = show_chairs
+	if chair_left != null: chair_left.visible = show_chairs
+	if chair_right != null: chair_right.visible = show_chairs
 	if table_menu != null: table_menu.visible = true
 	if salt_shaker != null: salt_shaker.visible = true
 	if pepper_shaker != null: pepper_shaker.visible = true

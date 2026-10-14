@@ -18,6 +18,7 @@ signal campaign_updated(campaign_id: String, active: bool, time_left: float)
 signal terrace_unlocked_changed(unlocked: bool)
 signal stall_unlocked(stall_idx: int)
 signal offline_earnings_available(amount: float, elapsed_seconds: float)
+signal world_restaurants_updated()
 
 # ─── Economy State ──────────────────────────────────────────────────────────
 var cash: float = 650.0
@@ -28,6 +29,77 @@ var star_rating: float = 4.8
 var restaurant_name: String = "Idle Diner"
 var is_boosted: bool = false
 var boost_timer: float = 0.0
+
+# ─── World Map Restaurants ──────────────────────────────────────────────────
+var active_restaurant_id: String = "idle_diner"
+var world_restaurants: Dictionary = {
+	"idle_diner": {
+		"id": "idle_diner",
+		"name": "Idle Diner",
+		"icon": "🍔",
+		"tagline": "Classic 1950s American Diner",
+		"stars": 5,
+		"multiplier": 1.0,
+		"unlocked": true,
+		"cost": 0.0,
+		"color": Color(0.95, 0.45, 0.2, 1.0)
+	},
+	"idles_chain": {
+		"id": "idles_chain",
+		"name": "Idle's Chain",
+		"icon": "🍟",
+		"tagline": "Fast Food Drive-Thru Franchise",
+		"stars": 3,
+		"multiplier": 3.5,
+		"unlocked": false,
+		"cost": 5000.0,
+		"color": Color(0.95, 0.75, 0.15, 1.0)
+	},
+	"snowy_peaks": {
+		"id": "snowy_peaks",
+		"name": "Snowy Peaks",
+		"icon": "⛷️",
+		"tagline": "Alpine Mountain Fondue Lodge",
+		"stars": 2,
+		"multiplier": 10.0,
+		"unlocked": false,
+		"cost": 25000.0,
+		"color": Color(0.4, 0.8, 1.0, 1.0)
+	},
+	"taverna_athena": {
+		"id": "taverna_athena",
+		"name": "Taverna Athena",
+		"icon": "🏛️",
+		"tagline": "Aegean Seaside Seafood Taverna",
+		"stars": 1,
+		"multiplier": 35.0,
+		"unlocked": false,
+		"cost": 150000.0,
+		"color": Color(0.2, 0.6, 0.95, 1.0)
+	},
+	"noodle_palace": {
+		"id": "noodle_palace",
+		"name": "Noodle Palace",
+		"icon": "🍜",
+		"tagline": "Imperial Dim Sum & Ramen Pagoda",
+		"stars": 0,
+		"multiplier": 120.0,
+		"unlocked": false,
+		"cost": 1000000.0,
+		"color": Color(0.95, 0.25, 0.35, 1.0)
+	},
+	"sakura_springs": {
+		"id": "sakura_springs",
+		"name": "Sakura Springs",
+		"icon": "🌸",
+		"tagline": "Zen Hot Springs Sushi Garden",
+		"stars": 0,
+		"multiplier": 500.0,
+		"unlocked": false,
+		"cost": 10000000.0,
+		"color": Color(0.95, 0.5, 0.75, 1.0)
+	}
+}
 
 # ─── Sectors & Expansions ───────────────────────────────────────────────────
 var unlocked_stalls: int = 2
@@ -287,6 +359,15 @@ func save_game() -> void:
 		"menu_items": menu_items,
 		"staff_roster": staff_roster,
 		"active_quests": active_quests,
+		"active_restaurant_id": active_restaurant_id,
+		"world_restaurants_unlocked": {
+			"idle_diner": world_restaurants["idle_diner"].get("unlocked", true),
+			"idles_chain": world_restaurants["idles_chain"].get("unlocked", false),
+			"snowy_peaks": world_restaurants["snowy_peaks"].get("unlocked", false),
+			"taverna_athena": world_restaurants["taverna_athena"].get("unlocked", false),
+			"noodle_palace": world_restaurants["noodle_palace"].get("unlocked", false),
+			"sakura_springs": world_restaurants["sakura_springs"].get("unlocked", false),
+		},
 		"saved_timestamp": Time.get_unix_time_from_system()
 	}
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -316,6 +397,13 @@ func load_game() -> void:
 	unlocked_stalls = int(parsed.get("unlocked_stalls", unlocked_stalls))
 	terrace_unlocked = bool(parsed.get("terrace_unlocked", terrace_unlocked))
 	xp_to_next_level = 250.0 * pow(1.35, restaurant_level - 1)
+	
+	active_restaurant_id = parsed.get("active_restaurant_id", active_restaurant_id)
+	var unlocked_map = parsed.get("world_restaurants_unlocked", {})
+	if typeof(unlocked_map) == TYPE_DICTIONARY:
+		for k in unlocked_map:
+			if world_restaurants.has(k):
+				world_restaurants[k]["unlocked"] = bool(unlocked_map[k])
 
 	var last_ts = float(parsed.get("saved_timestamp", 0.0))
 	if last_ts > 0.0:
@@ -417,7 +505,8 @@ func toggle_boost() -> void:
 	boost_toggled.emit(is_boosted)
 
 func add_cash(amount: float, world_pos: Vector3 = Vector3.ZERO) -> void:
-	var final_amount: float = amount * (2.0 if is_boosted else 1.0)
+	var rest_mult: float = get_active_revenue_multiplier()
+	var final_amount: float = amount * (2.0 if is_boosted else 1.0) * rest_mult
 	cash += final_amount
 	total_earned += final_amount
 	
@@ -811,3 +900,43 @@ func get_dish_price_multiplier() -> float:
 
 func get_patience_multiplier() -> float:
 	return 1.5 if is_campaign_active("radio_spot") else 1.0
+
+# ─── World Map Restaurants API ──────────────────────────────────────────────
+func get_world_restaurants() -> Dictionary:
+	return world_restaurants
+
+func get_active_revenue_multiplier() -> float:
+	return world_restaurants.get(active_restaurant_id, {}).get("multiplier", 1.0)
+
+func unlock_world_restaurant(rest_id: String) -> bool:
+	if not world_restaurants.has(rest_id):
+		return false
+	var info = world_restaurants[rest_id]
+	if info.get("unlocked", false):
+		return true
+	var cost = float(info.get("cost", 0.0))
+	if not spend_cash(cost):
+		return false
+	info["unlocked"] = true
+	world_restaurants_updated.emit()
+	save_game()
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.0, 3.5)
+	return true
+
+func switch_to_restaurant(rest_id: String) -> bool:
+	if not world_restaurants.has(rest_id):
+		return false
+	var info = world_restaurants[rest_id]
+	if not info.get("unlocked", false):
+		return false
+	active_restaurant_id = rest_id
+	restaurant_name = info.get("name", "Idle Diner")
+	world_restaurants_updated.emit()
+	level_updated.emit(restaurant_level, restaurant_xp, xp_to_next_level)
+	save_game()
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("coin", 0.05)
+	return true

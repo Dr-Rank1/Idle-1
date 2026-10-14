@@ -238,6 +238,71 @@ content_margin_top = 2.0
 content_margin_right = 16.0
 content_margin_bottom = 2.0
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_map"]
+bg_color = Color(0.95, 0.52, 0.12, 1)
+border_width_bottom = 3
+border_color = Color(0.72, 0.35, 0.08, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 14.0
+content_margin_top = 8.0
+content_margin_right = 14.0
+content_margin_bottom = 8.0
+shadow_color = Color(0.85, 0.45, 0.1, 0.4)
+shadow_size = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_circle_orange"]
+bg_color = Color(0.96, 0.55, 0.15, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 3
+border_color = Color(1, 0.82, 0.35, 0.9)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_world_map_bg"]
+bg_color = Color(0.08, 0.16, 0.28, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 4
+border_color = Color(0.2, 0.55, 0.85, 0.9)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+content_margin_left = 24.0
+content_margin_top = 20.0
+content_margin_right = 24.0
+content_margin_bottom = 20.0
+shadow_color = Color(0, 0, 0, 0.7)
+shadow_size = 25
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_rest_card"]
+bg_color = Color(0.12, 0.18, 0.3, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 4
+border_color = Color(0.25, 0.45, 0.7, 0.8)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+content_margin_left = 16.0
+content_margin_top = 14.0
+content_margin_right = 16.0
+content_margin_bottom = 14.0
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 8
+
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_script")
 
@@ -421,6 +486,13 @@ theme_override_font_sizes/font_size = 15
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_boost")
 text = "⚡ 2X RUSH"
 
+[node name="MapBtn" type="Button" parent="HUD/TopBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_map")
+text = "🌍 MAP"
+
 [node name="QuestBanner" type="PanelContainer" parent="HUD"]
 layout_mode = 0
 offset_left = 16.0
@@ -538,6 +610,50 @@ theme_override_colors/font_color = Color(1, 0.65, 0.4, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
 text = "📢 PROMO"
+
+[node name="RightDock" type="VBoxContainer" parent="HUD"]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -66.0
+offset_top = -140.0
+offset_right = -16.0
+offset_bottom = 140.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="SideMapBtn" type="Button" parent="HUD/RightDock"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")
+text = "🌍"
+
+[node name="SideStaffBtn" type="Button" parent="HUD/RightDock"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")
+text = "👥"
+
+[node name="SideMenuBtn" type="Button" parent="HUD/RightDock"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")
+text = "🍽️"
+
+[node name="SidePromoBtn" type="Button" parent="HUD/RightDock"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")
+text = "📢"
 
 [node name="UpgradePanel" type="PanelContainer" parent="."]
 visible = false
@@ -966,3 +1082,70 @@ theme_override_constants/separation = 8
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
 text = "✕ Close Quests"
+
+[node name="WorldMapPanel" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -280.0
+offset_right = 400.0
+offset_bottom = 280.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_world_map_bg")
+
+[node name="VBox" type="VBoxContainer" parent="WorldMapPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TopHBox" type="HBoxContainer" parent="WorldMapPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Avatar" type="Label" parent="WorldMapPanel/VBox/TopHBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "👨‍🍳"
+
+[node name="VBoxTitle" type="VBoxContainer" parent="WorldMapPanel/VBox/TopHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="TitleLabel" type="Label" parent="WorldMapPanel/VBox/TopHBox/VBoxTitle"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.88, 0.35, 1)
+theme_override_font_sizes/font_size = 20
+text = "🌍 RESTAURANT EMPIRE MAP"
+
+[node name="SubtitleLabel" type="Label" parent="WorldMapPanel/VBox/TopHBox/VBoxTitle"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.88, 1, 0.85)
+theme_override_font_sizes/font_size = 11
+text = "Expand across islands! Unlock new restaurant themes and multiply your revenue."
+
+[node name="CloseWorldMapBtn" type="Button" parent="WorldMapPanel/VBox/TopHBox"]
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
+text = "✕"
+
+[node name="Scroll" type="ScrollContainer" parent="WorldMapPanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="CardsGrid" type="GridContainer" parent="WorldMapPanel/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
+columns = 2
+

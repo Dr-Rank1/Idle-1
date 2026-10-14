@@ -102,7 +102,9 @@ func _setup_custom_textures() -> void:
 			sign_mat.albedo_texture = neon_tex
 			sign_mat.emission_enabled = true
 			sign_mat.emission_texture = neon_tex
-			sign_mat.emission_energy_multiplier = 3.2
+			sign_mat.emission_energy_multiplier = 4.0
+			sign_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			sign_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 			sign_board_node.material_override = sign_mat
 
 	# Reception & Waiting Room Warm Floor
