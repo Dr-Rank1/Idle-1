@@ -84,6 +84,9 @@
 [ext_resource type="PackedScene" path="res://scenes/decor/glass_railing.tscn" id="78_glass_railing"]
 [ext_resource type="PackedScene" path="res://scenes/decor/order_ticket_rail.tscn" id="79_ticket_rail"]
 [ext_resource type="PackedScene" path="res://scenes/decor/velvet_stanchion.tscn" id="80_velvet_stanchion"]
+[ext_resource type="Texture2D" path="res://assets/textures/neon_bistro_sign.png" id="81_neon_tex"]
+[ext_resource type="Texture2D" path="res://assets/textures/wall_art_chef.png" id="82_art_chef_tex"]
+[ext_resource type="Texture2D" path="res://assets/textures/wall_art_cafe.png" id="83_art_cafe_tex"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -302,6 +305,33 @@ uv1_scale = Vector3(6, 7, 1)
 [sub_resource type="PlaneMesh" id="PlaneMesh_patio_deck"]
 material = SubResource("Material_patio_deck")
 size = Vector2(6.8, 8.2)
+
+[sub_resource type="StandardMaterial3D" id="Material_neon_sign"]
+albedo_texture = ExtResource("81_neon_tex")
+emission_enabled = true
+emission_texture = ExtResource("81_neon_tex")
+emission_energy_multiplier = 1.35
+roughness = 0.2
+
+[sub_resource type="QuadMesh" id="QuadMesh_neon_sign"]
+material = SubResource("Material_neon_sign")
+size = Vector2(1.85, 0.5)
+
+[sub_resource type="StandardMaterial3D" id="Material_art_chef"]
+albedo_texture = ExtResource("82_art_chef_tex")
+roughness = 0.45
+
+[sub_resource type="QuadMesh" id="QuadMesh_art_chef"]
+material = SubResource("Material_art_chef")
+size = Vector2(0.95, 1.35)
+
+[sub_resource type="StandardMaterial3D" id="Material_art_cafe"]
+albedo_texture = ExtResource("83_art_cafe_tex")
+roughness = 0.45
+
+[sub_resource type="QuadMesh" id="QuadMesh_art_cafe"]
+material = SubResource("Material_art_cafe")
+size = Vector2(0.95, 1.35)
 
 [node name="Main" type="Node3D"]
 
@@ -619,6 +649,18 @@ mesh = SubResource("BoxMesh_pass_counter")
 
 [node name="OrderTicketRail" parent="Restaurant/BuildingWalls" instance=ExtResource("79_ticket_rail")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.1, 2.15, -2.68)
+
+[node name="BistroNeonSign" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.1, 2.52, -2.68)
+mesh = SubResource("QuadMesh_neon_sign")
+
+[node name="WallArtChef" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -3.16, 1.5, -0.6)
+mesh = SubResource("QuadMesh_art_chef")
+
+[node name="WallArtCafe" type="MeshInstance3D" parent="Restaurant/BuildingWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.65, 2.2, -2.68)
+mesh = SubResource("QuadMesh_art_cafe")
 
 [node name="FrontWallReception" type="CSGBox3D" parent="Restaurant/BuildingWalls"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.7, 0.45, 7.0)

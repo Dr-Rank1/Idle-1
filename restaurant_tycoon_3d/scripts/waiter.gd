@@ -32,7 +32,7 @@ var home_pos: Vector3 = Vector3(0.2, 0.0, -0.4)
 
 func _ready() -> void:
 	home_pos = position
-	serving_tray.visible = true
+	serving_tray.visible = false
 	if status_bubble != null:
 		status_bubble.visible = false
 	anim_player = find_child("AnimationPlayer", true, false)
@@ -161,8 +161,13 @@ func _on_all_waypoints_reached() -> void:
 						target_table.clean_table()
 					is_cleaning_job = false
 				else:
+					var dish_id: String = "burger"
+					if "occupying_customer" in target_table and is_instance_valid(target_table.occupying_customer):
+						var cust = target_table.occupying_customer
+						if "ordered_dish" in cust and typeof(cust.ordered_dish) == TYPE_DICTIONARY:
+							dish_id = cust.ordered_dish.get("id", "burger")
 					if target_table.has_method("serve_food"):
-						target_table.serve_food()
+						target_table.serve_food(dish_id)
 					await get_tree().create_timer(0.45).timeout
 					serving_tray.visible = false
 			else:
