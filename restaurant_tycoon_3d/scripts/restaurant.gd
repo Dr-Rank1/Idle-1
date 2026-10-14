@@ -90,8 +90,8 @@ func _setup_custom_textures() -> void:
 			exp_mat.uv1_scale = Vector3(1.0, 2.0, 1.0)
 			exp_floor_node.material_override = exp_mat
 
-	# Kitchen Floor (Checkered White/Grey Commercial Tiles)
-	var k_tile_path = ProjectSettings.globalize_path("res://assets/textures/kitchen_tiles.png")
+	# Kitchen Floor (High-Contrast Slate-Grey Quarry Tiles 1:1 with reference)
+	var k_tile_path = ProjectSettings.globalize_path("res://assets/textures/kitchen_slate_tiles.png")
 	var k_tile_img = Image.load_from_file(k_tile_path)
 	if k_tile_img != null:
 		var k_tile_tex = ImageTexture.create_from_image(k_tile_img)
@@ -99,8 +99,8 @@ func _setup_custom_textures() -> void:
 		if kitchen_floor_node != null and kitchen_floor_node is MeshInstance3D:
 			var mat_kitchen = StandardMaterial3D.new()
 			mat_kitchen.albedo_texture = k_tile_tex
-			mat_kitchen.roughness = 0.45
-			mat_kitchen.uv1_scale = Vector3(4.0, 3.5, 1)
+			mat_kitchen.roughness = 0.55
+			mat_kitchen.uv1_scale = Vector3(4.0, 3.5, 1.0)
 			kitchen_floor_node.material_override = mat_kitchen
 
 	# Restroom Cool Blue-Grey Square Tiles
@@ -193,9 +193,9 @@ func _setup_custom_textures() -> void:
 		var k_runner = find_child("KitchenPassRedRunner", true, false)
 		if k_runner != null and k_runner is MeshInstance3D:
 			var bmesh = BoxMesh.new()
-			bmesh.size = Vector3(7.0, 0.02, 2.2)
+			bmesh.size = Vector3(8.5, 0.02, 2.4)
 			k_runner.mesh = bmesh
-			k_runner.position = Vector3(6.5, 0.022, -2.1)
+			k_runner.position = Vector3(6.5, 0.022, -2.15)
 			var r_mat = StandardMaterial3D.new()
 			r_mat.albedo_texture = pass_rug_tex
 			r_mat.roughness = 0.65
@@ -922,82 +922,467 @@ func _setup_milkshake_fidelity() -> void:
 		f_root.add_child(p2)
 
 func _setup_kitchen_fidelity() -> void:
-	# 1. Add Silver Dome Heat Lamps above Pass Counter
+	# 1. Silver Dome Heat Lamps & Pass Elements above Pass Counter (1:1 with reference)
 	var dining_hall = find_child("DiningHall", true, false)
-	if dining_hall != null and dining_hall.get_node_or_null("PassHeatLamps") == null:
+	if dining_hall != null:
+		var old_heat = dining_hall.get_node_or_null("PassHeatLamps")
+		if old_heat != null:
+			old_heat.name = "PassHeatLamps_Old"
+			old_heat.queue_free()
+
 		var heat_root = Node3D.new()
 		heat_root.name = "PassHeatLamps"
 		dining_hall.add_child(heat_root)
 
 		var dome_mat = StandardMaterial3D.new()
-		dome_mat.albedo_color = Color(0.90, 0.92, 0.95, 1.0)
-		dome_mat.metallic = 0.9
+		dome_mat.albedo_color = Color(0.92, 0.95, 0.98, 1.0)
+		dome_mat.metallic = 0.95
 		dome_mat.roughness = 0.15
 
-		for hx in [1.5, 3.5, 5.5]:
+		var cord_mat = StandardMaterial3D.new()
+		cord_mat.albedo_color = Color(0.18, 0.18, 0.20, 1.0)
+		cord_mat.metallic = 0.8
+		cord_mat.roughness = 0.3
+
+		var bulb_mat = StandardMaterial3D.new()
+		bulb_mat.albedo_color = Color(1.0, 0.85, 0.45, 1.0)
+		bulb_mat.emission_enabled = true
+		bulb_mat.emission = Color(1.0, 0.78, 0.32, 1.0)
+		bulb_mat.emission_energy_multiplier = 3.0
+
+		for hx in [4.6, 6.5, 8.4]:
 			var lamp = Node3D.new()
-			lamp.position = Vector3(hx, 2.2, -3.4)
+			lamp.position = Vector3(hx, 2.25, -3.4)
 			heat_root.add_child(lamp)
 
 			var cord = CSGCylinder3D.new()
 			cord.radius = 0.012
-			cord.height = 0.7
-			cord.position = Vector3(0, 0.35, 0)
+			cord.height = 0.55
+			cord.position = Vector3(0, 0.275, 0)
+			cord.material = cord_mat
 			lamp.add_child(cord)
 
 			var dome = MeshInstance3D.new()
 			var dmesh = CylinderMesh.new()
 			dmesh.top_radius = 0.08
-			dmesh.bottom_radius = 0.26
+			dmesh.bottom_radius = 0.28
 			dmesh.height = 0.18
 			dome.mesh = dmesh
 			dome.material_override = dome_mat
 			lamp.add_child(dome)
 
+			var bulb = MeshInstance3D.new()
+			var bmesh = SphereMesh.new()
+			bmesh.radius = 0.05
+			bmesh.height = 0.10
+			bulb.mesh = bmesh
+			bulb.position = Vector3(0, -0.05, 0)
+			bulb.material_override = bulb_mat
+			lamp.add_child(bulb)
+
 			var light = SpotLight3D.new()
 			light.rotation_degrees = Vector3(-90, 0, 0)
-			light.light_color = Color(1.0, 0.88, 0.6, 1.0)
-			light.light_energy = 0.85
-			light.spot_range = 2.8
-			light.spot_angle = 40.0
+			light.light_color = Color(1.0, 0.78, 0.32, 1.0)
+			light.light_energy = 1.3
+			light.spot_range = 3.2
+			light.spot_angle = 45.0
 			lamp.add_child(light)
 
-	# 2. Add 4 Commercial Heavy-Duty Gas Stoves with Glowing Orange Burners
-	if kitchen_container != null and kitchen_container.get_node_or_null("CommercialStoveLine") == null:
-		var stove_root = Node3D.new()
-		stove_root.name = "CommercialStoveLine"
-		kitchen_container.add_child(stove_root)
+		# Ceramic Plate Stacks along the pass counter
+		var plate_mat = StandardMaterial3D.new()
+		plate_mat.albedo_color = Color(0.96, 0.96, 0.94, 1.0)
+		plate_mat.roughness = 0.2
+		for px in [4.8, 8.2]:
+			var stack_root = Node3D.new()
+			stack_root.position = Vector3(px, 0.92, -3.4)
+			heat_root.add_child(stack_root)
+			for pi in range(8):
+				var pmesh = CSGCylinder3D.new()
+				pmesh.radius = 0.16
+				pmesh.height = 0.018
+				pmesh.position = Vector3(0, 0.009 + pi * 0.02, 0)
+				pmesh.material = plate_mat
+				stack_root.add_child(pmesh)
 
-		var burner_mat = StandardMaterial3D.new()
-		burner_mat.albedo_color = Color(1.0, 0.45, 0.1, 1.0)
-		burner_mat.emission_enabled = true
-		burner_mat.emission = Color(1.0, 0.4, 0.05, 1.0)
-		burner_mat.emission_energy_multiplier = 3.0
+	if kitchen_container == null:
+		return
 
-		var stove_scn = load("res://assets/models/furniture/kitchenStove.glb")
-		var burger_scn = load("res://assets/models/food/burger-cheese.glb")
-		for i in range(4):
-			var sx = 1.8 + i * 1.5
-			if stove_scn != null:
-				var stv = stove_scn.instantiate()
-				stv.position = Vector3(sx, 0.0, -9.5)
-				stv.scale = Vector3(1.2, 1.2, 1.2)
-				stove_root.add_child(stv)
+	# Clean up previous fidelity root if reloading
+	var old_f = kitchen_container.get_node_or_null("FidelityKitchenRoot")
+	if old_f != null:
+		old_f.name = "FidelityKitchenRoot_Old"
+		old_f.queue_free()
 
-			# Glowing orange burner rings on top
-			var flame = CSGCylinder3D.new()
-			flame.radius = 0.16
-			flame.height = 0.02
-			flame.position = Vector3(sx, 0.94, -9.5)
-			flame.material = burner_mat
-			stove_root.add_child(flame)
+	var f_root = Node3D.new()
+	f_root.name = "FidelityKitchenRoot"
+	kitchen_container.add_child(f_root)
 
-			# Sizzling food dish on stove
+	# --- Reusable Commercial Kitchen Materials ---
+	var steel_mat = StandardMaterial3D.new()
+	steel_mat.albedo_color = Color(0.85, 0.88, 0.90, 1.0)
+	steel_mat.metallic = 0.90
+	steel_mat.roughness = 0.25
+
+	var dark_cast_mat = StandardMaterial3D.new()
+	dark_cast_mat.albedo_color = Color(0.12, 0.12, 0.14, 1.0)
+	dark_cast_mat.metallic = 0.82
+	dark_cast_mat.roughness = 0.45
+
+	var chrome_mat = StandardMaterial3D.new()
+	chrome_mat.albedo_color = Color(0.92, 0.95, 0.98, 1.0)
+	chrome_mat.metallic = 0.96
+	chrome_mat.roughness = 0.15
+
+	var oven_glass_mat = StandardMaterial3D.new()
+	oven_glass_mat.albedo_color = Color(0.1, 0.12, 0.14, 0.85)
+	oven_glass_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	oven_glass_mat.roughness = 0.1
+
+	var flame_ring_mat = StandardMaterial3D.new()
+	flame_ring_mat.albedo_color = Color(1.0, 0.48, 0.08, 1.0)
+	flame_ring_mat.emission_enabled = true
+	flame_ring_mat.emission = Color(1.0, 0.45, 0.05, 1.0)
+	flame_ring_mat.emission_energy_multiplier = 3.8
+	flame_ring_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+
+	var steam_mat = StandardMaterial3D.new()
+	steam_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	steam_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	steam_mat.albedo_color = Color(1.0, 1.0, 1.0, 0.35)
+
+	var steam_sphere = SphereMesh.new()
+	steam_sphere.material = steam_mat
+	steam_sphere.radius = 0.05
+	steam_sphere.height = 0.10
+
+	var sizzle_mat = StandardMaterial3D.new()
+	sizzle_mat.albedo_color = Color(1.0, 0.65, 0.12, 1.0)
+	sizzle_mat.emission_enabled = true
+	sizzle_mat.emission = Color(1.0, 0.55, 0.05, 1.0)
+	sizzle_mat.emission_energy_multiplier = 2.8
+
+	var sizzle_mesh = BoxMesh.new()
+	sizzle_mesh.material = sizzle_mat
+	sizzle_mesh.size = Vector3(0.025, 0.025, 0.025)
+
+	# --- 2. The 4 Heavy-Duty Commercial Stainless Steel Gas Stoves (CommercialStoveLine) ---
+	var stove_root = Node3D.new()
+	stove_root.name = "CommercialStoveLine"
+	f_root.add_child(stove_root)
+
+	var pan_scn = load("res://assets/kaykit_restaurant/gltf/pan_A.gltf")
+	var burger_scn = load("res://assets/models/food/burger-cheese.glb")
+	var chef_scn = load("res://scenes/chef.tscn")
+
+	var stove_x_list = [4.25, 5.75, 7.25, 8.75]
+	var stove_z = -9.6
+
+	for i in range(4):
+		var sx = stove_x_list[i]
+		var stove_unit = Node3D.new()
+		stove_unit.name = "StoveUnit_%d" % i
+		stove_root.add_child(stove_unit)
+
+		# Stainless steel cabinet body
+		var body = CSGBox3D.new()
+		body.size = Vector3(1.22, 0.88, 0.95)
+		body.position = Vector3(sx, 0.44, stove_z)
+		body.material = steel_mat
+		stove_unit.add_child(body)
+
+		# Dark cast-iron kickplate at base
+		var kickplate = CSGBox3D.new()
+		kickplate.size = Vector3(1.22, 0.08, 0.96)
+		kickplate.position = Vector3(sx, 0.04, stove_z)
+		kickplate.material = dark_cast_mat
+		stove_unit.add_child(kickplate)
+
+		# Front oven door frame
+		var door = CSGBox3D.new()
+		door.size = Vector3(1.06, 0.52, 0.04)
+		door.position = Vector3(sx, 0.36, stove_z + 0.48)
+		door.material = steel_mat
+		stove_unit.add_child(door)
+
+		# Oven window (tinted dark glass)
+		var window = CSGBox3D.new()
+		window.size = Vector3(0.72, 0.32, 0.05)
+		window.position = Vector3(sx, 0.36, stove_z + 0.485)
+		window.material = oven_glass_mat
+		stove_unit.add_child(window)
+
+		# Oven door chrome handle
+		var handle = CSGCylinder3D.new()
+		handle.radius = 0.016
+		handle.height = 0.65
+		handle.position = Vector3(sx, 0.54, stove_z + 0.51)
+		handle.rotation_degrees = Vector3(0, 0, 90)
+		handle.material = chrome_mat
+		stove_unit.add_child(handle)
+
+		# Front control panel band
+		var ctrl_panel = CSGBox3D.new()
+		ctrl_panel.size = Vector3(1.22, 0.16, 0.04)
+		ctrl_panel.position = Vector3(sx, 0.74, stove_z + 0.48)
+		ctrl_panel.material = steel_mat
+		stove_unit.add_child(ctrl_panel)
+
+		# 4 rotary burner control knobs
+		for ki in range(4):
+			var knob = CSGCylinder3D.new()
+			knob.radius = 0.024
+			knob.height = 0.025
+			knob.position = Vector3(sx - 0.36 + ki * 0.24, 0.74, stove_z + 0.51)
+			knob.rotation_degrees = Vector3(90, 0, 0)
+			knob.material = dark_cast_mat
+			stove_unit.add_child(knob)
+
+		# Cast-iron top cooktop surface
+		var cooktop = CSGBox3D.new()
+		cooktop.size = Vector3(1.22, 0.04, 0.95)
+		cooktop.position = Vector3(sx, 0.89, stove_z)
+		cooktop.material = dark_cast_mat
+		stove_unit.add_child(cooktop)
+
+		# Cast-iron grates on cooktop
+		for gi in range(2):
+			var grate = CSGBox3D.new()
+			grate.size = Vector3(0.50, 0.025, 0.40)
+			var gz_offset = -0.20 if gi == 0 else 0.20
+			grate.position = Vector3(sx, 0.915, stove_z + gz_offset)
+			grate.material = dark_cast_mat
+			stove_unit.add_child(grate)
+
+		# Front active glowing orange flame ring
+		var flame = CSGCylinder3D.new()
+		flame.radius = 0.17
+		flame.height = 0.015
+		flame.position = Vector3(sx, 0.915, stove_z + 0.20)
+		flame.material = flame_ring_mat
+		stove_unit.add_child(flame)
+
+		# Warm flame glow light
+		var flame_glow = OmniLight3D.new()
+		flame_glow.position = Vector3(sx, 0.96, stove_z + 0.20)
+		flame_glow.light_color = Color(1.0, 0.52, 0.12, 1.0)
+		flame_glow.light_energy = 0.85
+		flame_glow.omni_range = 1.3
+		stove_unit.add_child(flame_glow)
+
+		# Alternating Cookware: Stoves 0 & 2 have sizzling frying pans; Stoves 1 & 3 have simmering stockpots
+		if (i % 2) == 0:
+			# Sizzling Frying Pan
+			if pan_scn != null:
+				var pan_inst = pan_scn.instantiate()
+				pan_inst.position = Vector3(sx, 0.925, stove_z + 0.20)
+				pan_inst.scale = Vector3(0.65, 0.65, 0.65)
+				stove_unit.add_child(pan_inst)
+
 			if burger_scn != null:
-				var bg = burger_scn.instantiate()
-				bg.position = Vector3(sx, 0.96, -9.5)
-				bg.scale = Vector3(0.35, 0.35, 0.35)
-				stove_root.add_child(bg)
+				var patty = burger_scn.instantiate()
+				patty.position = Vector3(sx, 0.95, stove_z + 0.20)
+				patty.scale = Vector3(0.40, 0.40, 0.40)
+				stove_unit.add_child(patty)
+
+			# Sizzle sparks
+			var sparks = CPUParticles3D.new()
+			sparks.position = Vector3(sx, 0.98, stove_z + 0.20)
+			sparks.amount = 8
+			sparks.lifetime = 0.4
+			sparks.mesh = sizzle_mesh
+			sparks.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+			sparks.emission_sphere_radius = 0.12
+			sparks.direction = Vector3(0, 1, 0)
+			sparks.spread = 55.0
+			sparks.gravity = Vector3(0, -2.5, 0)
+			sparks.initial_velocity_min = 0.6
+			sparks.initial_velocity_max = 1.1
+			stove_unit.add_child(sparks)
+
+			# Simmering steam
+			var steam = CPUParticles3D.new()
+			steam.position = Vector3(sx, 0.98, stove_z + 0.20)
+			steam.amount = 12
+			steam.lifetime = 1.2
+			steam.mesh = steam_sphere
+			steam.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+			steam.emission_sphere_radius = 0.14
+			steam.direction = Vector3(0, 1, 0)
+			steam.spread = 20.0
+			steam.gravity = Vector3(0, 0.5, 0)
+			steam.initial_velocity_min = 0.25
+			steam.initial_velocity_max = 0.55
+			stove_unit.add_child(steam)
+		else:
+			# Large Stainless Stockpot with Dual Chrome Loop Handles
+			var pot = CSGCylinder3D.new()
+			pot.radius = 0.22
+			pot.height = 0.36
+			pot.position = Vector3(sx, 1.09, stove_z + 0.20)
+			pot.material = steel_mat
+			stove_unit.add_child(pot)
+
+			# Simmering stew surface inside the pot
+			var stew = CSGCylinder3D.new()
+			stew.radius = 0.20
+			stew.height = 0.02
+			stew.position = Vector3(sx, 1.24, stove_z + 0.20)
+			var stew_mat = StandardMaterial3D.new()
+			stew_mat.albedo_color = Color(0.85, 0.35, 0.12, 1.0) if i == 1 else Color(0.25, 0.65, 0.35, 1.0)
+			stew_mat.roughness = 0.3
+			stew.material = stew_mat
+			stove_unit.add_child(stew)
+
+			# Chrome loop handles
+			for side in [-1, 1]:
+				var handle_loop = CSGTorus3D.new()
+				handle_loop.inner_radius = 0.025
+				handle_loop.outer_radius = 0.045
+				handle_loop.position = Vector3(sx + side * 0.23, 1.18, stove_z + 0.20)
+				handle_loop.rotation_degrees = Vector3(90, 0, 0)
+				handle_loop.material = chrome_mat
+				stove_unit.add_child(handle_loop)
+
+			# Simmering steam rising into the exhaust hood
+			var pot_steam = CPUParticles3D.new()
+			pot_steam.position = Vector3(sx, 1.28, stove_z + 0.20)
+			pot_steam.amount = 16
+			pot_steam.lifetime = 1.3
+			pot_steam.mesh = steam_sphere
+			pot_steam.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+			pot_steam.emission_sphere_radius = 0.16
+			pot_steam.direction = Vector3(0, 1, 0)
+			pot_steam.spread = 18.0
+			pot_steam.gravity = Vector3(0, 0.6, 0)
+			pot_steam.initial_velocity_min = 0.3
+			pot_steam.initial_velocity_max = 0.65
+			stove_unit.add_child(pot_steam)
+
+	# --- 3. Continuous Overhead Stainless Exhaust Hood Canopy and Ducts ---
+	var hood_canopy = CSGBox3D.new()
+	hood_canopy.size = Vector3(6.0, 0.46, 1.15)
+	hood_canopy.position = Vector3(6.5, 2.45, stove_z)
+	hood_canopy.material = steel_mat
+	stove_root.add_child(hood_canopy)
+
+	# Tapered lower lip of hood canopy
+	var hood_lip = CSGBox3D.new()
+	hood_lip.size = Vector3(6.08, 0.08, 1.22)
+	hood_lip.position = Vector3(6.5, 2.22, stove_z)
+	hood_lip.material = chrome_mat
+	stove_root.add_child(hood_lip)
+
+	# 4 Vertical Silver Ducts rising from canopy into ceiling
+	for sx in stove_x_list:
+		var duct = CSGCylinder3D.new()
+		duct.radius = 0.13
+		duct.height = 0.85
+		duct.position = Vector3(sx, 2.88, stove_z)
+		duct.material = chrome_mat
+		stove_root.add_child(duct)
+
+		# Under-hood task spotlights illuminating the stoves
+		var task_light = SpotLight3D.new()
+		task_light.position = Vector3(sx, 2.18, stove_z + 0.10)
+		task_light.rotation_degrees = Vector3(-90, 0, 0)
+		task_light.light_color = Color(1.0, 0.94, 0.82, 1.0)
+		task_light.light_energy = 0.75
+		task_light.spot_range = 2.0
+		task_light.spot_angle = 50.0
+		stove_root.add_child(task_light)
+
+	# --- 4. The 4 Active Line Chefs Stationed at the Stoves ---
+	if chef_scn != null:
+		for i in range(4):
+			var sx = stove_x_list[i]
+			var c = chef_scn.instantiate()
+			c.name = "KitchenLineChef_%d" % i
+			c.position = Vector3(sx, 0.0, -8.65)
+			c.rotation_degrees = Vector3(0, 180, 0)
+			c.set("chef_index", i)
+			c.set("has_pan", (i % 2) == 0)
+			stove_root.add_child(c)
+
+	# --- 5. Center Prep Island & Fresh Produce Crates ---
+	var prep_tbl_scn = load("res://assets/kaykit_restaurant/gltf/kitchentable_A_large_decorated.gltf")
+	if prep_tbl_scn != null:
+		var ptable = prep_tbl_scn.instantiate()
+		ptable.position = Vector3(6.0, 0.0, -6.1)
+		ptable.scale = Vector3(1.15, 1.15, 1.15)
+		f_root.add_child(ptable)
+
+	# Produce crates beside prep table
+	var carrot_scn = load("res://assets/kaykit_restaurant/gltf/crate_carrots.gltf")
+	if carrot_scn != null:
+		var c_crate = carrot_scn.instantiate()
+		c_crate.position = Vector3(4.55, 0.0, -6.1)
+		c_crate.scale = Vector3(1.0, 1.0, 1.0)
+		f_root.add_child(c_crate)
+
+	var tomato_scn = load("res://assets/kaykit_restaurant/gltf/crate_tomatoes.gltf")
+	if tomato_scn != null:
+		var t_crate = tomato_scn.instantiate()
+		t_crate.position = Vector3(7.45, 0.0, -6.1)
+		t_crate.scale = Vector3(1.0, 1.0, 1.0)
+		f_root.add_child(t_crate)
+
+	# Prep Chef at Island
+	if chef_scn != null:
+		var pchef = chef_scn.instantiate()
+		pchef.name = "KitchenPrepChef"
+		pchef.position = Vector3(6.0, 0.0, -5.25)
+		pchef.rotation_degrees = Vector3(0, 180, 0)
+		pchef.set("is_prep_chef", true)
+		pchef.set("chef_index", 4)
+		f_root.add_child(pchef)
+
+	# --- 6. Dual Commercial Refrigerators (Along West Divider Wall at X = 2.88) ---
+	var fridge_scn = load("res://assets/models/furniture/kitchenFridgeLarge.glb")
+	if fridge_scn != null:
+		var fr1 = fridge_scn.instantiate()
+		fr1.position = Vector3(2.88, 0.0, -9.2)
+		fr1.rotation_degrees = Vector3(0, -90, 0)
+		fr1.scale = Vector3(1.25, 1.25, 1.25)
+		f_root.add_child(fr1)
+
+		var fr2 = fridge_scn.instantiate()
+		fr2.position = Vector3(2.88, 0.0, -7.6)
+		fr2.rotation_degrees = Vector3(0, -90, 0)
+		fr2.scale = Vector3(1.25, 1.25, 1.25)
+		f_root.add_child(fr2)
+
+	# --- 7. Double Dishwashing Sinks & Plate Rack (Along East Divider Wall at X = 10.1) ---
+	var sink_scn = load("res://assets/kaykit_restaurant/gltf/kitchencounter_sink_backsplash.gltf")
+	if sink_scn != null:
+		var sk1 = sink_scn.instantiate()
+		sk1.position = Vector3(10.1, 0.0, -8.6)
+		sk1.rotation_degrees = Vector3(0, 90, 0)
+		sk1.scale = Vector3(1.15, 1.15, 1.15)
+		f_root.add_child(sk1)
+
+		var sk2 = sink_scn.instantiate()
+		sk2.position = Vector3(10.1, 0.0, -7.2)
+		sk2.rotation_degrees = Vector3(0, 90, 0)
+		sk2.scale = Vector3(1.15, 1.15, 1.15)
+		f_root.add_child(sk2)
+
+	# Counter table with Plate Dishrack at Z = -5.8
+	var counter_straight_scn = load("res://assets/kaykit_restaurant/gltf/kitchencounter_straight_A.gltf")
+	if counter_straight_scn != null:
+		var c_straight = counter_straight_scn.instantiate()
+		c_straight.position = Vector3(10.1, 0.0, -5.8)
+		c_straight.rotation_degrees = Vector3(0, 90, 0)
+		c_straight.scale = Vector3(1.15, 1.15, 1.15)
+		f_root.add_child(c_straight)
+
+	var dishrack_scn = load("res://assets/kaykit_restaurant/gltf/dishrack_plates.gltf")
+	if dishrack_scn != null:
+		var dr = dishrack_scn.instantiate()
+		dr.position = Vector3(10.1, 0.88, -5.8)
+		dr.rotation_degrees = Vector3(0, 90, 0)
+		dr.scale = Vector3(1.15, 1.15, 1.15)
+		f_root.add_child(dr)
+
 
 func _check_spawn_hired_staff() -> void:
 	var gm = get_node_or_null("/root/GameManager")

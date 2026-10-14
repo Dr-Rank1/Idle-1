@@ -92,7 +92,7 @@ func _spawn_upgrade_text(new_lvl: int) -> void:
 	label.double_sided = false
 	label.font_size = 26
 	label.outline_size = 7
-	label.position = Vector3(0, 1.6, 0)
+	label.position = Vector3(0, 3.65, 0)
 	
 	if new_lvl == 5:
 		label.text = "★ COMMERCIAL DOUBLE RANGE UNLOCKED! ★"
@@ -109,7 +109,7 @@ func _spawn_upgrade_text(new_lvl: int) -> void:
 		
 	add_child(label)
 	var tw = create_tween()
-	tw.tween_property(label, "position:y", 2.6, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(label, "position:y", 4.65, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(label, "modulate:a", 0.0, 0.8).set_delay(0.35)
 	tw.tween_callback(label.queue_free)
 

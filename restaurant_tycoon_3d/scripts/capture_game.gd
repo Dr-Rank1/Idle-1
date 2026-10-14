@@ -77,6 +77,17 @@ func _init():
 			await process_frame
 		var img_shake = root.get_viewport().get_texture().get_image()
 		img_shake.save_png("c:/Users/Ian/Documents/Apps/Idle-1/milkshake_view.png")
+	# Focus camera on kitchen to capture 1:1 fidelity details of Commercial Kitchen
+	if cam != null:
+		var orig_pos = cam.target_position
+		var orig_size = cam.size
+		cam.target_position = Vector3(17.2, 14.5, 9.8)
+		cam.position = Vector3(17.2, 14.5, 9.8)
+		cam.size = 11.0
+		for i in range(35):
+			await process_frame
+		var img_kitchen = root.get_viewport().get_texture().get_image()
+		img_kitchen.save_png("c:/Users/Ian/Documents/Apps/Idle-1/kitchen_view.png")
 		cam.target_position = orig_pos
 		cam.position = orig_pos
 		cam.size = orig_size
