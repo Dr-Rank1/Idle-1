@@ -43,11 +43,11 @@ var is_vip_critic: bool = false
 var critic_badge: Label3D = null
 
 # Landmark Waypoints for clean door/hall navigation
-const DOOR_POS: Vector3 = Vector3(-5.5, 0.0, 6.8)
-const HOST_POS: Vector3 = Vector3(-4.5, 0.0, 5.0)
-const ARCH_POS: Vector3 = Vector3(-3.3, 0.0, 2.2)
-const AISLE_POS: Vector3 = Vector3(0.0, 0.0, 2.2)
-const EXIT_POS: Vector3 = Vector3(-5.5, 0.0, 11.0)
+const DOOR_POS: Vector3 = Vector3(-7.5, 0.0, 11.0)
+const HOST_POS: Vector3 = Vector3(-6.0, 0.0, 5.5)
+const ARCH_POS: Vector3 = Vector3(-3.5, 0.0, 3.5)
+const AISLE_POS: Vector3 = Vector3(3.5, 0.0, 3.5)
+const EXIT_POS: Vector3 = Vector3(-7.5, 0.0, 16.0)
 
 const CHARACTER_MODELS: Array[String] = [
 	"res://assets/models/characters/character-male-a.glb",

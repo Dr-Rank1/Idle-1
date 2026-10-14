@@ -54,21 +54,21 @@ func _process(delta: float) -> void:
 	position = position.lerp(target_position, 12.0 * delta)
 
 func _clamp_target() -> void:
-	target_position.x = clamp(target_position.x, -8.0, 22.0)
-	target_position.z = clamp(target_position.z, 4.0, 30.0)
+	target_position.x = clamp(target_position.x, -5.0, 36.0)
+	target_position.z = clamp(target_position.z, 2.0, 42.0)
 
 func focus_zone(zone: String) -> void:
 	match zone:
 		"parking":
-			target_position = Vector3(9.0, 12.2, 21.0)
+			target_position = Vector3(14.0, 16.5, 30.0)
 		"dining":
-			target_position = Vector3(15.6, 12.2, 16.5)
+			target_position = Vector3(22.0, 16.5, 23.5)
 		"kitchen":
-			target_position = Vector3(12.5, 12.2, 12.5)
+			target_position = Vector3(18.0, 16.5, 14.0)
 		"terrace":
-			target_position = Vector3(19.0, 12.2, 16.5)
+			target_position = Vector3(28.0, 16.5, 23.5)
 		"overview":
-			target_position = Vector3(16.5, 12.2, 18.0)
+			target_position = Vector3(22.0, 16.5, 23.5)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:

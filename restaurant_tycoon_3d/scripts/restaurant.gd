@@ -22,9 +22,9 @@ var waiter_scene: PackedScene = null
 var waiting_customers: Array[Node3D] = []
 const MAX_WAITING_CUSTOMERS: int = 3
 const WAITING_SPOTS: Array[Vector3] = [
-	Vector3(-3.0, 0.0, 5.0),
-	Vector3(-2.8, 0.0, 4.0),
-	Vector3(-3.8, 0.0, 4.0)
+	Vector3(-7.5, 0.0, 8.0),
+	Vector3(-7.5, 0.0, 6.8),
+	Vector3(-7.5, 0.0, 5.6)
 ]
 
 func _ready() -> void:
@@ -47,6 +47,63 @@ func _ready() -> void:
 		for st in kitchen_container.get_children():
 			if st.has_signal("station_clicked"):
 				st.station_clicked.connect(_on_table_clicked)
+				
+	_setup_custom_textures()
+
+func _setup_custom_textures() -> void:
+	print(">>> _setup_custom_textures RUNNING!")
+	# Disable shadow casting on all building walls and ceilings so interior lighting is bright and clean
+	var walls_node = find_child("BuildingWalls", true, false)
+	if walls_node != null:
+		for wall in walls_node.get_children():
+			if wall is GeometryInstance3D:
+				wall.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var roof_node = find_child("IndustrialRoof", true, false)
+	if roof_node != null:
+		roof_node.visible = false
+
+	# Dining Hall Diamond Checkerboard Floor
+	var tile_path = ProjectSettings.globalize_path("res://assets/textures/diner_diamond_tiles.png")
+	var tile_img = Image.load_from_file(tile_path)
+	if tile_img != null:
+		var tile_tex = ImageTexture.create_from_image(tile_img)
+		var dining_floor_node = find_child("DiningFloor", true, false)
+		if dining_floor_node != null and dining_floor_node is MeshInstance3D:
+			var mat = StandardMaterial3D.new()
+			mat.albedo_texture = tile_tex
+			mat.roughness = 0.88
+			# 2.5 repeats across 14m gives ~20 diamond tiles (0.7m each), matching video exactly
+			mat.uv1_scale = Vector3(2.5, 2.5, 1)
+			dining_floor_node.material_override = mat
+
+	# Kitchen Commercial Slate Floor
+	var slate_path = ProjectSettings.globalize_path("res://assets/textures/kitchen_slate_tiles.png")
+	var slate_img = Image.load_from_file(slate_path)
+	if slate_img != null:
+		var slate_tex = ImageTexture.create_from_image(slate_img)
+		var kitchen_floor_node = find_child("KitchenFloor", true, false)
+		if kitchen_floor_node != null and kitchen_floor_node is MeshInstance3D:
+			var mat_kitchen = StandardMaterial3D.new()
+			mat_kitchen.albedo_texture = slate_tex
+			mat_kitchen.roughness = 0.85
+			mat_kitchen.uv1_scale = Vector3(2.5, 1.25, 1)
+			kitchen_floor_node.material_override = mat_kitchen
+
+	# Front Lawn Idle Diner Neon Sign
+	var neon_path = ProjectSettings.globalize_path("res://assets/textures/idle_diner_neon.png")
+	var neon_img = Image.load_from_file(neon_path)
+	if neon_img != null:
+		var neon_tex = ImageTexture.create_from_image(neon_img)
+		var sign_board_node = get_node_or_null("IdleDinerSign/SignBoard")
+		if sign_board_node == null:
+			sign_board_node = find_child("SignBoard", true, false)
+		if sign_board_node != null and sign_board_node is MeshInstance3D:
+			var sign_mat = StandardMaterial3D.new()
+			sign_mat.albedo_texture = neon_tex
+			sign_mat.emission_enabled = true
+			sign_mat.emission_texture = neon_tex
+			sign_mat.emission_energy_multiplier = 3.2
+			sign_board_node.material_override = sign_mat
 
 func _check_spawn_hired_staff() -> void:
 	var gm = get_node_or_null("/root/GameManager")
@@ -59,7 +116,7 @@ func _check_spawn_hired_staff() -> void:
 		w2.name = "Waiter2"
 		w2.staff_id = "waiter_2"
 		w2.staff_name = "Sophia"
-		w2.position = Vector3(-1.4, 0.0, -1.0)
+		w2.position = Vector3(1.8, 0.0, 0.5)
 		add_child(w2)
 		waiters.append(w2)
 		
@@ -69,7 +126,7 @@ func _check_spawn_hired_staff() -> void:
 		w3.name = "Waiter3"
 		w3.staff_id = "waiter_3"
 		w3.staff_name = "Lucas"
-		w3.position = Vector3(1.4, 0.0, -1.0)
+		w3.position = Vector3(5.2, 0.0, 0.5)
 		add_child(w3)
 		waiters.append(w3)
 
@@ -79,7 +136,7 @@ func _check_spawn_hired_staff() -> void:
 		if chef_scn != null and kitchen_container != null:
 			var sc = chef_scn.instantiate()
 			sc.name = "ChefSous"
-			sc.position = Vector3(1.8, 0.0, -7.5)
+			sc.position = Vector3(5.5, 0.0, -9.0)
 			sc.rotation_degrees.y = 180.0
 			kitchen_container.add_child(sc)
 

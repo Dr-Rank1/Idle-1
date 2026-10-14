@@ -26,9 +26,9 @@ var is_cleaning_job: bool = false
 
 var anim_player: AnimationPlayer = null
 
-const KITCHEN_PASS_POS: Vector3 = Vector3(0.3, 0.0, -2.1)
-const DINING_AISLE_POS: Vector3 = Vector3(0.2, 0.0, 1.5)
-var home_pos: Vector3 = Vector3(0.2, 0.0, -0.4)
+const KITCHEN_PASS_POS: Vector3 = Vector3(3.5, 0.0, -3.2)
+const DINING_AISLE_POS: Vector3 = Vector3(3.5, 0.0, 3.5)
+var home_pos: Vector3 = Vector3(3.5, 0.0, 0.5)
 
 func _ready() -> void:
 	home_pos = position

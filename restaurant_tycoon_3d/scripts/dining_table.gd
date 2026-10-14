@@ -53,8 +53,12 @@ func _ready() -> void:
 		if booth_decor != null: booth_decor.visible = false
 		if companion_diners != null: companion_diners.visible = false
 		if terrace_decor != null: terrace_decor.visible = is_unlocked
+		if chair_north != null: chair_north.visible = true
+		if chair_south != null: chair_south.visible = true
 	else:
 		if terrace_decor != null: terrace_decor.visible = false
+		if chair_north != null: chair_north.visible = false
+		if chair_south != null: chair_south.visible = false
 	if timer_ring != null and timer_ring.mesh != null and timer_ring.mesh.material != null:
 		var ring_mat = timer_ring.mesh.material.duplicate()
 		timer_ring.material_override = ring_mat
