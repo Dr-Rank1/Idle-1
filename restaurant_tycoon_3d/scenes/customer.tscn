@@ -46,13 +46,13 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.005)
 mesh = SubResource("QuadMesh_bar_fill")
 
 [node name="StatusBubble" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.06, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, 0)
 
 [node name="BubbleLabel" type="Label3D" parent="StatusBubble"]
 billboard = 1
 double_sided = false
 text = "💭"
-font_size = 20
-outline_size = 5
-outline_modulate = Color(0.08, 0.1, 0.15, 0.95)
+font_size = 32
+outline_size = 8
+outline_modulate = Color(0.04, 0.04, 0.06, 0.95)
 modulate = Color(1, 0.95, 0.85, 1)

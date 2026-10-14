@@ -318,7 +318,7 @@ func _on_all_waypoints_reached() -> void:
 		State.WAITING_IN_LOBBY:
 			velocity = Vector3.ZERO
 			_play_anim("sit")
-			set_bubble_text("⏳ Waiting...")
+			set_bubble_text("⏳ 🍽️")
 				
 		State.WALKING_TO_EXIT:
 			queue_free()
@@ -328,7 +328,7 @@ func set_as_waiting_in_lobby(spot: Vector3) -> void:
 	max_patience = 28.0
 	current_patience = 28.0
 	is_waiting_for_food = true
-	set_bubble_text("⏳ Waiting...")
+	set_bubble_text("⏳ 🍽️")
 	set_waypoints([DOOR_POS, spot])
 
 func _get_waypoints_to_table(seat_pos: Vector3) -> Array:

@@ -5,6 +5,7 @@ extends Node3D
 @onready var flame_light: OmniLight3D = $StoveFlameGlow
 @onready var steam_particles: CPUParticles3D = $SteamParticles
 @onready var pan: Node3D = $Pan
+@onready var cooking_ring: MeshInstance3D = get_node_or_null("CookingTimerRing")
 
 var anim_player: AnimationPlayer = null
 var time_passed: float = 0.0
@@ -21,6 +22,9 @@ func _ready() -> void:
 		if steam_particles != null: steam_particles.visible = true
 		if pan != null: pan.visible = true
 	
+	if cooking_ring != null and cooking_ring.mesh != null and cooking_ring.mesh.material != null:
+		cooking_ring.material_override = cooking_ring.mesh.material.duplicate()
+	
 	_play_chef_animation()
 
 func _play_chef_animation() -> void:
@@ -35,3 +39,10 @@ func _process(delta: float) -> void:
 	# Sizzling flame flicker effect for cooking chef
 	if flame_light != null and not is_prep_chef:
 		flame_light.light_energy = 1.1 + sin(time_passed * 14.0) * 0.35 + randf_range(-0.1, 0.1)
+	
+	# Animated cooking progress arc over chef's head (matching res1_38s.jpg)
+	if cooking_ring != null:
+		var cook_progress = fmod(time_passed * 0.35 + (0.3 if is_prep_chef else 0.0), 1.0)
+		var mat = cooking_ring.material_override
+		if mat is ShaderMaterial:
+			mat.set_shader_parameter("progress", cook_progress)

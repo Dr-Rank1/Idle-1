@@ -279,6 +279,12 @@ size = Vector3(2.6, 0.88, 0.65)
 material = SubResource("Material_wood_counter")
 size = Vector3(0.65, 0.88, 1.4)
 
+[sub_resource type="StandardMaterial3D" id="Material_water_jug"]
+transparency = 1
+albedo_color = Color(0.15, 0.75, 0.95, 0.65)
+roughness = 0.15
+metallic = 0.1
+
 [sub_resource type="StandardMaterial3D" id="Material_baseboard"]
 albedo_color = Color(0.42, 0.24, 0.12, 1)
 roughness = 0.45
@@ -782,6 +788,23 @@ transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, -6.2, 0, 1.85)
 
 [node name="WaitingChair2B" parent="Restaurant/ReceptionRoom" instance=ExtResource("53_chair")]
 transform = Transform3D(-0.75, 0, 0, 0, 0.75, 0, 0, 0, -0.75, -6.2, 0, 0.55)
+
+[node name="PlantJukebox" parent="Restaurant/ReceptionRoom" instance=ExtResource("26_plant")]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, -3.1, 0, -0.2)
+
+[node name="WaterCooler" type="Node3D" parent="Restaurant/ReceptionRoom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.2, 0, -3.0)
+
+[node name="CoolerBase" type="CSGBox3D" parent="Restaurant/ReceptionRoom/WaterCooler"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+size = Vector3(0.38, 0.9, 0.38)
+material = SubResource("Material_wall")
+
+[node name="CoolerJug" type="CSGCylinder3D" parent="Restaurant/ReceptionRoom/WaterCooler"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.08, 0)
+radius = 0.14
+height = 0.36
+material = SubResource("Material_water_jug")
 
 [node name="Kitchen" type="Node3D" parent="Restaurant"]
 
