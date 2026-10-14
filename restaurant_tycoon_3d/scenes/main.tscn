@@ -827,51 +827,11 @@ mesh = SubResource("BoxMesh_gold_edge")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.95, 0.02, 2.1)
 mesh = SubResource("BoxMesh_gold_edge")
 
-[node name="FloatingCashBadge" type="Label3D" parent="Restaurant/DiningHall"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4, 2.55, 1.4)
-billboard = 1
-double_sided = false
-text = "💵 +2.1T"
-font_size = 28
-outline_size = 8
-modulate = Color(0.35, 1, 0.45, 1)
-outline_modulate = Color(0.05, 0.2, 0.05, 0.95)
-
 [node name="PassPlates" parent="Restaurant/DiningHall" instance=ExtResource("17_plates")]
 transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, 1.2, 0.9, -2.65)
 
-[node name="AisleWaiter" parent="Restaurant/DiningHall" instance=ExtResource("6_waiter_scn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0, -0.4)
-
-[node name="AisleGuest1" parent="Restaurant/DiningHall" instance=ExtResource("57_char_male_a")]
-transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, 0.2, 0, 1.8)
-script = ExtResource("55_decor_char")
-anim_name = "walk"
-
-[node name="AisleGuest2" parent="Restaurant/DiningHall" instance=ExtResource("58_char_female_b")]
-transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, 0.35, 0, 3.2)
-script = ExtResource("55_decor_char")
-anim_name = "walk"
-
-[node name="AisleGuest3" parent="Restaurant/DiningHall" instance=ExtResource("59_char_female_c")]
-transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, -0.1, 0, 4.6)
-script = ExtResource("55_decor_char")
-anim_name = "walk"
-
-[node name="WaitingBubble" type="Label3D" parent="Restaurant/DiningHall"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1, 1.9, 4.6)
-billboard = 1
-double_sided = false
-text = "⏳🍴"
-font_size = 28
-outline_size = 6
-outline_modulate = Color(0.1, 0.1, 0.1, 0.9)
-
 [node name="GlassRailingNorth" parent="Restaurant/DiningHall" instance=ExtResource("78_glass_railing")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 4.7, 0, 0.0)
-
-[node name="GlassRailingMid" parent="Restaurant/DiningHall" instance=ExtResource("78_glass_railing")]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 4.7, 0, 2.3)
 
 [node name="GlassRailingSouth" parent="Restaurant/DiningHall" instance=ExtResource("78_glass_railing")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 4.7, 0, 4.6)

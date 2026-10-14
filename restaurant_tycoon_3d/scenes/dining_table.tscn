@@ -73,6 +73,34 @@ emission_energy_multiplier = 2.0
 material = SubResource("Material_sparkle")
 size = Vector3(0.06, 0.06, 0.06)
 
+[sub_resource type="StandardMaterial3D" id="Material_pendant_shade"]
+albedo_color = Color(0.24, 0.20, 0.16, 1)
+metallic = 0.75
+roughness = 0.35
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pendant_cord"]
+material = SubResource("Material_pendant_shade")
+top_radius = 0.012
+bottom_radius = 0.012
+height = 1.0
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pendant_cone"]
+material = SubResource("Material_pendant_shade")
+top_radius = 0.06
+bottom_radius = 0.26
+height = 0.16
+
+[sub_resource type="StandardMaterial3D" id="Material_pendant_bulb"]
+albedo_color = Color(1, 0.95, 0.8, 1)
+emission_enabled = true
+emission = Color(1, 0.88, 0.55, 1)
+emission_energy_multiplier = 2.5
+
+[sub_resource type="SphereMesh" id="SphereMesh_pendant_bulb"]
+material = SubResource("Material_pendant_bulb")
+radius = 0.05
+height = 0.1
+
 [node name="DiningTable" type="StaticBody3D"]
 collision_layer = 4
 collision_mask = 0
@@ -218,6 +246,29 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
 light_color = Color(1, 0.88, 0.65, 1)
 light_energy = 0.25
 omni_range = 2.4
+
+[node name="PendantLamp" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.05, 0)
+
+[node name="Cord" type="MeshInstance3D" parent="PendantLamp"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("CylinderMesh_pendant_cord")
+
+[node name="Shade" type="MeshInstance3D" parent="PendantLamp"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
+mesh = SubResource("CylinderMesh_pendant_cone")
+
+[node name="Bulb" type="MeshInstance3D" parent="PendantLamp"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.02, 0)
+mesh = SubResource("SphereMesh_pendant_bulb")
+
+[node name="TableSpot" type="SpotLight3D" parent="PendantLamp"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, -0.05, 0)
+light_color = Color(1, 0.92, 0.75, 1)
+light_energy = 0.75
+spot_range = 3.2
+spot_angle = 42.0
+spot_attenuation = 1.2
 
 [node name="UpgradeParticles" type="CPUParticles3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
