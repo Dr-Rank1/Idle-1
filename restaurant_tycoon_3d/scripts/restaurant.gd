@@ -107,14 +107,31 @@ func _setup_custom_textures() -> void:
 			sign_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 			sign_board_node.material_override = sign_mat
 
-	# Reception & Waiting Room Warm Floor
-	var reception_floor_node = find_child("ReceptionFloor", true, false)
-	if reception_floor_node != null and reception_floor_node is MeshInstance3D:
-		var mat_rec = StandardMaterial3D.new()
-		mat_rec.albedo_texture = load("res://assets/textures/kitchen_terracotta.png")
-		mat_rec.roughness = 0.82
-		mat_rec.uv1_scale = Vector3(4, 7, 1)
-		reception_floor_node.material_override = mat_rec
+	# Reception & Waiting Room Elegant Cream Cabochon Floor
+	var rec_tile_path = ProjectSettings.globalize_path("res://assets/textures/reception_tiles.png")
+	var rec_tile_img = Image.load_from_file(rec_tile_path)
+	if rec_tile_img != null:
+		var rec_tex = ImageTexture.create_from_image(rec_tile_img)
+		var reception_floor_node = find_child("ReceptionFloor", true, false)
+		if reception_floor_node != null and reception_floor_node is MeshInstance3D:
+			var mat_rec = StandardMaterial3D.new()
+			mat_rec.albedo_texture = rec_tex
+			mat_rec.roughness = 0.55
+			mat_rec.uv1_scale = Vector3(4, 7, 1)
+			reception_floor_node.material_override = mat_rec
+
+	# Red Carpet Runners (Kitchen Pass and Host Desk)
+	var runner_path = ProjectSettings.globalize_path("res://assets/textures/red_carpet_runner.png")
+	var runner_img = Image.load_from_file(runner_path)
+	if runner_img != null:
+		var runner_tex = ImageTexture.create_from_image(runner_img)
+		for runner_name in ["KitchenPassRedRunner", "HostDeskRedRunner"]:
+			var r_node = find_child(runner_name, true, false)
+			if r_node != null and r_node is MeshInstance3D:
+				var mat_run = StandardMaterial3D.new()
+				mat_run.albedo_texture = runner_tex
+				mat_run.roughness = 0.65
+				r_node.material_override = mat_run
 
 func _check_spawn_hired_staff() -> void:
 	var gm = get_node_or_null("/root/GameManager")
