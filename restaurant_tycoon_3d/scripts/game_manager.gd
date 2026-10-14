@@ -25,7 +25,7 @@ var gems: int = 50
 var total_earned: float = 0.0
 var pending_offline_earnings: float = 0.0
 var star_rating: float = 4.8
-var restaurant_name: String = "Chef's Bistro Tycoon"
+var restaurant_name: String = "Idle Diner"
 var is_boosted: bool = false
 var boost_timer: float = 0.0
 

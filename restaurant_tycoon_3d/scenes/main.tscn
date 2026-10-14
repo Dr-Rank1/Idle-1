@@ -88,6 +88,7 @@
 [ext_resource type="Texture2D" path="res://assets/textures/wall_art_chef.png" id="82_art_chef_tex"]
 [ext_resource type="Texture2D" path="res://assets/textures/wall_art_cafe.png" id="83_art_cafe_tex"]
 [ext_resource type="Texture2D" path="res://assets/textures/bistro_canopy.png" id="84_canopy_tex"]
+[ext_resource type="PackedScene" path="res://scenes/decor/jukebox.tscn" id="85_jukebox"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -813,6 +814,9 @@ transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 10.5, 0, 6.5)
 
 [node name="GlassRailingSouthEnd" parent="Restaurant/DiningHall" instance=ExtResource("78_glass_railing")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 10.5, 0, 9.0)
+
+[node name="RetroJukebox" parent="Restaurant/DiningHall" instance=ExtResource("85_jukebox")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -3.1, 0, 0.8)
 
 [node name="ManagerOffice" type="Node3D" parent="Restaurant"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.1, 0, -5.325)

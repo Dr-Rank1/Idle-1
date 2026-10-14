@@ -105,6 +105,15 @@ func _setup_custom_textures() -> void:
 			sign_mat.emission_energy_multiplier = 3.2
 			sign_board_node.material_override = sign_mat
 
+	# Reception & Waiting Room Warm Floor
+	var reception_floor_node = find_child("ReceptionFloor", true, false)
+	if reception_floor_node != null and reception_floor_node is MeshInstance3D:
+		var mat_rec = StandardMaterial3D.new()
+		mat_rec.albedo_texture = load("res://assets/textures/kitchen_terracotta.png")
+		mat_rec.roughness = 0.82
+		mat_rec.uv1_scale = Vector3(4, 7, 1)
+		reception_floor_node.material_override = mat_rec
+
 func _check_spawn_hired_staff() -> void:
 	var gm = get_node_or_null("/root/GameManager")
 	if gm == null or waiter_scene == null:
