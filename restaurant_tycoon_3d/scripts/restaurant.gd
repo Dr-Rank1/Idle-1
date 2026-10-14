@@ -22,9 +22,9 @@ var waiter_scene: PackedScene = null
 var waiting_customers: Array[Node3D] = []
 const MAX_WAITING_CUSTOMERS: int = 3
 const WAITING_SPOTS: Array[Vector3] = [
-	Vector3(-6.5, 0.0, 8.2),
-	Vector3(-6.5, 0.0, 7.0),
-	Vector3(-6.5, 0.0, 5.8)
+	Vector3(-1.5, 0.0, 7.0),
+	Vector3(-1.5, 0.0, 8.2),
+	Vector3(-1.5, 0.0, 9.4)
 ]
 
 func _ready() -> void:

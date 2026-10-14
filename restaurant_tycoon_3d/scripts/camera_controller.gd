@@ -8,7 +8,7 @@ extends Camera3D
 
 var is_dragging: bool = false
 var last_mouse_pos: Vector2 = Vector2.ZERO
-var target_position: Vector3 = Vector3(5.8, 21.0, 26.8)
+var target_position: Vector3 = Vector3(14.5, 14.5, 14.7)
 var initialized: bool = false
 
 # Camera forward and right vectors projected onto ground XZ plane
@@ -60,17 +60,17 @@ func _clamp_target() -> void:
 func focus_zone(zone: String) -> void:
 	match zone:
 		"parking":
-			target_position = Vector3(14.0, 16.5, 28.0)
+			target_position = Vector3(10.5, 14.5, 22.0)
 		"dining":
-			target_position = Vector3(17.5, 17.5, 19.5)
+			target_position = Vector3(16.0, 15.0, 16.2)
 		"kitchen":
-			target_position = Vector3(18.0, 16.5, 14.0)
+			target_position = Vector3(16.5, 14.5, 9.5)
 		"milkshake":
-			target_position = Vector3(12.0, 16.5, 15.0)
+			target_position = Vector3(7.5, 14.5, 10.5)
 		"terrace":
-			target_position = Vector3(26.0, 16.5, 21.0)
+			target_position = Vector3(20.5, 14.5, 16.5)
 		"overview":
-			target_position = Vector3(17.5, 17.5, 19.5)
+			target_position = Vector3(16.0, 15.0, 16.2)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:

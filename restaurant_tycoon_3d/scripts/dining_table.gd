@@ -190,6 +190,24 @@ const BOOTH_CHARACTERS: Dictionary = {
 		"res://assets/models/characters/character-male-a.glb",
 		"res://assets/models/characters/character-male-d.glb",
 		"res://assets/models/characters/character-female-f.glb"
+	],
+	"table_7": [
+		"res://assets/models/characters/character-female-a.glb",
+		"res://assets/models/characters/character-male-c.glb",
+		"res://assets/models/characters/character-female-d.glb",
+		"res://assets/models/characters/character-male-b.glb"
+	],
+	"table_8": [
+		"res://assets/models/characters/character-female-b.glb",
+		"res://assets/models/characters/character-male-a.glb",
+		"res://assets/models/characters/character-female-e.glb",
+		"res://assets/models/characters/character-male-e.glb"
+	],
+	"table_9": [
+		"res://assets/models/characters/character-male-d.glb",
+		"res://assets/models/characters/character-female-c.glb",
+		"res://assets/models/characters/character-male-f.glb",
+		"res://assets/models/characters/character-female-f.glb"
 	]
 }
 

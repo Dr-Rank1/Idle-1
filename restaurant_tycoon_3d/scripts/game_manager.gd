@@ -125,8 +125,12 @@ var unlocked_tables: Dictionary = {
 	"table_4": true,
 	"table_5": true,
 	"table_6": true,
-	"table_7": false,
-	"table_8": false,
+	"table_7": true,
+	"table_8": true,
+	"table_9": true,
+	"table_10": false,
+	"table_11": false,
+	"table_12": false,
 }
 
 var table_unlock_costs: Dictionary = {
@@ -136,8 +140,12 @@ var table_unlock_costs: Dictionary = {
 	"table_4": 0.0,
 	"table_5": 0.0,
 	"table_6": 0.0,
-	"table_7": 450.0,
-	"table_8": 800.0,
+	"table_7": 0.0,
+	"table_8": 0.0,
+	"table_9": 0.0,
+	"table_10": 450.0,
+	"table_11": 800.0,
+	"table_12": 1200.0,
 }
 
 # ─── Station Levels ────────────────────────────────────────────────────────
@@ -151,7 +159,14 @@ var station_levels: Dictionary = {
 	"table_6": 1,
 	"table_7": 1,
 	"table_8": 1,
+	"table_9": 1,
+	"table_10": 1,
+	"table_11": 1,
+	"table_12": 1,
 	"host_desk": 1,
+	"milkshake_bar": 1,
+	"milkshake_blender": 1,
+	"jukebox": 1,
 }
 
 var max_level: int = 25
