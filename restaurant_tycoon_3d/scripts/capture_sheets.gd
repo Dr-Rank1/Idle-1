@@ -46,4 +46,15 @@ func _init():
 		img2.save_png("c:/Users/Ian/Documents/Apps/Idle-1/shop_sheet_view.png")
 		print("Saved shop_sheet_view.png")
 
+		# Now test opening Staff panel
+		var staff_btn = root.find_child("StaffBtn", true, false)
+		if staff_btn != null:
+			staff_btn.emit_signal("pressed")
+		for i in range(30):
+			await process_frame
+			
+		var img3 = root.get_viewport().get_texture().get_image()
+		img3.save_png("c:/Users/Ian/Documents/Apps/Idle-1/staff_sheet_view.png")
+		print("Saved staff_sheet_view.png")
+
 	quit(0)

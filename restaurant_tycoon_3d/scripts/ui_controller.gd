@@ -64,9 +64,11 @@ extends CanvasLayer
 @onready var parking_vbox: VBoxContainer = get_node_or_null("ParkingPanel/VBox/Scroll/VBox")
 @onready var close_parking_btn: Button = get_node_or_null("ParkingPanel/VBox/CloseBtn")
 
-@onready var staff_panel: PanelContainer = $StaffPanel
-@onready var staff_vbox: VBoxContainer = $StaffPanel/VBox/StaffScroll/StaffVBox
-@onready var close_staff_btn: Button = $StaffPanel/VBox/CloseStaffBtn
+@onready var staff_panel: PanelContainer = get_node_or_null("StaffPanel")
+@onready var staff_vbox: VBoxContainer = get_node_or_null("StaffPanel/VBox/StaffScroll/StaffVBox")
+@onready var close_staff_btn: Button = get_node_or_null("StaffPanel/VBox/TopTabsHBox/CloseStaffBtn")
+@onready var staff_tab_upgrades_btn: Button = get_node_or_null("StaffPanel/VBox/TopTabsHBox/TabUpgradesBtn")
+@onready var upgrade_tab_staff_btn: Button = get_node_or_null("UpgradePanel/VBox/TopTabsHBox/TabStaffBtn")
 
 @onready var marketing_panel: PanelContainer = get_node_or_null("MarketingPanel")
 @onready var marketing_vbox: VBoxContainer = get_node_or_null("MarketingPanel/VBox/Scroll/VBox")
@@ -152,6 +154,17 @@ func _ready() -> void:
 	if close_terrace_btn != null: close_terrace_btn.pressed.connect(func(): _close_modal(terrace_panel))
 	if close_parking_btn != null: close_parking_btn.pressed.connect(func(): _close_modal(parking_panel))
 	if close_staff_btn != null: close_staff_btn.pressed.connect(func(): _close_modal(staff_panel))
+	if staff_tab_upgrades_btn != null:
+		staff_tab_upgrades_btn.pressed.connect(func():
+			_play_click_sfx()
+			var gm = get_node_or_null("/root/GameManager")
+			var lvl = gm.get_station_level("stove") if gm != null else 1
+			open_upgrade("stove", "Master Range Stoves", lvl)
+		)
+	if upgrade_tab_staff_btn != null:
+		upgrade_tab_staff_btn.pressed.connect(func():
+			_toggle_modal(staff_panel, _refresh_staff_panel)
+		)
 	if close_marketing_btn != null: close_marketing_btn.pressed.connect(func(): _close_modal(marketing_panel))
 	if close_quests_btn != null: close_quests_btn.pressed.connect(func(): _close_modal(quests_panel))
 	if close_world_map_btn != null: close_world_map_btn.pressed.connect(func(): _close_modal(world_map_panel))

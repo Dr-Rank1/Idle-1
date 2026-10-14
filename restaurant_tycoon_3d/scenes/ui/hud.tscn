@@ -804,12 +804,12 @@ theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_active")
 text = "🍳 KITCHEN & DINING  •  🌙 Closes 11:00 PM"
 
-[node name="TabMilestonesBtn" type="Button" parent="UpgradePanel/VBox/TopTabsHBox"]
+[node name="TabStaffBtn" type="Button" parent="UpgradePanel/VBox/TopTabsHBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.9, 0.4, 1)
+theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
-text = "🎖️ MILESTONES"
+text = "👥 STAFF"
 
 [node name="CloseBtn" type="Button" parent="UpgradePanel/VBox/TopTabsHBox"]
 custom_minimum_size = Vector2(34, 30)
@@ -1131,29 +1131,47 @@ text = "✕ Close Menu"
 
 [node name="StaffPanel" type="PanelContainer" parent="."]
 visible = false
-anchors_preset = 8
+anchors_preset = 7
 anchor_left = 0.5
-anchor_top = 0.5
+anchor_top = 1.0
 anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -280.0
-offset_top = -260.0
-offset_right = 280.0
-offset_bottom = 260.0
+anchor_bottom = 1.0
+offset_left = -390.0
+offset_top = -375.0
+offset_right = 390.0
+offset_bottom = -8.0
 grow_horizontal = 2
-grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_bottom_sheet")
 
 [node name="VBox" type="VBoxContainer" parent="StaffPanel"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 6
 
-[node name="HeaderLabel" type="Label" parent="StaffPanel/VBox"]
+[node name="TopTabsHBox" type="HBoxContainer" parent="StaffPanel/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.45, 0.85, 1, 1)
-theme_override_font_sizes/font_size = 20
-text = "👥 RESTAURANT STAFF ROSTER"
-horizontal_alignment = 1
+theme_override_constants/separation = 8
+
+[node name="TabUpgradesBtn" type="Button" parent="StaffPanel/VBox/TopTabsHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
+text = "← UPGRADES"
+
+[node name="TabCategoryBtn" type="Button" parent="StaffPanel/VBox/TopTabsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.95, 0.85, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_tab_active")
+text = "👥 RESTAURANT STAFF  •  🌙 Closes 11:45 PM"
+
+[node name="CloseStaffBtn" type="Button" parent="StaffPanel/VBox/TopTabsHBox"]
+custom_minimum_size = Vector2(34, 30)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
+text = "✕"
 
 [node name="StaffScroll" type="ScrollContainer" parent="StaffPanel/VBox"]
 layout_mode = 2
@@ -1164,11 +1182,6 @@ horizontal_scroll_mode = 0
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
-
-[node name="CloseStaffBtn" type="Button" parent="StaffPanel/VBox"]
-layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕ Close Staff Roster"
 
 [node name="MarketingPanel" type="PanelContainer" parent="."]
 visible = false
