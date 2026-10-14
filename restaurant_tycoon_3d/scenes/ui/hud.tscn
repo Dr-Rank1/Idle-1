@@ -868,6 +868,7 @@ theme_override_font_sizes/font_size = 11
 text = "🧹 - 300 Cleaning"
 
 [node name="QuestBanner" type="PanelContainer" parent="HUD"]
+visible = false
 layout_mode = 0
 offset_left = 14.0
 offset_top = 186.0
@@ -918,6 +919,7 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_btn_claim")
 text = "CLAIM"
 
 [node name="BottomDock" type="PanelContainer" parent="HUD"]
+visible = false
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -1001,9 +1003,9 @@ anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -90.0
-offset_top = -124.0
+offset_top = -68.0
 offset_right = 90.0
-offset_bottom = -86.0
+offset_bottom = -28.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_colors/font_color = Color(0.12, 0.65, 0.25, 1)
@@ -1018,9 +1020,9 @@ anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 20.0
-offset_top = -78.0
+offset_top = -68.0
 offset_right = 68.0
-offset_bottom = -30.0
+offset_bottom = -20.0
 grow_vertical = 0
 theme_override_font_sizes/font_size = 22
 theme_override_styles/normal = SubResource("StyleBoxFlat_circle_orange")

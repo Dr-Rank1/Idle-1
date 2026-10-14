@@ -22,6 +22,22 @@ func _init():
 		else:
 			welcome.queue_free()
 	
+	# Lock default isometric camera parameters
+	var cam = root.find_child("Camera3D", true, false)
+	if cam != null:
+		cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+		cam.size = 18.0
+		cam.position = Vector3(14.2, 15.0, 16.8)
+		cam.rotation_degrees = Vector3(-30.0, 45.0, 0.0)
+		cam.target_position = Vector3(14.2, 15.0, 16.8)
+
+	var bottom_dock = root.find_child("BottomDock", true, false)
+	if bottom_dock != null:
+		bottom_dock.visible = false
+	var quest_banner = root.find_child("QuestBanner", true, false)
+	if quest_banner != null:
+		quest_banner.visible = false
+
 	# Simulate remaining 200 frames for active dining and serving
 	for i in range(200):
 		await process_frame
@@ -42,7 +58,8 @@ func _init():
 		hud_node._hide_all_modals()
 
 	# Focus camera on terrace to capture expansion booths in full view
-	var cam = root.find_child("Camera3D", true, false)
+	if cam == null:
+		cam = root.find_child("Camera3D", true, false)
 	if cam != null and cam.has_method("focus_zone"):
 		cam.focus_zone("terrace")
 	for i in range(30):

@@ -8,7 +8,7 @@ extends Camera3D
 
 var is_dragging: bool = false
 var last_mouse_pos: Vector2 = Vector2.ZERO
-var target_position: Vector3 = Vector3(14.5, 14.5, 14.7)
+var target_position: Vector3 = Vector3(14.2, 15.0, 16.8)
 var initialized: bool = false
 
 # Camera forward and right vectors projected onto ground XZ plane
@@ -16,6 +16,10 @@ var ground_right: Vector3 = Vector3.RIGHT
 var ground_forward: Vector3 = Vector3.FORWARD
 
 func _ready() -> void:
+	projection = PROJECTION_ORTHOGONAL
+	size = 18.0
+	position = Vector3(14.2, 15.0, 16.8)
+	rotation_degrees = Vector3(-30.0, 45.0, 0.0)
 	target_position = position
 	_update_ground_vectors()
 	initialized = true
@@ -54,15 +58,15 @@ func _process(delta: float) -> void:
 	position = position.lerp(target_position, 12.0 * delta)
 
 func _clamp_target() -> void:
-	target_position.x = clamp(target_position.x, -5.0, 36.0)
-	target_position.z = clamp(target_position.z, 2.0, 42.0)
+	target_position.x = clamp(target_position.x, -8.0, 36.0)
+	target_position.z = clamp(target_position.z, 0.0, 38.0)
 
 func focus_zone(zone: String) -> void:
 	match zone:
 		"parking":
 			target_position = Vector3(10.5, 14.5, 22.0)
 		"dining":
-			target_position = Vector3(15.2, 15.0, 16.8)
+			target_position = Vector3(14.2, 15.0, 16.8)
 		"kitchen":
 			target_position = Vector3(16.5, 14.5, 9.5)
 		"milkshake":
@@ -74,7 +78,7 @@ func focus_zone(zone: String) -> void:
 		"reception":
 			target_position = Vector3(5.0, 15.0, 18.0)
 		"overview":
-			target_position = Vector3(15.2, 15.0, 16.8)
+			target_position = Vector3(14.2, 15.0, 16.8)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
