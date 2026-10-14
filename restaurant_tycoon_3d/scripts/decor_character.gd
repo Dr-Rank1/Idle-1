@@ -5,6 +5,9 @@ extends Node3D
 func _ready() -> void:
 	var ap: AnimationPlayer = _find_anim_player(self)
 	if ap != null and ap.has_animation(anim_name):
+		var anim = ap.get_animation(anim_name)
+		if anim != null and anim_name in ["sit", "idle", "walk"]:
+			anim.loop_mode = Animation.LOOP_LINEAR
 		ap.play(anim_name)
 
 func _find_anim_player(node: Node) -> AnimationPlayer:

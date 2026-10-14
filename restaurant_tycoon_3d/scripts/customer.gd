@@ -36,7 +36,26 @@ var waypoints: Array = []
 var anim_player: AnimationPlayer = null
 var table_ref: Node3D = null
 var fill_material: StandardMaterial3D = null
+var badge_sprite: Sprite3D = null
 static var _bubble_texture: ImageTexture = null
+static var _fork_knife_tex: ImageTexture = null
+static var _hourglass_tex: ImageTexture = null
+
+static func _get_fork_knife_texture() -> ImageTexture:
+	if _fork_knife_tex == null:
+		var path = ProjectSettings.globalize_path("res://assets/textures/bubble_fork_knife.png")
+		var img = Image.load_from_file(path)
+		if img != null:
+			_fork_knife_tex = ImageTexture.create_from_image(img)
+	return _fork_knife_tex
+
+static func _get_hourglass_texture() -> ImageTexture:
+	if _hourglass_tex == null:
+		var path = ProjectSettings.globalize_path("res://assets/textures/bubble_hourglass.png")
+		var img = Image.load_from_file(path)
+		if img != null:
+			_hourglass_tex = ImageTexture.create_from_image(img)
+	return _hourglass_tex
 
 var max_patience: float = 34.0
 var current_patience: float = 34.0
@@ -70,6 +89,16 @@ const CHARACTER_MODELS: Array[String] = [
 func _ready() -> void:
 	initial_bubble_y = status_bubble.position.y
 	_setup_bubble_bg()
+	if status_bubble != null:
+		badge_sprite = status_bubble.get_node_or_null("BadgeSprite")
+		if badge_sprite == null:
+			badge_sprite = Sprite3D.new()
+			badge_sprite.name = "BadgeSprite"
+			badge_sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			badge_sprite.double_sided = false
+			badge_sprite.pixel_size = 0.0030
+			badge_sprite.position = Vector3(0, 0.05, 0)
+			status_bubble.add_child(badge_sprite)
 	_setup_random_character()
 	_play_anim("walk")
 	set_bubble_text("💭")
@@ -131,15 +160,53 @@ func _play_anim(anim_name: String) -> void:
 			anim.loop_mode = Animation.LOOP_LINEAR
 		anim_player.play(anim_name)
 
+func set_bubble_badge(badge_type: String) -> void:
+	if badge_type == "":
+		if status_bubble != null:
+			status_bubble.visible = false
+		return
+	if status_bubble != null:
+		status_bubble.visible = true
+	if badge_sprite == null and status_bubble != null:
+		badge_sprite = status_bubble.get_node_or_null("BadgeSprite")
+	
+	if badge_type == "hourglass":
+		if badge_sprite != null:
+			badge_sprite.texture = _get_hourglass_texture()
+			badge_sprite.visible = true
+		if bubble_bg != null:
+			bubble_bg.visible = false
+		if bubble_label != null:
+			bubble_label.visible = false
+	elif badge_type == "fork_knife":
+		if badge_sprite != null:
+			badge_sprite.texture = _get_fork_knife_texture()
+			badge_sprite.visible = true
+		if bubble_bg != null:
+			bubble_bg.visible = false
+		if bubble_label != null:
+			bubble_label.visible = false
+	else:
+		if badge_sprite != null:
+			badge_sprite.visible = false
+		if bubble_bg != null:
+			bubble_bg.visible = true
+		if bubble_label != null:
+			bubble_label.visible = true
+			bubble_label.text = badge_type
+
 func set_bubble_text(text: String, show: bool = true) -> void:
 	if text == "" or not show:
 		if status_bubble != null:
 			status_bubble.visible = false
 		return
-	if bubble_label != null:
-		bubble_label.text = text
-	if status_bubble != null:
-		status_bubble.visible = true
+	if text in ["⏳", "⏳ 🍽️", "hourglass"]:
+		set_bubble_badge("hourglass")
+		return
+	elif text in ["🍽️", "fork_knife", "🍴", "😋"]:
+		set_bubble_badge("fork_knife")
+		return
+	set_bubble_badge(text)
 
 
 func set_waypoints(new_points: Array) -> void:
@@ -153,7 +220,8 @@ func _physics_process(delta: float) -> void:
 	
 	# Gentle status bubble bobbing
 	if status_bubble != null and status_bubble.visible:
-		status_bubble.position.y = initial_bubble_y + sin(time_passed * 4.0) * 0.08
+		var base_y = 1.35 if (current_state == State.SEATED_ORDERING or current_state == State.EATING) else initial_bubble_y
+		status_bubble.position.y = base_y + sin(time_passed * 3.2) * 0.06
 	
 	# Handle Patience Timer depletion while customer is seated waiting for order
 	if is_waiting_for_food:
@@ -472,9 +540,9 @@ func on_food_delivered() -> void:
 		if gm != null:
 			gm.add_cash(tip, global_position + Vector3(0, 2.2, 0))
 		_spawn_floating_text("+$%d Speedy Tip! ⚡" % tip, Color(0.35, 1.0, 0.5, 1.0))
-		set_bubble_text("⭐😋⭐")
+		set_bubble_badge("fork_knife")
 	else:
-		set_bubble_text("😋")
+		set_bubble_badge("fork_knife")
 		
 	current_state = State.EATING
 	state_timer = 3.2

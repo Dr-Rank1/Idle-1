@@ -43,6 +43,7 @@ var time_passed: float = 0.0
 var initial_badge_y: float = 1.35
 var pending_cash_amount: float = 0.0
 var booth_bubble_root: Node3D = null
+var booth_cash_stack: Node3D = null
 
 func _ready() -> void:
 	if food_dish != null: food_dish.visible = false
@@ -71,6 +72,8 @@ func _ready() -> void:
 		action_badge.outline_size = 8
 		action_badge.position = Vector3(0, 0.45, 0)
 		badge_root.add_child(action_badge)
+		
+	_setup_booth_materials()
 	
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
@@ -82,6 +85,8 @@ func _ready() -> void:
 			_set_unlocked_visual(gm.get_station_level(table_id))
 		else:
 			_set_locked_visual(gm.get_table_unlock_cost(table_id))
+	else:
+		_set_unlocked_visual(1)
 
 func _process(delta: float) -> void:
 	time_passed += delta
@@ -91,9 +96,15 @@ func _process(delta: float) -> void:
 		if action_badge != null and action_badge.visible:
 			var pulse = 1.0 + sin(time_passed * 6.0) * 0.12
 			action_badge.scale = Vector3(pulse, pulse, pulse)
-	if booth_bubble_root != null:
-		var offset = float(abs(table_id.hash()) % 10)
-		booth_bubble_root.position.y = 1.65 + sin(time_passed * 3.2 + offset) * 0.05
+	
+	var t_idx = int(table_id.trim_prefix("table_"))
+	if t_idx <= 0:
+		t_idx = 1
+	var phi = float(t_idx) * 0.72
+	if booth_cash_stack != null and booth_cash_stack.visible:
+		booth_cash_stack.position.y = 1.65 + 0.05 * sin(3.2 * time_passed + phi)
+	if booth_bubble_root != null and booth_bubble_root.visible:
+		booth_bubble_root.position.y = 1.70 + 0.05 * sin(2.8 * time_passed + float(t_idx) * 0.8)
 
 func _on_cash_changed(_cash_val: float) -> void:
 	var gm = get_node_or_null("/root/GameManager")
@@ -129,6 +140,8 @@ func _set_locked_visual(cost: float) -> void:
 		food_dish.visible = false
 		for c in food_dish.get_children():
 			c.visible = false
+	if booth_bubble_root != null: booth_bubble_root.visible = false
+	if booth_cash_stack != null: booth_cash_stack.visible = false
 	if badge_root != null:
 		badge_root.visible = true
 	if level_label != null:
@@ -220,13 +233,108 @@ const BOOTH_CHARACTERS: Dictionary = {
 
 var _booth_chars_setup: bool = false
 
+func _setup_booth_materials() -> void:
+	# 1. Burgundy/red vinyl benches
+	var red_vinyl = StandardMaterial3D.new()
+	red_vinyl.albedo_color = Color(0.82, 0.12, 0.18)
+	red_vinyl.roughness = 0.45
+	
+	for path in [
+		"BoothDecor/BenchNorthSeat",
+		"BoothDecor/BenchNorthBack",
+		"BoothDecor/BenchSouthSeat",
+		"BoothDecor/BenchSouthBack"
+	]:
+		var node = get_node_or_null(path)
+		if node is MeshInstance3D:
+			node.material_override = red_vinyl
+			
+	# 2. White retro piping caps
+	var white_cap = StandardMaterial3D.new()
+	white_cap.albedo_color = Color(0.96, 0.96, 0.96)
+	white_cap.roughness = 0.4
+	
+	for path in ["BoothDecor/BenchNorthCap", "BoothDecor/BenchSouthCap"]:
+		var node = get_node_or_null(path)
+		if node is MeshInstance3D:
+			node.material_override = white_cap
+			
+	# 3. Cyan tabletop cloth
+	var cyan_mat = StandardMaterial3D.new()
+	cyan_mat.albedo_color = Color(0.12, 0.65, 0.55)
+	cyan_mat.roughness = 0.5
+	var cloth_node = get_node_or_null("TableCloth")
+	if cloth_node is MeshInstance3D:
+		cloth_node.material_override = cyan_mat
+		
+	# 4. Chrome rim
+	var chrome_mat = StandardMaterial3D.new()
+	chrome_mat.albedo_color = Color(0.92, 0.94, 0.96)
+	chrome_mat.metallic = 0.85
+	chrome_mat.roughness = 0.2
+	var trim_node = get_node_or_null("TableChromeTrim")
+	if trim_node is MeshInstance3D:
+		trim_node.material_override = chrome_mat
+		
+	# 5. Low white divider partitions and green planters
+	var partition_mat = StandardMaterial3D.new()
+	partition_mat.albedo_color = Color(0.96, 0.96, 0.96)
+	partition_mat.roughness = 0.55
+	
+	var planter_mat = StandardMaterial3D.new()
+	planter_mat.albedo_color = Color(0.18, 0.48, 0.15)
+	planter_mat.roughness = 0.8
+	
+	for p_path in ["BoothDecor/PartitionBack", "BoothDecor/PartitionFront"]:
+		var p_node = get_node_or_null(p_path)
+		if p_node is CSGBox3D:
+			p_node.material = partition_mat
+			
+	for pl_path in ["BoothDecor/PartitionBack/PlanterBack", "BoothDecor/PartitionFront/PlanterFront"]:
+		var pl_node = get_node_or_null(pl_path)
+		if pl_node is CSGBox3D:
+			pl_node.material = planter_mat
+			
+	# 6. Flower blossoms: red, white, yellow
+	var fl_red = StandardMaterial3D.new()
+	fl_red.albedo_color = Color(0.88, 0.15, 0.22)
+	fl_red.roughness = 0.7
+	
+	var fl_white = StandardMaterial3D.new()
+	fl_white.albedo_color = Color(0.98, 0.98, 0.96)
+	fl_white.roughness = 0.7
+	
+	var fl_yellow = StandardMaterial3D.new()
+	fl_yellow.albedo_color = Color(1.0, 0.82, 0.18)
+	fl_yellow.roughness = 0.7
+	
+	var flowers_config = [
+		{"path": "BoothDecor/PartitionBack/PlanterBack/FlowerB1", "mat": fl_red},
+		{"path": "BoothDecor/PartitionBack/PlanterBack/FlowerB2", "mat": fl_white},
+		{"path": "BoothDecor/PartitionBack/PlanterBack/FlowerB3", "mat": fl_yellow},
+		{"path": "BoothDecor/PartitionBack/PlanterBack/FlowerB4", "mat": fl_red},
+		{"path": "BoothDecor/PartitionBack/PlanterBack/FlowerB5", "mat": fl_white},
+		{"path": "BoothDecor/PartitionFront/PlanterFront/FlowerF1", "mat": fl_white},
+		{"path": "BoothDecor/PartitionFront/PlanterFront/FlowerF2", "mat": fl_red},
+		{"path": "BoothDecor/PartitionFront/PlanterFront/FlowerF3", "mat": fl_yellow},
+		{"path": "BoothDecor/PartitionFront/PlanterFront/FlowerF4", "mat": fl_white},
+		{"path": "BoothDecor/PartitionFront/PlanterFront/FlowerF5", "mat": fl_red}
+	]
+	for fc in flowers_config:
+		var f_node = get_node_or_null(fc["path"])
+		if f_node is MeshInstance3D:
+			f_node.material_override = fc["mat"]
+
 func _setup_unique_booth_diners() -> void:
 	if _booth_chars_setup or companion_diners == null:
 		return
 	_booth_chars_setup = true
-	var chars = BOOTH_CHARACTERS.get(table_id, [])
-	if chars.size() < 4:
-		return
+	var chars = BOOTH_CHARACTERS.get(table_id, [
+		"res://assets/models/characters/character-female-a.glb",
+		"res://assets/models/characters/character-male-a.glb",
+		"res://assets/models/characters/character-female-b.glb",
+		"res://assets/models/characters/character-male-b.glb"
+	])
 	
 	for child in companion_diners.get_children():
 		child.queue_free()
@@ -265,16 +373,22 @@ func _setup_unique_booth_diners() -> void:
 		extra_plate2.scale = Vector3(0.38, 0.38, 0.38)
 		add_child(extra_plate2)
 	
-	# Ambient Tycoon Diner Speech Bubble (Matching res1_08s.jpg & res1_12s.jpg)
+	# Ambient Tycoon Diner Speech Bubble (Matching crop_dining_08s.jpg)
 	var t_idx = int(table_id.trim_prefix("table_"))
-	var bubble_pos = Vector3(-0.35, 1.65, -0.65) if (t_idx % 2 != 0) else Vector3(0.35, 1.65, 0.65)
+	if t_idx <= 0:
+		t_idx = 1
+	var bubble_pos = Vector3(0.0, 1.70, -0.32 if (t_idx % 2 != 0) else 0.32)
 	
-	booth_bubble_root = Node3D.new()
-	booth_bubble_root.name = "BoothBubble"
+	if booth_bubble_root == null:
+		booth_bubble_root = Node3D.new()
+		booth_bubble_root.name = "BoothBubble"
+		add_child(booth_bubble_root)
 	booth_bubble_root.position = bubble_pos
-	add_child(booth_bubble_root)
 	
-	# Circular Icon Bubble (Fork & Knife or Hourglass)
+	for c in booth_bubble_root.get_children():
+		c.queue_free()
+		
+	# Circular Icon Bubble (Fork & Knife or Hourglass matching crop_dining_08s.jpg)
 	var b_spr = Sprite3D.new()
 	b_spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	b_spr.double_sided = false
@@ -286,34 +400,38 @@ func _setup_unique_booth_diners() -> void:
 		b_spr.texture = ImageTexture.create_from_image(b_img)
 	booth_bubble_root.add_child(b_spr)
 	
-	# Floating Green Cash Stack Graphic on alternating booths (matching res1_08s.jpg)
-	if t_idx in [1, 3, 5, 8, 11]:
-		var cash_root = Node3D.new()
-		cash_root.name = "CashBonusVisual"
-		cash_root.position = Vector3(0.62 if t_idx % 2 != 0 else -0.62, 0.35, 0)
-		booth_bubble_root.add_child(cash_root)
+	# Floating Green Cash Stack Graphic at the aisle edge (matching crop_dining_08s.jpg)
+	if booth_cash_stack == null:
+		booth_cash_stack = Node3D.new()
+		booth_cash_stack.name = "BoothCashStack"
+		add_child(booth_cash_stack)
+	booth_cash_stack.position = Vector3(-1.15, 1.65, 0.0)
+	
+	for c in booth_cash_stack.get_children():
+		c.queue_free()
 		
-		var cash_spr = Sprite3D.new()
-		cash_spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		cash_spr.double_sided = false
-		cash_spr.pixel_size = 0.0024
-		var c_path = ProjectSettings.globalize_path("res://assets/textures/bubble_cash_stack.png")
-		var c_img = Image.load_from_file(c_path)
-		if c_img != null:
-			cash_spr.texture = ImageTexture.create_from_image(c_img)
-		cash_root.add_child(cash_spr)
-		
-		var cash_lbl = Label3D.new()
-		cash_lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		cash_lbl.double_sided = false
-		cash_lbl.position = Vector3(0.48, 0, 0.01)
-		var amounts = ["$100", "$2.8T", "$172T", "$1.03T"]
-		cash_lbl.text = amounts[t_idx % amounts.size()]
-		cash_lbl.font_size = 24
-		cash_lbl.outline_size = 6
-		cash_lbl.modulate = Color(0.4, 1.0, 0.55, 1)
-		cash_lbl.outline_modulate = Color(0.04, 0.16, 0.06, 0.95)
-		cash_root.add_child(cash_lbl)
+	var cash_spr = Sprite3D.new()
+	cash_spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	cash_spr.double_sided = false
+	cash_spr.pixel_size = 0.0022
+	cash_spr.position = Vector3(-0.25, 0.0, 0.0)
+	var c_path = ProjectSettings.globalize_path("res://assets/textures/bubble_cash_stack.png")
+	var c_img = Image.load_from_file(c_path)
+	if c_img != null:
+		cash_spr.texture = ImageTexture.create_from_image(c_img)
+	booth_cash_stack.add_child(cash_spr)
+	
+	var cash_lbl = Label3D.new()
+	cash_lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	cash_lbl.double_sided = false
+	cash_lbl.position = Vector3(0.35, 0.0, 0.01)
+	var amounts = ["$100", "$2.8T", "$172T", "$1.03T"]
+	cash_lbl.text = amounts[(t_idx - 1) % amounts.size()]
+	cash_lbl.font_size = 28
+	cash_lbl.outline_size = 7
+	cash_lbl.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	cash_lbl.outline_modulate = Color(0.06, 0.14, 0.06, 0.95)
+	booth_cash_stack.add_child(cash_lbl)
 
 func _set_unlocked_visual(lvl: int) -> void:
 	is_unlocked = true
@@ -341,7 +459,12 @@ func _set_unlocked_visual(lvl: int) -> void:
 	if table_omni_light != null: table_omni_light.visible = true
 	if food_dish != null:
 		food_dish.visible = true
+	_setup_booth_materials()
 	_setup_unique_booth_diners()
+	if booth_bubble_root != null:
+		booth_bubble_root.visible = not is_occupied
+	if booth_cash_stack != null:
+		booth_cash_stack.visible = true
 	update_level_display(lvl)
 
 func update_level_display(lvl: int) -> void:
@@ -442,6 +565,8 @@ func occupy(customer: Node) -> Vector3:
 	var diner_s = get_node_or_null("CompanionDiners/DinerSouth")
 	if diner_s != null:
 		diner_s.visible = false
+	if booth_bubble_root != null:
+		booth_bubble_root.visible = false
 	var gm = get_node_or_null("/root/GameManager")
 	var lvl = gm.get_station_level(table_id) if gm != null else 1
 	update_level_display(lvl)
@@ -503,6 +628,8 @@ func vacate() -> void:
 	var diner_s = get_node_or_null("CompanionDiners/DinerSouth")
 	if diner_s != null:
 		diner_s.visible = true
+	if booth_bubble_root != null:
+		booth_bubble_root.visible = true
 	
 	is_dirty = true
 	if dirty_dishes != null:
