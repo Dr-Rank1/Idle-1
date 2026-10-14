@@ -151,51 +151,90 @@ func _set_locked_visual(cost: float) -> void:
 		action_badge.modulate = Color(0.35, 1.0, 0.55) if can_afford else Color(1.0, 0.45, 0.45)
 
 const BOOTH_CHARACTERS: Dictionary = {
-	"table_1": ["res://assets/models/characters/character-female-a.glb", "res://assets/models/characters/character-male-b.glb"],
-	"table_2": ["res://assets/models/characters/character-male-c.glb", "res://assets/models/characters/character-female-b.glb"],
-	"table_3": ["res://assets/models/characters/character-female-c.glb", "res://assets/models/characters/character-male-d.glb"],
-	"table_4": ["res://assets/models/characters/character-male-a.glb", "res://assets/models/characters/character-female-d.glb"],
-	"table_5": ["res://assets/models/characters/character-female-e.glb", "res://assets/models/characters/character-male-e.glb"],
-	"table_6": ["res://assets/models/characters/character-male-f.glb", "res://assets/models/characters/character-female-f.glb"]
+	"table_1": [
+		"res://assets/models/characters/character-female-a.glb",
+		"res://assets/models/characters/character-male-b.glb",
+		"res://assets/models/characters/character-male-c.glb",
+		"res://assets/models/characters/character-female-b.glb"
+	],
+	"table_2": [
+		"res://assets/models/characters/character-female-c.glb",
+		"res://assets/models/characters/character-male-d.glb",
+		"res://assets/models/characters/character-male-a.glb",
+		"res://assets/models/characters/character-female-d.glb"
+	],
+	"table_3": [
+		"res://assets/models/characters/character-female-e.glb",
+		"res://assets/models/characters/character-male-e.glb",
+		"res://assets/models/characters/character-female-a.glb",
+		"res://assets/models/characters/character-male-f.glb"
+	],
+	"table_4": [
+		"res://assets/models/characters/character-male-f.glb",
+		"res://assets/models/characters/character-female-f.glb",
+		"res://assets/models/characters/character-female-c.glb",
+		"res://assets/models/characters/character-male-c.glb"
+	],
+	"table_5": [
+		"res://assets/models/characters/character-male-b.glb",
+		"res://assets/models/characters/character-female-d.glb",
+		"res://assets/models/characters/character-female-b.glb",
+		"res://assets/models/characters/character-male-e.glb"
+	],
+	"table_6": [
+		"res://assets/models/characters/character-female-e.glb",
+		"res://assets/models/characters/character-male-a.glb",
+		"res://assets/models/characters/character-male-d.glb",
+		"res://assets/models/characters/character-female-f.glb"
+	]
 }
 
 var _booth_chars_setup: bool = false
 
-func _setup_unique_booth_pair() -> void:
+func _setup_unique_booth_diners() -> void:
 	if _booth_chars_setup or is_terrace_table or companion_diners == null:
 		return
 	_booth_chars_setup = true
-	var pair = BOOTH_CHARACTERS.get(table_id, [])
-	if pair.size() < 2:
+	var chars = BOOTH_CHARACTERS.get(table_id, [])
+	if chars.size() < 4:
 		return
 	
-	var north_scn = load(pair[0])
-	if north_scn != null:
-		var old_n = companion_diners.get_node_or_null("DinerNorth")
-		if old_n != null:
-			old_n.queue_free()
-		var new_n = north_scn.instantiate()
-		new_n.name = "DinerNorth"
-		new_n.position = Vector3(0, 0.36, -0.68)
-		new_n.rotation_degrees = Vector3(0, 180, 0)
-		new_n.scale = Vector3(0.9, 0.9, 0.9)
-		new_n.set_script(load("res://scripts/decor_character.gd"))
-		new_n.set("anim_name", "sit")
-		companion_diners.add_child(new_n)
+	for child in companion_diners.get_children():
+		child.queue_free()
 		
-	var south_scn = load(pair[1])
-	if south_scn != null:
-		var old_s = companion_diners.get_node_or_null("DinerSouth")
-		if old_s != null:
-			old_s.queue_free()
-		var new_s = south_scn.instantiate()
-		new_s.name = "DinerSouth"
-		new_s.position = Vector3(0, 0.36, 0.68)
-		new_s.rotation_degrees = Vector3(0, 0, 0)
-		new_s.scale = Vector3(0.9, 0.9, 0.9)
-		new_s.set_script(load("res://scripts/decor_character.gd"))
-		new_s.set("anim_name", "sit")
-		companion_diners.add_child(new_s)
+	var decor_script = load("res://scripts/decor_character.gd")
+	var configs = [
+		{"name": "DinerNorthLeft", "path": chars[0], "pos": Vector3(-0.42, 0.36, -0.68), "rot": Vector3(0, 180, 0)},
+		{"name": "DinerNorthRight", "path": chars[1], "pos": Vector3(0.42, 0.36, -0.68), "rot": Vector3(0, 180, 0)},
+		{"name": "DinerSouthLeft", "path": chars[2], "pos": Vector3(-0.42, 0.36, 0.68), "rot": Vector3(0, 0, 0)},
+		{"name": "DinerSouthRight", "path": chars[3], "pos": Vector3(0.42, 0.36, 0.68), "rot": Vector3(0, 0, 0)}
+	]
+	
+	for cfg in configs:
+		var scn = load(cfg["path"])
+		if scn != null:
+			var node = scn.instantiate()
+			node.name = cfg["name"]
+			node.position = cfg["pos"]
+			node.rotation_degrees = cfg["rot"]
+			node.scale = Vector3(0.88, 0.88, 0.88)
+			node.set_script(decor_script)
+			node.set("anim_name", "sit")
+			companion_diners.add_child(node)
+			
+	var plate_scn = load("res://assets/models/food/burger-cheese.glb")
+	if plate_scn != null:
+		var extra_plate = plate_scn.instantiate()
+		extra_plate.name = "TablePlateNorth"
+		extra_plate.position = Vector3(-0.25, 0.73, -0.20)
+		extra_plate.scale = Vector3(0.38, 0.38, 0.38)
+		add_child(extra_plate)
+		
+		var extra_plate2 = plate_scn.instantiate()
+		extra_plate2.name = "TablePlateSouth"
+		extra_plate2.position = Vector3(-0.25, 0.73, 0.20)
+		extra_plate2.scale = Vector3(0.38, 0.38, 0.38)
+		add_child(extra_plate2)
 
 func _set_unlocked_visual(lvl: int) -> void:
 	is_unlocked = true
@@ -204,10 +243,11 @@ func _set_unlocked_visual(lvl: int) -> void:
 	if booth_decor != null: booth_decor.visible = not is_terrace_table
 	if companion_diners != null:
 		companion_diners.visible = not is_terrace_table
-		var dn = companion_diners.get_node_or_null("DinerNorth")
-		if dn != null: dn.visible = true
-		var ds = companion_diners.get_node_or_null("DinerSouth")
-		if ds != null and not is_occupied: ds.visible = true
+		for c in companion_diners.get_children():
+			if c.name == "DinerSouthRight" and is_occupied:
+				c.visible = false
+			else:
+				c.visible = true
 	if terrace_decor != null: terrace_decor.visible = is_terrace_table
 	var show_chairs: bool = is_terrace_table
 	if chair_north != null: chair_north.visible = show_chairs
@@ -223,7 +263,7 @@ func _set_unlocked_visual(lvl: int) -> void:
 	if table_omni_light != null: table_omni_light.visible = true
 	if not is_terrace_table and food_dish != null:
 		food_dish.visible = true
-	_setup_unique_booth_pair()
+	_setup_unique_booth_diners()
 	update_level_display(lvl)
 
 func update_level_display(lvl: int) -> void:
@@ -318,12 +358,12 @@ func get_seat_rotation_y() -> float:
 func occupy(customer: Node) -> Vector3:
 	is_occupied = true
 	occupying_customer = customer
+	var diner_sr = get_node_or_null("CompanionDiners/DinerSouthRight")
+	if diner_sr != null:
+		diner_sr.visible = false
 	var diner_s = get_node_or_null("CompanionDiners/DinerSouth")
 	if diner_s != null:
 		diner_s.visible = false
-	var diner_n = get_node_or_null("CompanionDiners/DinerNorth")
-	if diner_n != null and not is_terrace_table:
-		diner_n.visible = true
 	var gm = get_node_or_null("/root/GameManager")
 	var lvl = gm.get_station_level(table_id) if gm != null else 1
 	update_level_display(lvl)
@@ -379,6 +419,9 @@ func vacate() -> void:
 	is_occupied = false
 	occupying_customer = null
 	clear_food()
+	var diner_sr = get_node_or_null("CompanionDiners/DinerSouthRight")
+	if diner_sr != null and not is_terrace_table:
+		diner_sr.visible = true
 	var diner_s = get_node_or_null("CompanionDiners/DinerSouth")
 	if diner_s != null and not is_terrace_table:
 		diner_s.visible = true

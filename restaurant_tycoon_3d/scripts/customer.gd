@@ -26,6 +26,7 @@ var initial_bubble_y: float = 1.35
 var waypoints: Array = []
 
 @onready var bubble_label: Label3D = $StatusBubble/BubbleLabel
+@onready var bubble_bg: Sprite3D = get_node_or_null("StatusBubble/BubbleBg")
 @onready var status_bubble: Node3D = $StatusBubble
 @onready var mesh_root: Node3D = $MeshRoot
 @onready var patience_root: Node3D = $PatienceRoot
@@ -34,6 +35,7 @@ var waypoints: Array = []
 var anim_player: AnimationPlayer = null
 var table_ref: Node3D = null
 var fill_material: StandardMaterial3D = null
+static var _bubble_texture: ImageTexture = null
 
 var max_patience: float = 34.0
 var current_patience: float = 34.0
@@ -66,6 +68,7 @@ const CHARACTER_MODELS: Array[String] = [
 
 func _ready() -> void:
 	initial_bubble_y = status_bubble.position.y
+	_setup_bubble_bg()
 	_setup_random_character()
 	_play_anim("walk")
 	set_bubble_text("💭")
@@ -75,6 +78,18 @@ func _ready() -> void:
 		if orig_mat != null:
 			fill_material = orig_mat.duplicate()
 			patience_fill.material_override = fill_material
+
+func _setup_bubble_bg() -> void:
+	if bubble_bg == null:
+		return
+	if _bubble_texture == null:
+		var path = ProjectSettings.globalize_path("res://assets/textures/speech_bubble_pill.png")
+		var img = Image.load_from_file(path)
+		if img != null:
+			_bubble_texture = ImageTexture.create_from_image(img)
+	if _bubble_texture != null:
+		bubble_bg.texture = _bubble_texture
+
 
 func set_as_critic(is_critic: bool = true) -> void:
 	is_vip_critic = is_critic
@@ -113,10 +128,15 @@ func _play_anim(anim_name: String) -> void:
 		anim_player.play(anim_name)
 
 func set_bubble_text(text: String, show: bool = true) -> void:
+	if text == "" or not show:
+		if status_bubble != null:
+			status_bubble.visible = false
+		return
 	if bubble_label != null:
 		bubble_label.text = text
 	if status_bubble != null:
-		status_bubble.visible = show
+		status_bubble.visible = true
+
 
 func set_waypoints(new_points: Array) -> void:
 	waypoints.clear()
@@ -178,9 +198,12 @@ func _physics_process(delta: float) -> void:
 	
 	if state_timer > 0.0:
 		state_timer -= delta
-		if current_state == State.EATING and table_ref != null and table_ref.has_method("set_eating_progress"):
-			var prog: float = 1.0 - (state_timer / 3.2)
-			table_ref.set_eating_progress(prog)
+		if current_state == State.EATING:
+			if table_ref != null and table_ref.has_method("set_eating_progress"):
+				var prog: float = 1.0 - (state_timer / 3.2)
+				table_ref.set_eating_progress(prog)
+			if state_timer <= 1.2:
+				set_bubble_text("⏳ 💵")
 		if state_timer <= 0.0:
 			_on_timer_complete()
 
@@ -288,7 +311,7 @@ func _on_all_waypoints_reached() -> void:
 			else:
 				ordered_dish = {"id": "burger", "name": "Classic Burger", "icon": "🍔", "price": 45.0}
 				
-			set_bubble_text("⏳ %s" % ordered_dish.get("icon", "🍽️"))
+			set_bubble_text("⏳ 🍽️")
 			
 			# Start Customer Patience countdown with marketing campaign buffs
 			var pat_mult: float = 1.0

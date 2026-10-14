@@ -74,14 +74,48 @@ height = 1.4
 radius = 1.3
 
 [sub_resource type="StandardMaterial3D" id="Material_cloth"]
-albedo_color = Color(0.12, 0.78, 0.72, 1)
-roughness = 0.58
+albedo_color = Color(0.12, 0.65, 0.55, 1)
+roughness = 0.5
 
-[sub_resource type="CylinderMesh" id="CylinderMesh_cloth"]
+[sub_resource type="BoxMesh" id="BoxMesh_cloth"]
 material = SubResource("Material_cloth")
-top_radius = 0.56
-bottom_radius = 0.59
-height = 0.04
+size = Vector3(1.36, 0.04, 0.76)
+
+[sub_resource type="StandardMaterial3D" id="Material_chrome_trim"]
+albedo_color = Color(0.92, 0.94, 0.96, 1)
+metallic = 0.85
+roughness = 0.2
+
+[sub_resource type="BoxMesh" id="BoxMesh_chrome_trim"]
+material = SubResource("Material_chrome_trim")
+size = Vector3(1.40, 0.02, 0.80)
+
+[sub_resource type="StandardMaterial3D" id="Material_fl_red"]
+albedo_color = Color(0.88, 0.15, 0.22, 1)
+roughness = 0.7
+
+[sub_resource type="StandardMaterial3D" id="Material_fl_white"]
+albedo_color = Color(0.98, 0.98, 0.96, 1)
+roughness = 0.7
+
+[sub_resource type="StandardMaterial3D" id="Material_fl_yellow"]
+albedo_color = Color(1.0, 0.82, 0.18, 1)
+roughness = 0.7
+
+[sub_resource type="SphereMesh" id="SphereMesh_flower_r"]
+material = SubResource("Material_fl_red")
+radius = 0.045
+height = 0.09
+
+[sub_resource type="SphereMesh" id="SphereMesh_flower_w"]
+material = SubResource("Material_fl_white")
+radius = 0.045
+height = 0.09
+
+[sub_resource type="SphereMesh" id="SphereMesh_flower_y"]
+material = SubResource("Material_fl_yellow")
+radius = 0.045
+height = 0.09
 
 [sub_resource type="StandardMaterial3D" id="Material_sparkle"]
 albedo_color = Color(1, 0.88, 0.25, 1)
@@ -147,6 +181,26 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.50, 0)
 size = Vector3(2.2, 0.14, 0.14)
 material = SubResource("Material_planter_green")
 
+[node name="FlowerB1" type="MeshInstance3D" parent="BoothDecor/PartitionBack/PlanterBack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7, 0.08, 0)
+mesh = SubResource("SphereMesh_flower_r")
+
+[node name="FlowerB2" type="MeshInstance3D" parent="BoothDecor/PartitionBack/PlanterBack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.35, 0.08, 0)
+mesh = SubResource("SphereMesh_flower_w")
+
+[node name="FlowerB3" type="MeshInstance3D" parent="BoothDecor/PartitionBack/PlanterBack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("SphereMesh_flower_y")
+
+[node name="FlowerB4" type="MeshInstance3D" parent="BoothDecor/PartitionBack/PlanterBack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 0.08, 0)
+mesh = SubResource("SphereMesh_flower_r")
+
+[node name="FlowerB5" type="MeshInstance3D" parent="BoothDecor/PartitionBack/PlanterBack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0.08, 0)
+mesh = SubResource("SphereMesh_flower_w")
+
 [node name="PartitionFront" type="CSGBox3D" parent="BoothDecor"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.44, 1.15)
 size = Vector3(2.3, 0.88, 0.16)
@@ -156,6 +210,26 @@ material = SubResource("Material_partition_wall")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.50, 0)
 size = Vector3(2.2, 0.14, 0.14)
 material = SubResource("Material_planter_green")
+
+[node name="FlowerF1" type="MeshInstance3D" parent="BoothDecor/PartitionFront/PlanterFront"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7, 0.08, 0)
+mesh = SubResource("SphereMesh_flower_w")
+
+[node name="FlowerF2" type="MeshInstance3D" parent="BoothDecor/PartitionFront/PlanterFront"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.35, 0.08, 0)
+mesh = SubResource("SphereMesh_flower_r")
+
+[node name="FlowerF3" type="MeshInstance3D" parent="BoothDecor/PartitionFront/PlanterFront"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("SphereMesh_flower_y")
+
+[node name="FlowerF4" type="MeshInstance3D" parent="BoothDecor/PartitionFront/PlanterFront"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 0.08, 0)
+mesh = SubResource("SphereMesh_flower_w")
+
+[node name="FlowerF5" type="MeshInstance3D" parent="BoothDecor/PartitionFront/PlanterFront"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0.08, 0)
+mesh = SubResource("SphereMesh_flower_r")
 
 [node name="BenchNorthSeat" type="MeshInstance3D" parent="BoothDecor"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.19, -0.68)
@@ -178,7 +252,11 @@ transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 0, 0, 0)
 
 [node name="TableCloth" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.71, 0)
-mesh = SubResource("CylinderMesh_cloth")
+mesh = SubResource("BoxMesh_cloth")
+
+[node name="TableChromeTrim" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.70, 0)
+mesh = SubResource("BoxMesh_chrome_trim")
 
 [node name="ChairNorth" parent="." instance=ExtResource("3_chair")]
 transform = Transform3D(-0.75, 0, 0, 0, 0.75, 0, 0, 0, -0.75, 0, 0, -0.68)
@@ -205,7 +283,7 @@ script = ExtResource("15_decor_char")
 anim_name = "sit"
 
 [node name="SeatMarker" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.36, 0.68)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.42, 0.36, 0.68)
 
 [node name="TableMenu" parent="." instance=ExtResource("5_menu")]
 transform = Transform3D(0.38, 0, 0, 0, 0.38, 0, 0, 0, 0.38, 0.06, 0.73, -0.1)

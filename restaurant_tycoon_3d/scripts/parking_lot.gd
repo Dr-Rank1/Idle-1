@@ -51,6 +51,7 @@ func _ready() -> void:
 	# Spawn initial parked cars so the lot is active from frame 1
 	_spawn_initial_parked_car(0)
 	_spawn_initial_parked_car(1)
+	_spawn_initial_parked_car(2)
 
 func _spawn_initial_parked_car(stall_idx: int) -> void:
 	if stall_idx < 0 or stall_idx >= STALL_POSITIONS.size() or car_scenes.size() == 0:

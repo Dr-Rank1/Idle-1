@@ -133,13 +133,22 @@ func _setup_custom_textures() -> void:
 				mat_run.roughness = 0.65
 				r_node.material_override = mat_run
 
+	# Entrance Chair Status Bubble
+	var chair_bubble_path = ProjectSettings.globalize_path("res://assets/textures/entrance_chair_bubble.png")
+	var chair_bubble_img = Image.load_from_file(chair_bubble_path)
+	if chair_bubble_img != null:
+		var chair_bubble_tex = ImageTexture.create_from_image(chair_bubble_img)
+		var bubble_node = find_child("EntranceChairBubble", true, false)
+		if bubble_node != null and bubble_node is Sprite3D:
+			bubble_node.texture = chair_bubble_tex
+
 func _check_spawn_hired_staff() -> void:
 	var gm = get_node_or_null("/root/GameManager")
 	if gm == null or waiter_scene == null:
 		return
 		
-	# Check Waiter 2
-	if gm.is_staff_hired("waiter_2") and not _has_waiter("waiter_2"):
+	# Check Waiter 2 (Sophia active on floor for bustling 2-server workflow)
+	if not _has_waiter("waiter_2"):
 		var w2 = waiter_scene.instantiate()
 		w2.name = "Waiter2"
 		w2.staff_id = "waiter_2"
