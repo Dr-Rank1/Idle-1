@@ -92,16 +92,51 @@ func _process(delta: float) -> void:
 
 func _on_cash_changed(_cash_val: float) -> void:
 	var gm = get_node_or_null("/root/GameManager")
-	if gm != null and is_unlocked and not is_dirty and not is_occupied:
-		var lvl = gm.get_station_level(table_id)
-		update_level_display(lvl)
+	if gm != null:
+		if is_unlocked and not is_dirty and not is_occupied:
+			var lvl = gm.get_station_level(table_id)
+			update_level_display(lvl)
+		elif not is_unlocked:
+			var cost = gm.get_table_unlock_cost(table_id)
+			if action_badge != null:
+				action_badge.text = "TAP TO UNLOCK ($%d)" % round(cost)
+				action_badge.modulate = Color(0.35, 1.0, 0.55) if gm.cash >= cost else Color(1.0, 0.45, 0.45)
 
 func _set_locked_visual(cost: float) -> void:
 	is_unlocked = false
-	visible = false
+	visible = true
+	if table_mesh != null: table_mesh.visible = false
 	if booth_decor != null: booth_decor.visible = false
 	if companion_diners != null: companion_diners.visible = false
 	if terrace_decor != null: terrace_decor.visible = false
+	if chair_north != null: chair_north.visible = false
+	if chair_south != null: chair_south.visible = false
+	if chair_east != null: chair_east.visible = false
+	if chair_west != null: chair_west.visible = false
+	if chair_left != null: chair_left.visible = false
+	if chair_right != null: chair_right.visible = false
+	if table_menu != null: table_menu.visible = false
+	if salt_shaker != null: salt_shaker.visible = false
+	if pepper_shaker != null: pepper_shaker.visible = false
+	if pendant_lamp != null: pendant_lamp.visible = false
+	if table_omni_light != null: table_omni_light.visible = false
+	if food_dish != null:
+		food_dish.visible = false
+		for c in food_dish.get_children():
+			c.visible = false
+	if badge_root != null:
+		badge_root.visible = true
+	if level_label != null:
+		level_label.visible = true
+		level_label.text = "🔒 " + table_name
+		level_label.font_size = 18
+		level_label.modulate = Color(0.9, 0.9, 0.9, 0.85)
+	if action_badge != null:
+		action_badge.visible = true
+		var gm = get_node_or_null("/root/GameManager")
+		var can_afford: bool = gm != null and gm.cash >= cost
+		action_badge.text = "TAP TO UNLOCK ($%d)" % round(cost)
+		action_badge.modulate = Color(0.35, 1.0, 0.55) if can_afford else Color(1.0, 0.45, 0.45)
 
 func _set_unlocked_visual(lvl: int) -> void:
 	is_unlocked = true
