@@ -79,7 +79,8 @@ func _check_spawn_hired_staff() -> void:
 		if chef_scn != null and kitchen_container != null:
 			var sc = chef_scn.instantiate()
 			sc.name = "ChefSous"
-			sc.transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.8, 0, -7.5)
+			sc.position = Vector3(1.8, 0.0, -7.5)
+			sc.rotation_degrees.y = 180.0
 			kitchen_container.add_child(sc)
 
 func _has_waiter(sid: String) -> bool:
