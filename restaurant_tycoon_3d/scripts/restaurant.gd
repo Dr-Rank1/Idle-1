@@ -205,6 +205,7 @@ func _setup_custom_textures() -> void:
 	var runner_path = ProjectSettings.globalize_path("res://assets/textures/red_carpet_runner.png")
 	var runner_img = Image.load_from_file(runner_path)
 	if runner_img != null:
+		runner_img.rotate_90(CLOCKWISE)
 		var runner_tex = ImageTexture.create_from_image(runner_img)
 		var h_runner = find_child("HostDeskRedRunner", true, false)
 		if h_runner != null and h_runner is MeshInstance3D:
@@ -272,7 +273,7 @@ func _setup_lounge_fidelity() -> void:
 	if rec_room == null:
 		return
 
-	# 1. Main Mahogany Bar Counter along back-left wall (1:1 with crop_lounge_08s.jpg)
+	# 1. Main Mahogany Bar Counter along north wall (1:1 with crop_lounge_08s.jpg)
 	var bar_root = rec_room.get_node_or_null("FidelityLoungeBar")
 	if bar_root == null:
 		bar_root = Node3D.new()
@@ -282,32 +283,32 @@ func _setup_lounge_fidelity() -> void:
 		# Cyan Runner Mat under bar stools
 		var mat_mesh = MeshInstance3D.new()
 		var box_mat = BoxMesh.new()
-		box_mat.size = Vector3(5.4, 0.015, 1.35)
+		box_mat.size = Vector3(5.4, 0.015, 1.25)
 		var cyan_mat = StandardMaterial3D.new()
-		cyan_mat.albedo_color = Color(0.28, 0.65, 0.68, 1.0)
-		cyan_mat.roughness = 0.8
+		cyan_mat.albedo_color = Color(0.28, 0.68, 0.72, 1.0)
+		cyan_mat.roughness = 0.75
 		mat_mesh.mesh = box_mat
 		mat_mesh.material_override = cyan_mat
-		mat_mesh.position = Vector3(-8.15, 0.025, -0.7)
+		mat_mesh.position = Vector3(-7.2, 0.025, -1.25)
 		bar_root.add_child(mat_mesh)
 
 		# Counter Body (Rich dark cherry mahogany wood)
 		var body_mesh = CSGBox3D.new()
-		body_mesh.size = Vector3(5.2, 0.94, 0.65)
-		body_mesh.position = Vector3(-8.15, 0.47, -1.35)
+		body_mesh.size = Vector3(5.2, 0.82, 0.65)
+		body_mesh.position = Vector3(-7.2, 0.41, -2.2)
 		var wood_mat = StandardMaterial3D.new()
 		wood_mat.albedo_color = Color(0.28, 0.10, 0.06, 1.0)
-		wood_mat.roughness = 0.4
+		wood_mat.roughness = 0.35
 		body_mesh.material = wood_mat
 		bar_root.add_child(body_mesh)
 
 		# Counter Top (Warm cream marble / polished wood)
 		var top_mesh = CSGBox3D.new()
 		top_mesh.size = Vector3(5.4, 0.06, 0.78)
-		top_mesh.position = Vector3(-8.15, 0.97, -1.35)
+		top_mesh.position = Vector3(-7.2, 0.85, -2.2)
 		var marble_mat = StandardMaterial3D.new()
 		marble_mat.albedo_color = Color(0.95, 0.94, 0.90, 1.0)
-		marble_mat.roughness = 0.25
+		marble_mat.roughness = 0.2
 		marble_mat.metallic = 0.1
 		top_mesh.material = marble_mat
 		bar_root.add_child(top_mesh)
@@ -317,7 +318,7 @@ func _setup_lounge_fidelity() -> void:
 		rail_mesh.radius = 0.025
 		rail_mesh.height = 5.0
 		rail_mesh.rotation_degrees = Vector3(0, 0, 90)
-		rail_mesh.position = Vector3(-8.15, 0.15, -0.98)
+		rail_mesh.position = Vector3(-7.2, 0.15, -1.825)
 		var brass_mat = StandardMaterial3D.new()
 		brass_mat.albedo_color = Color(0.95, 0.82, 0.28, 1.0)
 		brass_mat.metallic = 0.85
@@ -325,26 +326,34 @@ func _setup_lounge_fidelity() -> void:
 		rail_mesh.material = brass_mat
 		bar_root.add_child(rail_mesh)
 
-		# 6 Stools in front of the bar
+		# 6 Stools in front of the bar on the cyan mat
 		var stool_scn = load("res://assets/models/furniture/stoolBar.glb")
 		if stool_scn != null:
 			for i in range(6):
-				var sx = -10.2 + i * 0.82
+				var sx = -9.2 + i * 0.8
 				var st = stool_scn.instantiate()
-				st.position = Vector3(sx, 0.0, -0.65)
+				st.position = Vector3(sx, 0.0, -1.25)
 				st.scale = Vector3(1.15, 1.15, 1.15)
 				bar_root.add_child(st)
 
 		# Glass Wine & Cocktail Glasses on the counter
 		var wine_scn = load("res://assets/models/food/glass-wine.glb")
 		if wine_scn != null:
-			for wx in [-10.0, -8.6, -7.2, -6.0]:
+			for wx in [-9.0, -8.0, -6.4, -5.6]:
 				var wg = wine_scn.instantiate()
-				wg.position = Vector3(wx, 1.0, -1.35)
+				wg.position = Vector3(wx, 0.88, -2.2)
 				wg.scale = Vector3(0.4, 0.4, 0.4)
 				bar_root.add_child(wg)
 
-		# Multi-Tier Liquor Shelf on the back wall (z = -3.38)
+		# Coffee / Espresso Machine on right end of counter
+		var coffee_scn = load("res://assets/models/furniture/kitchenCoffeeMachine.glb")
+		if coffee_scn != null:
+			var cm = coffee_scn.instantiate()
+			cm.position = Vector3(-4.8, 0.88, -2.2)
+			cm.scale = Vector3(0.9, 0.9, 0.9)
+			bar_root.add_child(cm)
+
+		# Multi-Tier Backlit Liquor Shelf on the North wall
 		var shelf_img_path = ProjectSettings.globalize_path("res://assets/textures/lounge_shelf_bottles.png")
 		var shelf_img = Image.load_from_file(shelf_img_path)
 		if shelf_img != null:
@@ -357,12 +366,12 @@ func _setup_lounge_fidelity() -> void:
 			shelf_mat.albedo_texture = shelf_tex
 			shelf_mat.emission_enabled = true
 			shelf_mat.emission_texture = shelf_tex
-			shelf_mat.emission_energy_multiplier = 1.4
+			shelf_mat.emission_energy_multiplier = 2.0
 			shelf_mesh.material_override = shelf_mat
-			shelf_mesh.position = Vector3(-8.15, 1.85, -3.38)
+			shelf_mesh.position = Vector3(-7.2, 1.85, -3.36)
 			bar_root.add_child(shelf_mesh)
 
-		# Chalkboard Menu on the right wall (x = -3.36, facing west)
+		# Chalkboard Menu on the East divider wall (x = -3.46, facing west)
 		var chalk_img_path = ProjectSettings.globalize_path("res://assets/textures/chalkboard_menu.png")
 		var chalk_img = Image.load_from_file(chalk_img_path)
 		if chalk_img != null:
@@ -373,25 +382,34 @@ func _setup_lounge_fidelity() -> void:
 			chalk_mesh.mesh = quad_c
 			var c_mat = StandardMaterial3D.new()
 			c_mat.albedo_texture = chalk_tex
+			c_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 			c_mat.roughness = 0.75
 			chalk_mesh.material_override = c_mat
-			chalk_mesh.position = Vector3(-3.36, 1.75, 1.5)
-			chalk_mesh.rotation_degrees = Vector3(0, 90, 0)
+			chalk_mesh.position = Vector3(-3.46, 1.75, 0.6)
+			chalk_mesh.rotation_degrees = Vector3(0, -90, 0)
 			bar_root.add_child(chalk_mesh)
+
+		# Round Topiary Plant in the corner
+		var plant_scn = load("res://assets/models/furniture/pottedPlant.glb")
+		if plant_scn != null:
+			var corner_plant = plant_scn.instantiate()
+			corner_plant.position = Vector3(-4.0, 0.0, -2.8)
+			corner_plant.scale = Vector3(1.4, 1.4, 1.4)
+			bar_root.add_child(corner_plant)
 
 		# Bartender figure behind the counter
 		var barman_scn = load("res://assets/models/characters/character-male-d.glb")
 		if barman_scn != null:
 			var barman = barman_scn.instantiate()
-			barman.position = Vector3(-8.0, 0.0, -1.8)
+			barman.position = Vector3(-8.2, 0.0, -2.75)
 			barman.rotation_degrees = Vector3(0, 0, 0)
-			barman.scale = Vector3(1.05, 1.05, 1.05)
+			barman.scale = Vector3(1.15, 1.15, 1.15)
 			var decor_script = load("res://scripts/decor_character.gd")
 			barman.set_script(decor_script)
 			barman.set("anim_name", "idle")
 			bar_root.add_child(barman)
 
-	# Re-style the 4 round lounge tables & chairs with dark mahogany wood (matching crop_lounge_08s.jpg)
+	# Re-style the 4 round lounge tables & chairs with dark mahogany wood and padded cushions (matching crop_lounge_08s.jpg)
 	var wood_tbl_mat = StandardMaterial3D.new()
 	wood_tbl_mat.albedo_color = Color(0.24, 0.10, 0.06, 1.0)
 	wood_tbl_mat.roughness = 0.35
@@ -400,22 +418,50 @@ func _setup_lounge_fidelity() -> void:
 	chair_wood_mat.albedo_color = Color(0.22, 0.09, 0.05, 1.0)
 	chair_wood_mat.roughness = 0.45
 
+	var red_cushion_mat = StandardMaterial3D.new()
+	red_cushion_mat.albedo_color = Color(0.72, 0.14, 0.18, 1.0)
+	red_cushion_mat.roughness = 0.5
+
+	var wine_scn_tbl = load("res://assets/models/food/glass-wine.glb")
+
 	for t_idx in [1, 2, 3, 4]:
 		var tbl = rec_room.find_child("WaitingTable%d" % t_idx, true, false)
 		if tbl != null:
 			for ch in tbl.get_children():
 				if ch is MeshInstance3D:
 					ch.material_override = wood_tbl_mat
+
+			# Add wine glasses on each table
+			if wine_scn_tbl != null and tbl.get_node_or_null("WineGlass1") == null:
+				for w_idx in range(2):
+					var wg = wine_scn_tbl.instantiate()
+					wg.name = "WineGlass%d" % (w_idx + 1)
+					var w_offset = Vector3(0.12, 0.78, 0.12) if w_idx == 0 else Vector3(-0.12, 0.78, -0.12)
+					wg.position = tbl.position + w_offset
+					wg.scale = Vector3(0.35, 0.35, 0.35)
+					rec_room.add_child(wg)
+
 		for c_letter in ["A", "B", "C", "D"]:
 			var chair = rec_room.find_child("WaitingChair%d%s" % [t_idx, c_letter], true, false)
 			if chair != null:
 				for ch in chair.get_children():
 					if ch is MeshInstance3D:
 						ch.material_override = chair_wood_mat
+				# Add padded red vinyl cushion
+				if chair.get_node_or_null("PaddedCushion") == null:
+					var cushion = MeshInstance3D.new()
+					cushion.name = "PaddedCushion"
+					var c_box = BoxMesh.new()
+					c_box.size = Vector3(0.42, 0.06, 0.42)
+					cushion.mesh = c_box
+					cushion.material_override = red_cushion_mat
+					cushion.position = Vector3(0, 0.45, 0)
+					chair.add_child(cushion)
 
-	# Rotate Jukebox towards isometric camera for full view of neon arch and turntable
+	# Position & rotate Jukebox towards isometric camera for full view of neon arch and turntable
 	var juke_node = find_child("RetroJukebox", true, false)
 	if juke_node != null:
+		juke_node.position = Vector3(-3.4, 0, 5.8)
 		juke_node.rotation_degrees = Vector3(0, -45, 0)
 
 func _setup_milkshake_fidelity() -> void:

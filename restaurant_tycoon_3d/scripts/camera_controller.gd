@@ -69,6 +69,10 @@ func focus_zone(zone: String) -> void:
 			target_position = Vector3(7.5, 14.5, 10.5)
 		"terrace":
 			target_position = Vector3(20.5, 14.5, 16.5)
+		"lounge":
+			target_position = Vector3(2.7, 15.0, 15.8)
+		"reception":
+			target_position = Vector3(5.0, 15.0, 18.0)
 		"overview":
 			target_position = Vector3(15.2, 15.0, 16.8)
 

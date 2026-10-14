@@ -58,4 +58,12 @@ func _init():
 	var img_park = root.get_viewport().get_texture().get_image()
 	img_park.save_png("c:/Users/Ian/Documents/Apps/Idle-1/parking_view.png")
 
+	# Focus camera on lounge to capture 1:1 fidelity details of Cocktail Lounge and Reception
+	if cam != null and cam.has_method("focus_zone"):
+		cam.focus_zone("lounge")
+	for i in range(35):
+		await process_frame
+	var img_lounge = root.get_viewport().get_texture().get_image()
+	img_lounge.save_png("c:/Users/Ian/Documents/Apps/Idle-1/lounge_view.png")
+
 	quit(0)
