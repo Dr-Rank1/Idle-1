@@ -908,7 +908,7 @@ func _on_offline_earnings_available(earned: float, elapsed: float) -> void:
 	vb.add_child(desc)
 
 	var cash_val = Label.new()
-	cash_val.text = "+$" + _format_money(earned)
+	cash_val.text = "+" + _format_money(earned)
 	cash_val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cash_val.add_theme_font_size_override("font_size", 34)
 	cash_val.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55))
