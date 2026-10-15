@@ -762,13 +762,15 @@ func collect_booth_cash() -> float:
 		return 0.0
 	booth_cash_stack.visible = false
 	var amount: float = 50.0
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_method("get_card_tip_multiplier"):
+		amount = round(amount * gm.get_card_tip_multiplier())
 	var c_pos: Vector3 = get_cash_stack_world_pos()
 	
 	var rest = find_parent("Restaurant")
 	if rest != null and rest.has_method("register_cash_collection"):
 		rest.register_cash_collection(c_pos, amount)
 	else:
-		var gm = get_node_or_null("/root/GameManager")
 		if gm != null:
 			gm.add_cash(amount, c_pos)
 		var am = get_node_or_null("/root/AudioManager")

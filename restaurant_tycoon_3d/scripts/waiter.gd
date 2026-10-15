@@ -48,6 +48,8 @@ func _ready() -> void:
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
 		gm.staff_updated.connect(_on_staff_updated)
+		if gm.has_signal("cards_updated"):
+			gm.cards_updated.connect(_update_speed)
 
 func _find_anim_player(node: Node) -> AnimationPlayer:
 	if node is AnimationPlayer:
@@ -63,6 +65,8 @@ func _update_speed() -> void:
 	var mult: float = 1.0
 	if gm != null and gm.has_method("get_staff_speed_multiplier"):
 		mult = gm.get_staff_speed_multiplier(staff_id)
+	if gm != null and gm.has_method("get_card_waiter_speed_multiplier"):
+		mult *= gm.get_card_waiter_speed_multiplier()
 	if speed_buff_timer > 0.0:
 		mult *= 1.30
 	move_speed = base_speed * mult
@@ -348,9 +352,13 @@ func _on_all_waypoints_reached() -> void:
 				var to_tbl = target_table.global_position - position
 				rotation.y = atan2(to_tbl.x, to_tbl.z)
 				if is_cleaning_job:
-					# Play 1.8-second table-wiping animation, despawn dirty plates, reset is_dirty = false
+					# Play table-wiping animation, despawn dirty plates, reset is_dirty = false
 					_play_anim("interact-right", true)
-					await get_tree().create_timer(1.8).timeout
+					var wipe_dur: float = 1.8
+					var gm_ref = get_node_or_null("/root/GameManager")
+					if gm_ref != null and gm_ref.has_method("get_card_waiter_speed_multiplier"):
+						wipe_dur /= gm_ref.get_card_waiter_speed_multiplier()
+					await get_tree().create_timer(wipe_dur).timeout
 					if is_instance_valid(target_table) and target_table.has_method("clean_table"):
 						target_table.clean_table()
 					is_cleaning_job = false

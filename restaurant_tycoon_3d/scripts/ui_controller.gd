@@ -163,6 +163,19 @@ var boost_timer_bar: Panel = null
 @onready var header_multi_10_btn: Button = get_node_or_null("UpgradePanel/VBox/HeaderBar/HBox/MultiTogglePill/PillHBox/HeaderMulti10Btn")
 @onready var header_multi_max_btn: Button = get_node_or_null("UpgradePanel/VBox/HeaderBar/HBox/MultiTogglePill/PillHBox/HeaderMultiMaxBtn")
 
+@onready var cards_btn: Button = get_node_or_null("HUD/BottomDock/HBox/CardsBtn")
+@onready var side_cards_btn: Button = get_node_or_null("HUD/RightDock/SideCardsBtn")
+@onready var cards_panel: PanelContainer = get_node_or_null("CardsPanel")
+@onready var cards_grid: GridContainer = get_node_or_null("CardsPanel/VBox/Scroll/CardsGrid")
+@onready var close_cards_btn: Button = get_node_or_null("CardsPanel/VBox/CloseBtn")
+@onready var close_cards_banner_btn: Button = get_node_or_null("CardsPanel/VBox/HeaderBanner/BannerHBox/CloseCardsBtn")
+
+@onready var chest_reward_modal: PanelContainer = get_node_or_null("ChestRewardModal")
+@onready var chest_reward_header: Label = get_node_or_null("ChestRewardModal/VBox/Header")
+@onready var chest_reward_currencies_box: HBoxContainer = get_node_or_null("ChestRewardModal/VBox/CurrenciesHBox")
+@onready var chest_reward_cards_box: VBoxContainer = get_node_or_null("ChestRewardModal/VBox/Scroll/CardsContainer")
+@onready var chest_reward_collect_btn: Button = get_node_or_null("ChestRewardModal/VBox/CollectBtn")
+
 var current_station_id: String = ""
 var current_multiplier: String = "1"
 var current_shop_category: String = "featured"
@@ -279,6 +292,10 @@ func _ready() -> void:
 	if nav_promo_btn != null:
 		nav_promo_btn.pressed.connect(func():
 			_toggle_modal(marketing_panel, _refresh_marketing_panel)
+		)
+	if cards_btn != null:
+		cards_btn.pressed.connect(func():
+			_toggle_modal(cards_panel, _refresh_cards_panel)
 		)
 	
 	# Quest Banner Click
@@ -422,10 +439,25 @@ func _ready() -> void:
 		side_staff_btn.pressed.connect(func():
 			_toggle_modal(staff_panel, _refresh_staff_panel)
 		)
+	if side_cards_btn != null:
+		side_cards_btn.pressed.connect(func():
+			_toggle_modal(cards_panel, _refresh_cards_panel)
+		)
+
+	if close_cards_btn != null:
+		close_cards_btn.pressed.connect(func(): _close_modal(cards_panel))
+	if close_cards_banner_btn != null:
+		close_cards_banner_btn.pressed.connect(func(): _close_modal(cards_panel))
+	if chest_reward_collect_btn != null:
+		chest_reward_collect_btn.pressed.connect(func(): _close_modal(chest_reward_modal))
 
 	# Connect GameManager signals
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
+		if gm.has_signal("chest_opened"):
+			gm.chest_opened.connect(_on_chest_opened)
+		if gm.has_signal("cards_updated"):
+			gm.cards_updated.connect(_on_cards_updated)
 		gm.cash_changed.connect(_on_cash_changed)
 		gm.gems_changed.connect(_on_gems_changed)
 		if gm.has_signal("golden_coins_changed"):
@@ -683,6 +715,21 @@ func _update_affordability_badges() -> void:
 	_set_button_affordability_badge(tab_upgrades_btn, can_afford_current_station)
 	_set_button_affordability_badge(staff_tab_upgrades_btn, can_afford_kitchen or can_afford_current_station)
 
+	# 8. Cards category (cards_btn, side_cards_btn)
+	var can_afford_cards: bool = false
+	if gm.has_method("get_all_cards"):
+		var all_cards = gm.get_all_cards()
+		for cid in all_cards.keys():
+			if gm.can_upgrade_card(cid):
+				can_afford_cards = true
+				break
+	_set_button_affordability_badge(cards_btn, can_afford_cards)
+	_set_button_affordability_badge(side_cards_btn, can_afford_cards)
+
+	# 9. Chests tab badge (if free wooden chest is ready)
+	var can_claim_chest: bool = gm.has_method("can_claim_free_wooden_chest") and gm.can_claim_free_wooden_chest()
+	_set_button_affordability_badge(tab_chests_btn, can_claim_chest)
+
 func _focus_camera(zone: String) -> void:
 	var cam = get_viewport().get_camera_3d()
 	if cam != null and cam.has_method("focus_zone"):
@@ -749,6 +796,8 @@ func _hide_all_modals() -> void:
 	if shop_panel != null: shop_panel.visible = false
 	if analytics_panel != null: analytics_panel.visible = false
 	if perks_panel != null: perks_panel.visible = false
+	if cards_panel != null: cards_panel.visible = false
+	if chest_reward_modal != null: chest_reward_modal.visible = false
 
 func _open_modal(panel: PanelContainer) -> void:
 	if panel == null: return
@@ -781,6 +830,11 @@ func open_analytics_modal() -> void:
 	if analytics_panel != null:
 		_refresh_analytics_panel()
 		_open_modal(analytics_panel)
+
+func open_cards_panel() -> void:
+	if cards_panel != null:
+		_refresh_cards_panel()
+		_open_modal(cards_panel)
 
 func _play_click_sfx() -> void:
 	var am = get_node_or_null("/root/AudioManager")
@@ -3139,7 +3193,61 @@ func _refresh_shop_panel() -> void:
 			))
 
 		"chests":
-			# Treasury Cash Chests
+			# Cards Roster Shortcut Banner
+			shop_vbox.add_child(_create_shop_card(
+				"view_cards",
+				"🃏 Collectible Cards Roster",
+				"Inspect all 12 sector managers, track duplicate progress bars, and level them up using Golden Coins!",
+				"⭐ 12 Restaurant Boosters",
+				"VIEW CARDS",
+				Color(0.85, 0.4, 0.95, 1.0),
+				false,
+				gm
+			))
+			
+			# 1. Wooden Chef Chest (Free claim every 4 hours or 100 Golden Coins)
+			var wooden_can_free = gm.can_claim_free_wooden_chest() if gm.has_method("can_claim_free_wooden_chest") else false
+			var cd_left = gm.get_free_wooden_chest_cooldown_left() if gm.has_method("get_free_wooden_chest_cooldown_left") else 0.0
+			var wooden_btn_text = "FREE CLAIM" if wooden_can_free else "🪙 100 COINS"
+			var wooden_val_text = "🎁 Free Ready!" if wooden_can_free else ("Free in %dm (or 100 Coins)" % int(ceil(cd_left / 60.0)))
+			var wooden_btn_color = Color(0.2, 0.8, 0.4, 1.0) if wooden_can_free else Color(0.95, 0.75, 0.15, 1.0)
+			var wooden_disabled = false if wooden_can_free else (gm.golden_coins < 100)
+			shop_vbox.add_child(_create_shop_card(
+				"chest_wooden",
+				"🪵 Wooden Chef Chest",
+				"Contains Cash, Golden Coins, and 2 Collectible Cards (Common & Rare)!",
+				wooden_val_text,
+				wooden_btn_text,
+				wooden_btn_color,
+				wooden_disabled,
+				gm
+			))
+
+			# 2. Silver Maître D' Chest (35 Diamonds)
+			shop_vbox.add_child(_create_shop_card(
+				"chest_silver",
+				"🥈 Silver Maître D' Chest",
+				"Contains generous Cash, Gold Coins, Diamonds, and 3 Collectible Cards (Guaranteed Rare+, chance of Epic)!",
+				"+2K-5K Cash, 50-120 Gold & 3 Cards",
+				"💎 35 GEMS",
+				Color(0.25, 0.72, 0.95, 1.0),
+				gm.diamonds < 35,
+				gm
+			))
+
+			# 3. Golden Epic Tycoon Chest (120 Diamonds)
+			shop_vbox.add_child(_create_shop_card(
+				"chest_golden_epic",
+				"🏆 Golden Epic Tycoon Chest",
+				"Massive fortune of Cash, Gold, Diamonds, and 5 Collectible Cards (Guaranteed Epic or Legendary)!",
+				"+10K-25K Cash, 200-500 Gold & 5 Cards",
+				"💎 120 GEMS",
+				Color(1.0, 0.82, 0.2, 1.0),
+				gm.diamonds < 120,
+				gm
+			))
+
+			# Treasury Cash Tip Jars
 			shop_vbox.add_child(_create_shop_card(
 				"cash_chest_small",
 				"💰 Small Tip Jar",
@@ -3291,6 +3399,10 @@ func _create_shop_card(item_id: String, title_txt: String, desc_txt: String, val
 	btn.add_theme_stylebox_override("normal", btn_style)
 	btn.pressed.connect(func():
 		_play_click_sfx()
+		if item_id == "view_cards" or item_id == "view_cards_roster":
+			_open_modal(cards_panel)
+			_refresh_cards_panel()
+			return
 		if gm.buy_shop_item(item_id):
 			_refresh_shop_panel()
 	)
@@ -3744,4 +3856,334 @@ func _update_station_milestones(_sid: String, cur_lvl: int, max_lvl: int) -> voi
 			pill.add_theme_stylebox_override("panel", sb)
 			pill.add_child(lbl)
 			milestone_labels_hbox.add_child(pill)
+
+# ─── Collectible Cards & Gacha Chest Popups ─────────────────────────────────
+func _on_chest_opened(chest_type: String, rewards: Dictionary) -> void:
+	show_chest_reward_popup(chest_type, rewards)
+	_update_affordability_badges()
+	if shop_panel != null and shop_panel.visible:
+		_refresh_shop_panel()
+
+func _on_cards_updated() -> void:
+	if cards_panel != null and cards_panel.visible:
+		_refresh_cards_panel()
+	_update_affordability_badges()
+
+func show_chest_reward_popup(chest_type: String, rewards: Dictionary) -> void:
+	if chest_reward_modal == null:
+		return
+		
+	var ctype = chest_type.to_lower()
+	var chest_name = "WOODEN CHEST"
+	var chest_icon = "🪵"
+	var header_col = Color(0.9, 0.75, 0.4, 1.0)
+	if ctype.contains("silver"):
+		chest_name = "SILVER MAÎTRE D' CHEST"
+		chest_icon = "🥈"
+		header_col = Color(0.4, 0.85, 1.0, 1.0)
+	elif ctype.contains("golden") or ctype.contains("epic"):
+		chest_name = "GOLDEN EPIC CHEST"
+		chest_icon = "🏆"
+		header_col = Color(1.0, 0.85, 0.2, 1.0)
+		
+	if chest_reward_header != null:
+		chest_reward_header.text = "%s %s UNLOCKED!" % [chest_icon, chest_name]
+		chest_reward_header.add_theme_color_override("font_color", header_col)
+		
+	# Populate Currencies Box
+	if chest_reward_currencies_box != null:
+		for c in chest_reward_currencies_box.get_children():
+			c.queue_free()
+			
+		var cash_gain = float(rewards.get("cash", 0.0))
+		if cash_gain > 0.0:
+			var cpill = _create_reward_currency_chip("💵 +%s" % _format_money(cash_gain), Color(0.1, 0.22, 0.12, 0.95), Color(0.35, 1.0, 0.55, 1.0))
+			chest_reward_currencies_box.add_child(cpill)
+			
+		var gold_gain = int(rewards.get("golden_coins", 0))
+		if gold_gain > 0:
+			var gpill = _create_reward_currency_chip("🪙 +%d Gold" % gold_gain, Color(0.24, 0.18, 0.05, 0.95), Color(1.0, 0.85, 0.25, 1.0))
+			chest_reward_currencies_box.add_child(gpill)
+			
+		var gems_gain = int(rewards.get("diamonds", 0))
+		if gems_gain > 0:
+			var dpill = _create_reward_currency_chip("💎 +%d Gems" % gems_gain, Color(0.18, 0.1, 0.25, 0.95), Color(0.85, 0.45, 1.0, 1.0))
+			chest_reward_currencies_box.add_child(dpill)
+
+	# Populate Cards Container
+	if chest_reward_cards_box != null:
+		for c in chest_reward_cards_box.get_children():
+			c.queue_free()
+			
+		var reward_cards = rewards.get("cards", [])
+		for rcard in reward_cards:
+			var tile = _create_reward_card_chip(rcard)
+			chest_reward_cards_box.add_child(tile)
+			
+	_open_modal(chest_reward_modal)
+	
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("coin", 0.05, 1.2)
+
+func _create_reward_currency_chip(text: String, bg_col: Color, text_col: Color) -> PanelContainer:
+	var pc = PanelContainer.new()
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = bg_col
+	sb.border_width_left = 1
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 2
+	sb.border_color = text_col.darkened(0.2)
+	sb.set_corner_radius_all(12)
+	sb.content_margin_left = 12.0
+	sb.content_margin_right = 12.0
+	sb.content_margin_top = 6.0
+	sb.content_margin_bottom = 6.0
+	pc.add_theme_stylebox_override("panel", sb)
+	
+	var lbl = Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_color_override("font_color", text_col)
+	pc.add_child(lbl)
+	return pc
+
+func _create_reward_card_chip(rcard: Dictionary) -> PanelContainer:
+	var pc = PanelContainer.new()
+	var rarity = str(rcard.get("rarity", "common")).to_lower()
+	var rcol = _get_card_rarity_color(rarity)
+	
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.09, 0.12, 0.18, 0.95)
+	sb.border_width_left = 2
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 2
+	sb.border_color = rcol
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 12.0
+	sb.content_margin_right = 12.0
+	sb.content_margin_top = 6.0
+	sb.content_margin_bottom = 6.0
+	pc.add_theme_stylebox_override("panel", sb)
+	
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	pc.add_child(hbox)
+	
+	var icon_lbl = Label.new()
+	icon_lbl.text = rcard.get("icon", "🃏")
+	icon_lbl.add_theme_font_size_override("font_size", 22)
+	hbox.add_child(icon_lbl)
+	
+	var vb = VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(vb)
+	
+	var title_lbl = Label.new()
+	title_lbl.text = "%s  (%s)" % [rcard.get("name", "Card"), rarity.to_upper()]
+	title_lbl.add_theme_font_size_override("font_size", 13)
+	title_lbl.add_theme_color_override("font_color", rcol)
+	vb.add_child(title_lbl)
+	
+	var desc_lbl = Label.new()
+	desc_lbl.text = rcard.get("bonus_desc", "")
+	desc_lbl.add_theme_font_size_override("font_size", 10)
+	desc_lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 0.8))
+	vb.add_child(desc_lbl)
+	
+	var count_badge = Label.new()
+	count_badge.text = "+%d Cards! ✨" % int(rcard.get("count", 1))
+	count_badge.add_theme_font_size_override("font_size", 13)
+	count_badge.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55, 1.0))
+	hbox.add_child(count_badge)
+	
+	return pc
+
+func _get_card_rarity_color(rarity: String) -> Color:
+	match rarity.to_lower():
+		"rare":
+			return Color(0.2, 0.65, 1.0, 1.0)
+		"epic":
+			return Color(0.8, 0.35, 1.0, 1.0)
+		"legendary":
+			return Color(1.0, 0.82, 0.2, 1.0)
+		_:
+			return Color(0.7, 0.78, 0.88, 1.0)
+
+# ─── Collectible Cards Grid Roster ──────────────────────────────────────────
+func _refresh_cards_panel() -> void:
+	if cards_grid == null:
+		return
+	for c in cards_grid.get_children():
+		c.queue_free()
+		
+	var gm = _get_game_manager()
+	if gm == null or not gm.has_method("get_all_cards"):
+		return
+		
+	var cards = gm.get_all_cards()
+	for cid in cards.keys():
+		var card = cards[cid]
+		var tile = _create_card_roster_tile(card, gm)
+		cards_grid.add_child(tile)
+
+func _create_card_roster_tile(card: Dictionary, gm: Node) -> PanelContainer:
+	var cid = card.get("id", "")
+	var lvl = int(card.get("level", 0))
+	var count = int(card.get("cards", 0))
+	var rarity = str(card.get("rarity", "common")).to_lower()
+	var rcol = _get_card_rarity_color(rarity)
+	var is_locked = (lvl == 0)
+	var is_max = (lvl >= 10)
+	
+	var pc = PanelContainer.new()
+	pc.custom_minimum_size = Vector2(290, 140)
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.11, 0.17, 0.95) if not is_locked else Color(0.06, 0.08, 0.12, 0.85)
+	sb.border_width_left = 2
+	sb.border_width_top = 2
+	sb.border_width_right = 2
+	sb.border_width_bottom = 3
+	sb.border_color = rcol if not is_locked else Color(0.3, 0.35, 0.45, 0.6)
+	sb.set_corner_radius_all(14)
+	sb.content_margin_left = 12.0
+	sb.content_margin_right = 12.0
+	sb.content_margin_top = 10.0
+	sb.content_margin_bottom = 10.0
+	pc.add_theme_stylebox_override("panel", sb)
+	
+	var vb = VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	pc.add_child(vb)
+	
+	# Header Row: Icon + Name + Level Badge
+	var top_hbox = HBoxContainer.new()
+	top_hbox.add_theme_constant_override("separation", 8)
+	vb.add_child(top_hbox)
+	
+	var icon_lbl = Label.new()
+	icon_lbl.text = card.get("icon", "🃏")
+	icon_lbl.add_theme_font_size_override("font_size", 22)
+	top_hbox.add_child(icon_lbl)
+	
+	var name_vb = VBoxContainer.new()
+	name_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_vb.add_theme_constant_override("separation", 1)
+	top_hbox.add_child(name_vb)
+	
+	var name_lbl = Label.new()
+	name_lbl.text = card.get("name", "Manager")
+	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	name_vb.add_child(name_lbl)
+	
+	var sub_lbl = Label.new()
+	sub_lbl.text = "%s • %s" % [card.get("sector", "Restaurant"), rarity.to_upper()]
+	sub_lbl.add_theme_font_size_override("font_size", 10)
+	sub_lbl.add_theme_color_override("font_color", rcol)
+	name_vb.add_child(sub_lbl)
+	
+	var lvl_badge = Label.new()
+	if is_locked:
+		lvl_badge.text = "🔒 LOCKED"
+		lvl_badge.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.7))
+	elif is_max:
+		lvl_badge.text = "★ MAX"
+		lvl_badge.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
+	else:
+		lvl_badge.text = "Lv. %d" % lvl
+		lvl_badge.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55, 1.0))
+	lvl_badge.add_theme_font_size_override("font_size", 12)
+	top_hbox.add_child(lvl_badge)
+	
+	# Bonus Description
+	var desc_lbl = Label.new()
+	desc_lbl.text = card.get("bonus_desc", "")
+	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95, 0.9))
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(desc_lbl)
+	
+	# Duplicate Progress Bar
+	var needed = gm.get_card_cards_needed(cid) if gm.has_method("get_card_cards_needed") else 2
+	var prog_box = VBoxContainer.new()
+	prog_box.add_theme_constant_override("separation", 2)
+	vb.add_child(prog_box)
+	
+	var pbar = ProgressBar.new()
+	pbar.custom_minimum_size = Vector2(0, 8)
+	pbar.show_percentage = false
+	if is_locked:
+		pbar.max_value = 1
+		pbar.value = 0
+	elif is_max:
+		pbar.max_value = 1
+		pbar.value = 1
+	else:
+		pbar.max_value = max(1, needed)
+		pbar.value = min(count, needed)
+	prog_box.add_child(pbar)
+	
+	var prog_lbl = Label.new()
+	prog_lbl.add_theme_font_size_override("font_size", 10)
+	if is_locked:
+		prog_lbl.text = "Cards: 0/1 (Unlock in Chests)"
+		prog_lbl.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8, 0.7))
+	elif is_max:
+		prog_lbl.text = "Cards: Maximum Level Reached ⭐"
+		prog_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
+	else:
+		prog_lbl.text = "Cards: %d / %d duplicates" % [count, needed]
+		prog_lbl.add_theme_color_override("font_color", Color(0.3, 0.9, 0.5, 1.0) if count >= needed else Color(0.75, 0.8, 0.9, 0.8))
+	prog_box.add_child(prog_lbl)
+	
+	# Action Upgrade Button
+	var btn = Button.new()
+	btn.custom_minimum_size = Vector2(0, 32)
+	var gold_cost = gm.get_card_gold_cost(cid) if gm.has_method("get_card_gold_cost") else 50
+	var can_up = gm.can_upgrade_card(cid) if gm.has_method("can_upgrade_card") else false
+	
+	var b_style = StyleBoxFlat.new()
+	b_style.set_corner_radius_all(8)
+	b_style.content_margin_left = 6.0
+	b_style.content_margin_right = 6.0
+	b_style.content_margin_top = 4.0
+	b_style.content_margin_bottom = 4.0
+	
+	if is_locked:
+		btn.text = "🔒 Unlock in Chests"
+		btn.disabled = true
+		b_style.bg_color = Color(0.12, 0.15, 0.2, 0.6)
+	elif is_max:
+		btn.text = "⭐ Maximum Tier"
+		btn.disabled = true
+		b_style.bg_color = Color(0.18, 0.15, 0.08, 0.8)
+	elif can_up:
+		btn.text = "UPGRADE (🪙 %d)" % gold_cost
+		btn.disabled = false
+		b_style.bg_color = Color(0.18, 0.68, 0.32, 1.0)
+		b_style.border_width_bottom = 2
+		b_style.border_color = Color(0.1, 0.45, 0.18, 1.0)
+	elif count < needed:
+		btn.text = "🪙 %d (%d/%d Cards)" % [gold_cost, count, needed]
+		btn.disabled = true
+		b_style.bg_color = Color(0.15, 0.18, 0.25, 0.7)
+	else:
+		btn.text = "🪙 %d (Need Coins)" % gold_cost
+		btn.disabled = true
+		b_style.bg_color = Color(0.25, 0.2, 0.1, 0.7)
+		
+	btn.add_theme_stylebox_override("normal", b_style)
+	btn.add_theme_font_size_override("font_size", 12)
+	btn.pressed.connect(func():
+		_play_click_sfx()
+		if gm.upgrade_card(cid):
+			_refresh_cards_panel()
+	)
+	vb.add_child(btn)
+	
+	return pc
+
 

@@ -789,6 +789,8 @@ func on_food_delivered() -> void:
 	var eat_duration: float = 3.2
 	if gm != null and gm.has_method("is_perk_unlocked") and gm.is_perk_unlocked("fast_turnover"):
 		eat_duration *= 0.75
+	if gm != null and gm.has_method("get_card_table_turnover_multiplier"):
+		eat_duration /= gm.get_card_table_turnover_multiplier()
 	state_timer = eat_duration
 	_play_anim("sit")
 	if table_ref != null and table_ref.has_method("serve_food"):
@@ -865,7 +867,11 @@ func on_lounge_drink_served(drink_id: String = "wine_merlot") -> void:
 	var icon = ordered_dish.get("icon", "🍸")
 	set_bubble_text("😋 " + icon)
 	
-	await get_tree().create_timer(2.8).timeout
+	var drink_dur: float = 2.8
+	var gm_eat = get_node_or_null("/root/GameManager")
+	if gm_eat != null and gm_eat.has_method("get_card_table_turnover_multiplier"):
+		drink_dur /= gm_eat.get_card_table_turnover_multiplier()
+	await get_tree().create_timer(drink_dur).timeout
 	if not is_instance_valid(self):
 		return
 		
@@ -903,7 +909,11 @@ func on_milkshake_served(treat_id: String = "sundae") -> void:
 	var icon = ordered_dish.get("icon", "🍨")
 	set_bubble_text("😋 " + icon)
 	
-	await get_tree().create_timer(2.8).timeout
+	var treat_dur: float = 2.8
+	var gm_m_eat = get_node_or_null("/root/GameManager")
+	if gm_m_eat != null and gm_m_eat.has_method("get_card_table_turnover_multiplier"):
+		treat_dur /= gm_m_eat.get_card_table_turnover_multiplier()
+	await get_tree().create_timer(treat_dur).timeout
 	if not is_instance_valid(self):
 		return
 		

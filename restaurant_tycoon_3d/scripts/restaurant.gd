@@ -1780,6 +1780,8 @@ func _process_janitor(delta: float) -> void:
 		if dist > 0.25:
 			var dir = to_tgt.normalized()
 			var spd = janitor_speed * gm.get_staff_speed_multiplier("janitor")
+			if gm.has_method("get_card_cleaning_multiplier"):
+				spd *= gm.get_card_cleaning_multiplier()
 			janitor_character.position += dir * spd * delta
 			var yaw = atan2(dir.x, dir.z)
 			janitor_character.rotation.y = lerp_angle(janitor_character.rotation.y, yaw, 10.0 * delta)
@@ -2384,6 +2386,8 @@ func _run_bartender_service(order: Dictionary) -> void:
 	var gm = get_node_or_null("/root/GameManager")
 	var price: float = cust.ordered_dish.get("price", 42.0)
 	var price_mult: float = gm.get_dish_price_multiplier() if gm != null and gm.has_method("get_dish_price_multiplier") else 1.0
+	if gm != null and gm.has_method("get_card_cocktail_revenue_multiplier"):
+		price_mult *= gm.get_card_cocktail_revenue_multiplier()
 	var total_revenue: float = price * price_mult
 	if gm != null:
 		gm.add_cash(total_revenue)
@@ -2482,6 +2486,8 @@ func _run_barista_service(order: Dictionary) -> void:
 	var station_inc: float = gm.get_station_income("milkshake_bar") if gm != null else 45.0
 	var treat_price: float = cust.ordered_dish.get("price", 48.0)
 	var total_revenue: float = station_inc + treat_price
+	if gm != null and gm.has_method("get_card_milkshake_revenue_multiplier"):
+		total_revenue = round(total_revenue * gm.get_card_milkshake_revenue_multiplier())
 	if gm != null:
 		gm.add_cash(total_revenue)
 	_spawn_counter_cash_stack(Vector3(-9.7, 1.15, seat["counter_pos"].z), total_revenue)

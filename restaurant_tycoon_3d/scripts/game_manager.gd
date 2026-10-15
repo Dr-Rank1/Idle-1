@@ -33,6 +33,9 @@ signal shop_updated()
 signal vip_arrived(vip_node: Node3D, title: String, type: String, duration: float)
 signal time_skip_activated(hours: int, cash_amount: float)
 signal overdrive_boost_activated(multiplier: float, duration: float)
+signal chest_opened(chest_type: String, rewards: Dictionary)
+signal card_updated(card_id: String, level: int, count: int)
+signal cards_updated()
 
 var restaurant_node: Node3D = null
 
@@ -412,6 +415,145 @@ var permanent_boosters: Dictionary = {
 	}
 }
 
+# ─── Collectible Cards & Gacha Chests ─────────────────────────────────────────
+var wooden_chest_free_timestamp: float = 0.0
+
+const CARD_DUPLICATES_TABLE = [
+	1,    # Lv 0 -> 1 (unlocked upon 1st card drop)
+	2,    # Lv 1 -> 2
+	5,    # Lv 2 -> 3
+	10,   # Lv 3 -> 4
+	20,   # Lv 4 -> 5
+	40,   # Lv 5 -> 6
+	80,   # Lv 6 -> 7
+	150,  # Lv 7 -> 8
+	300,  # Lv 8 -> 9
+	600   # Lv 9 -> 10
+]
+
+var collectible_cards: Dictionary = {
+	"head_chef": {
+		"id": "head_chef",
+		"name": "Head Chef",
+		"sector": "Kitchen",
+		"rarity": "rare",
+		"icon": "👨‍🍳",
+		"bonus_desc": "+15% Kitchen Cook Speed per Level",
+		"level": 0,
+		"cards": 0
+	},
+	"head_waiter": {
+		"id": "head_waiter",
+		"name": "Head Waiter",
+		"sector": "Dining",
+		"rarity": "common",
+		"icon": "🤵",
+		"bonus_desc": "+12% Waiter Move & Wiping Speed per Level",
+		"level": 0,
+		"cards": 0
+	},
+	"mixologist": {
+		"id": "mixologist",
+		"name": "Mixologist",
+		"sector": "Cocktail Lounge",
+		"rarity": "epic",
+		"icon": "🍸",
+		"bonus_desc": "+25% Cocktail Lounge Bar Revenue per Level",
+		"level": 0,
+		"cards": 0
+	},
+	"soda_pop_star": {
+		"id": "soda_pop_star",
+		"name": "Soda Pop Star",
+		"sector": "Milkshake Bar",
+		"rarity": "rare",
+		"icon": "🥤",
+		"bonus_desc": "+20% Milkshake & Soda Revenue per Level",
+		"level": 0,
+		"cards": 0
+	},
+	"valet_captain": {
+		"id": "valet_captain",
+		"name": "Valet Captain",
+		"sector": "Parking",
+		"rarity": "epic",
+		"icon": "🚗",
+		"bonus_desc": "+20% Parking Vehicle Arrival Rate per Level",
+		"level": 0,
+		"cards": 0
+	},
+	"executive_tycoon": {
+		"id": "executive_tycoon",
+		"name": "Executive Tycoon",
+		"sector": "Management",
+		"rarity": "legendary",
+		"icon": "💼",
+		"bonus_desc": "-5% Station Upgrade Costs per Level",
+		"level": 0,
+		"cards": 0
+	},
+	"sous_chef": {
+		"id": "sous_chef",
+		"name": "Sous Chef",
+		"sector": "Kitchen",
+		"rarity": "common",
+		"icon": "🍳",
+		"bonus_desc": "+10% Kitchen Food Dish Revenue per Level",
+		"level": 0,
+		"cards": 0
+	},
+	"star_hostess": {
+		"id": "star_hostess",
+		"name": "Star Hostess",
+		"sector": "Reception",
+		"rarity": "common",
+		"icon": "📋",
+		"bonus_desc": "+15% Customer Lobby Wait Patience per Level",
+		"level": 0,
+		"cards": 0
+	},
+	"maitre_d": {
+		"id": "maitre_d",
+		"name": "Maître D'",
+		"sector": "Dining",
+		"rarity": "legendary",
+		"icon": "🎩",
+		"bonus_desc": "+25% Table Turnover Eating Speed per Level",
+		"level": 0,
+		"cards": 0
+	},
+	"sommelier": {
+		"id": "sommelier",
+		"name": "Master Sommelier",
+		"sector": "Cocktail Lounge",
+		"rarity": "epic",
+		"icon": "🍾",
+		"bonus_desc": "+30% High Roller & Tip Bonuses per Level",
+		"level": 0,
+		"cards": 0
+	},
+	"vip_chauffeur": {
+		"id": "vip_chauffeur",
+		"name": "VIP Chauffeur",
+		"sector": "Parking",
+		"rarity": "legendary",
+		"icon": "🚁",
+		"bonus_desc": "+50% VIP Investor & Critic Appearance Chance per Level",
+		"level": 0,
+		"cards": 0
+	},
+	"master_janitor": {
+		"id": "master_janitor",
+		"name": "Master Janitor",
+		"sector": "Hygiene",
+		"rarity": "rare",
+		"icon": "🧹",
+		"bonus_desc": "+25% Janitorial Cleaning Speed & Hygiene Retention per Level",
+		"level": 0,
+		"cards": 0
+	}
+}
+
 # ─── Staff Roster ───────────────────────────────────────────────────────────
 var staff_roster: Dictionary = {
 	"waiter_1": {
@@ -663,6 +805,8 @@ func save_game() -> void:
 		"cash_per_sec": cash_per_sec,
 		"research_perks": research_perks,
 		"permanent_boosters": permanent_boosters,
+		"collectible_cards": collectible_cards,
+		"wooden_chest_free_timestamp": wooden_chest_free_timestamp,
 		"world_restaurants_unlocked": {
 			"idle_diner": world_restaurants["idle_diner"].get("unlocked", true),
 			"idles_chain": world_restaurants["idles_chain"].get("unlocked", false),
@@ -769,6 +913,15 @@ func load_game() -> void:
 		for k in parsed["permanent_boosters"].keys():
 			if permanent_boosters.has(k) and typeof(parsed["permanent_boosters"][k]) == TYPE_DICTIONARY:
 				permanent_boosters[k]["owned"] = bool(parsed["permanent_boosters"][k].get("owned", false))
+
+	if parsed.has("wooden_chest_free_timestamp"):
+		wooden_chest_free_timestamp = float(parsed["wooden_chest_free_timestamp"])
+
+	if parsed.has("collectible_cards") and typeof(parsed["collectible_cards"]) == TYPE_DICTIONARY:
+		for cid in parsed["collectible_cards"].keys():
+			if collectible_cards.has(cid) and typeof(parsed["collectible_cards"][cid]) == TYPE_DICTIONARY:
+				for prop in parsed["collectible_cards"][cid].keys():
+					collectible_cards[cid][prop] = parsed["collectible_cards"][cid][prop]
 
 	currencies_updated.emit(cash, golden_coins, diamonds, energy)
 	cash_changed.emit(cash)
@@ -1068,6 +1221,13 @@ func buy_shop_item(item_id: String) -> bool:
 			if spend_diamonds(35):
 				apply_overdrive_boost(2.0, 900.0)
 				return true
+		# Gacha Chests
+		"chest_wooden", "wooden_chest":
+			return open_chest("wooden").get("success", false)
+		"chest_silver", "silver_chest":
+			return open_chest("silver").get("success", false)
+		"chest_golden", "golden_chest", "chest_epic", "epic_chest", "chest_golden_epic":
+			return open_chest("golden_epic").get("success", false)
 		# Diamond, Golden Coin & Energy Exchange
 		"cash_chest_small", "cash_small":
 			if spend_diamonds(10):
@@ -1161,7 +1321,8 @@ func get_upgrade_cost(station_id: String) -> float:
 	var station_max = int(cfg.get("max_level", 50))
 	if lvl >= station_max:
 		return 0.0
-	return round(cfg.base_cost * pow(cfg.cost_mult, lvl - 1))
+	var disc: float = 1.0 - (get_card_upgrade_discount() if has_method("get_card_upgrade_discount") else 0.0)
+	return max(1.0, round(cfg.base_cost * pow(cfg.cost_mult, lvl - 1) * disc))
 
 # Formula: Revenue = BaseRevenue * RevenueMultiplier^(L - 1)
 func get_station_income(station_id: String) -> float:
@@ -1180,6 +1341,15 @@ func get_station_income(station_id: String) -> float:
 		rev *= 1.5
 	if has_method("get_active_revenue_multiplier"):
 		rev *= get_active_revenue_multiplier()
+	
+	var sid = station_id.to_lower()
+	if (sid == "cocktail_lounge" or sid == "bar") and has_method("get_card_cocktail_revenue_multiplier"):
+		rev *= get_card_cocktail_revenue_multiplier()
+	elif (sid == "milkshake_bar" or sid == "milkshake") and has_method("get_card_milkshake_revenue_multiplier"):
+		rev *= get_card_milkshake_revenue_multiplier()
+	elif (sid == "kitchen_cook" or sid == "stove") and has_method("get_card_kitchen_revenue_multiplier"):
+		rev *= get_card_kitchen_revenue_multiplier()
+		
 	return round(rev)
 
 func get_upgrade_multi_info(station_id: String, mode: String) -> Dictionary:
@@ -1200,9 +1370,10 @@ func get_upgrade_multi_info(station_id: String, mode: String) -> Dictionary:
 	var total_cost: float = 0.0
 	var affordable_levels: int = 0
 	var temp_lvl = current_lvl
+	var disc: float = 1.0 - (get_card_upgrade_discount() if has_method("get_card_upgrade_discount") else 0.0)
 	
 	for i in range(target_levels):
-		var c = round(cfg.base_cost * pow(cfg.cost_mult, temp_lvl - 1))
+		var c = max(1.0, round(cfg.base_cost * pow(cfg.cost_mult, temp_lvl - 1) * disc))
 		if norm_mode == "MAX":
 			if cash >= total_cost + c:
 				total_cost += c
@@ -1216,7 +1387,7 @@ func get_upgrade_multi_info(station_id: String, mode: String) -> Dictionary:
 			temp_lvl += 1
 			
 	if norm_mode == "MAX" and affordable_levels == 0:
-		total_cost = round(cfg.base_cost * pow(cfg.cost_mult, current_lvl - 1))
+		total_cost = max(1.0, round(cfg.base_cost * pow(cfg.cost_mult, current_lvl - 1) * disc))
 		return {"cost": total_cost, "levels": 1, "can_afford": cash >= total_cost}
 		
 	return {"cost": total_cost, "levels": affordable_levels, "can_afford": cash >= total_cost and affordable_levels > 0}
@@ -1298,7 +1469,9 @@ func get_unlocked_table_count() -> int:
 	return count
 
 func get_table_unlock_cost(table_id: String) -> float:
-	return table_unlock_costs.get(table_id, 200.0)
+	var base = table_unlock_costs.get(table_id, 200.0)
+	var disc = 1.0 - (get_card_upgrade_discount() if has_method("get_card_upgrade_discount") else 0.0)
+	return max(1.0, round(base * disc))
 
 func unlock_table(table_id: String) -> bool:
 	if is_table_unlocked(table_id):
@@ -1559,11 +1732,17 @@ func get_staff_upgrade_cost(staff_id: String) -> float:
 
 func get_staff_speed_multiplier(staff_id: String) -> float:
 	var lvl = get_staff_level(staff_id)
-	return 1.0 + (lvl - 1) * 0.15
+	var mult = 1.0 + (lvl - 1) * 0.15
+	if staff_id.begins_with("waiter") and has_method("get_card_waiter_speed_multiplier"):
+		mult *= get_card_waiter_speed_multiplier()
+	return mult
 
 func get_staff_cooking_multiplier(staff_id: String) -> float:
 	var lvl = get_staff_level(staff_id)
-	return 1.0 + (lvl - 1) * 0.20
+	var mult = 1.0 + (lvl - 1) * 0.20
+	if has_method("get_card_cook_speed_multiplier"):
+		mult *= get_card_cook_speed_multiplier()
+	return mult
 
 func get_staff_serving_multiplier(staff_id: String) -> float:
 	var lvl = get_staff_level(staff_id)
@@ -1679,7 +1858,8 @@ func get_spawn_rate_multiplier() -> float:
 	var park_bonus = 1.0 + (park_lvl - 1) * 0.15
 	var market_bonus = get_marketing_traffic_multiplier()
 	var flyer_bonus = 1.5 if is_campaign_active("flyers") else 1.0
-	return park_bonus * market_bonus * flyer_bonus
+	var card_bonus = get_card_parking_rate_multiplier() if has_method("get_card_parking_rate_multiplier") else 1.0
+	return park_bonus * market_bonus * flyer_bonus * card_bonus
 
 func get_dish_price_multiplier() -> float:
 	var mult = 1.35 if is_campaign_active("social_ad") else 1.0
@@ -1689,12 +1869,16 @@ func get_dish_price_multiplier() -> float:
 		mult *= 2.0
 	if vip_revenue_multiplier_timer > 0.0:
 		mult *= 1.5
+	if has_method("get_card_kitchen_revenue_multiplier"):
+		mult *= get_card_kitchen_revenue_multiplier()
 	return mult
 
 func get_patience_multiplier() -> float:
 	var mult = 1.5 if is_campaign_active("radio_spot") else 1.0
 	if vip_revenue_multiplier_timer > 0.0:
 		mult *= 1.25
+	if has_method("get_card_patience_multiplier"):
+		mult *= get_card_patience_multiplier()
 	return mult
 
 # ─── Marketing Level & VIP Systems ──────────────────────────────────────────
@@ -1953,3 +2137,245 @@ func get_bottleneck_status() -> Dictionary:
 		"code": "OPTIMAL",
 		"icon": "🟢"
 	}
+
+# ─── Collectible Card Management & Multipliers ──────────────────────────────
+func get_card(card_id: String) -> Dictionary:
+	return collectible_cards.get(card_id, {})
+
+func get_all_cards() -> Dictionary:
+	return collectible_cards
+
+func get_card_level(card_id: String) -> int:
+	return int(collectible_cards.get(card_id, {}).get("level", 0))
+
+func get_card_count(card_id: String) -> int:
+	return int(collectible_cards.get(card_id, {}).get("cards", 0))
+
+func get_card_cards_needed(card_id: String) -> int:
+	var lvl = get_card_level(card_id)
+	if lvl >= 10:
+		return 0
+	return CARD_DUPLICATES_TABLE[clamp(lvl, 0, CARD_DUPLICATES_TABLE.size() - 1)]
+
+func get_card_gold_cost(card_id: String) -> int:
+	var card = collectible_cards.get(card_id, {})
+	var lvl = int(card.get("level", 0))
+	if lvl >= 10:
+		return 0
+	var rarity = str(card.get("rarity", "common")).to_lower()
+	var base = 50
+	match rarity:
+		"rare":
+			base = 100
+		"epic":
+			base = 250
+		"legendary":
+			base = 500
+		_:
+			base = 50
+	return base * (lvl + 1)
+
+func can_upgrade_card(card_id: String) -> bool:
+	if not collectible_cards.has(card_id):
+		return false
+	var lvl = get_card_level(card_id)
+	if lvl < 1 or lvl >= 10:
+		return false
+	var needed = get_card_cards_needed(card_id)
+	var cost = get_card_gold_cost(card_id)
+	return get_card_count(card_id) >= needed and golden_coins >= cost
+
+func upgrade_card(card_id: String) -> bool:
+	if not can_upgrade_card(card_id):
+		return false
+	var cost = get_card_gold_cost(card_id)
+	var needed = get_card_cards_needed(card_id)
+	if spend_golden_coins(cost):
+		var card = collectible_cards[card_id]
+		card["cards"] -= needed
+		card["level"] += 1
+		card_updated.emit(card_id, card["level"], card["cards"])
+		cards_updated.emit()
+		save_game()
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("upgrade", 0.0, 3.5)
+		return true
+	return false
+
+func add_card_duplicates(card_id: String, amount: int) -> void:
+	if not collectible_cards.has(card_id) or amount <= 0:
+		return
+	var card = collectible_cards[card_id]
+	if card["level"] == 0:
+		card["level"] = 1
+		card["cards"] += (amount - 1)
+	else:
+		card["cards"] += amount
+	card_updated.emit(card_id, card["level"], card["cards"])
+	cards_updated.emit()
+	save_game()
+
+# ─── Sector Multipliers from Collectible Cards ──────────────────────────────
+func get_card_cook_speed_multiplier() -> float:
+	return 1.0 + get_card_level("head_chef") * 0.15
+
+func get_card_waiter_speed_multiplier() -> float:
+	return 1.0 + get_card_level("head_waiter") * 0.12
+
+func get_card_cocktail_revenue_multiplier() -> float:
+	return 1.0 + get_card_level("mixologist") * 0.25
+
+func get_card_milkshake_revenue_multiplier() -> float:
+	return 1.0 + get_card_level("soda_pop_star") * 0.20
+
+func get_card_parking_rate_multiplier() -> float:
+	return 1.0 + get_card_level("valet_captain") * 0.20
+
+func get_card_upgrade_discount() -> float:
+	return min(0.50, get_card_level("executive_tycoon") * 0.05)
+
+func get_card_kitchen_revenue_multiplier() -> float:
+	return 1.0 + get_card_level("sous_chef") * 0.10
+
+func get_card_patience_multiplier() -> float:
+	return 1.0 + get_card_level("star_hostess") * 0.15
+
+func get_card_table_turnover_multiplier() -> float:
+	return 1.0 + get_card_level("maitre_d") * 0.25
+
+func get_card_tip_multiplier() -> float:
+	return 1.0 + get_card_level("sommelier") * 0.30
+
+func get_card_vip_spawn_multiplier() -> float:
+	return 1.0 + get_card_level("vip_chauffeur") * 0.50
+
+func get_card_cleaning_multiplier() -> float:
+	return 1.0 + get_card_level("master_janitor") * 0.25
+
+# ─── Gacha Chest Systems ───────────────────────────────────────────────────
+func can_claim_free_wooden_chest() -> bool:
+	return wooden_chest_free_timestamp <= 0.0 or Time.get_unix_time_from_system() >= wooden_chest_free_timestamp
+
+func get_free_wooden_chest_cooldown_left() -> float:
+	return max(0.0, wooden_chest_free_timestamp - Time.get_unix_time_from_system())
+
+func open_chest(chest_type: String) -> Dictionary:
+	var ctype = chest_type.to_lower()
+	var was_free = false
+	
+	match ctype:
+		"wooden", "chest_wooden":
+			ctype = "wooden"
+			if can_claim_free_wooden_chest():
+				was_free = true
+				wooden_chest_free_timestamp = Time.get_unix_time_from_system() + 14400.0
+			elif spend_golden_coins(100):
+				pass
+			else:
+				return {"success": false, "reason": "Not enough Golden Coins"}
+		"silver", "chest_silver":
+			ctype = "silver"
+			if not spend_diamonds(35):
+				return {"success": false, "reason": "Not enough Diamonds"}
+		"golden_epic", "golden", "epic", "chest_golden", "chest_epic", "chest_golden_epic":
+			ctype = "golden_epic"
+			if not spend_diamonds(120):
+				return {"success": false, "reason": "Not enough Diamonds"}
+		_:
+			return {"success": false, "reason": "Invalid chest type"}
+			
+	var cash_gain: float = 0.0
+	var coins_gain: int = 0
+	var gems_gain: int = 0
+	var card_drops_count: int = 2
+	var rarity_weights = {"common": 75, "rare": 25, "epic": 0, "legendary": 0}
+	var copies_min: int = 1
+	var copies_max: int = 2
+	
+	if ctype == "wooden":
+		cash_gain = round(randf_range(300.0, 800.0))
+		coins_gain = randi_range(15, 40)
+		gems_gain = 0
+		card_drops_count = 2
+		rarity_weights = {"common": 75, "rare": 25, "epic": 0, "legendary": 0}
+		copies_min = 1
+		copies_max = 2
+	elif ctype == "silver":
+		cash_gain = round(randf_range(2000.0, 5000.0))
+		coins_gain = randi_range(50, 120)
+		gems_gain = randi_range(3, 8)
+		card_drops_count = 3
+		rarity_weights = {"common": 45, "rare": 40, "epic": 15, "legendary": 0}
+		copies_min = 2
+		copies_max = 4
+	elif ctype == "golden_epic":
+		cash_gain = round(randf_range(10000.0, 25000.0))
+		coins_gain = randi_range(200, 500)
+		gems_gain = randi_range(15, 35)
+		card_drops_count = 5
+		rarity_weights = {"common": 20, "rare": 40, "epic": 25, "legendary": 15}
+		copies_min = 3
+		copies_max = 6
+		
+	# Select Cards based on rarity weights
+	var reward_cards: Array = []
+	for i in range(card_drops_count):
+		var target_rarity = _pick_chest_rarity(rarity_weights)
+		var eligible: Array = []
+		for cid in collectible_cards.keys():
+			if collectible_cards[cid].get("rarity", "common") == target_rarity:
+				eligible.append(cid)
+		if eligible.is_empty():
+			eligible = collectible_cards.keys()
+		var chosen_id = eligible[randi() % eligible.size()]
+		var count = randi_range(copies_min, copies_max)
+		add_card_duplicates(chosen_id, count)
+		var cinfo = collectible_cards[chosen_id]
+		reward_cards.append({
+			"id": chosen_id,
+			"name": cinfo.name,
+			"rarity": cinfo.rarity,
+			"icon": cinfo.icon,
+			"count": count,
+			"level": cinfo.level,
+			"bonus_desc": cinfo.bonus_desc
+		})
+		
+	add_cash(cash_gain)
+	add_golden_coins(coins_gain)
+	if gems_gain > 0:
+		add_diamonds(gems_gain)
+		
+	var rewards = {
+		"success": true,
+		"chest_type": ctype,
+		"was_free": was_free,
+		"cash": cash_gain,
+		"golden_coins": coins_gain,
+		"diamonds": gems_gain,
+		"cards": reward_cards
+	}
+	
+	chest_opened.emit(ctype, rewards)
+	save_game()
+	
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("coin", 0.05, 1.2)
+		
+	return rewards
+
+func _pick_chest_rarity(weights: Dictionary) -> String:
+	var total: int = 0
+	for w in weights.values():
+		total += int(w)
+	if total <= 0:
+		return "common"
+	var roll = randi_range(1, total)
+	var accum = 0
+	for r in ["legendary", "epic", "rare", "common"]:
+		accum += int(weights.get(r, 0))
+		if roll <= accum:
+			return r
+	return "common"

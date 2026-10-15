@@ -511,7 +511,11 @@ func _update_helicopter(delta: float) -> void:
 				helicopter_node.queue_free()
 				helicopter_node = null
 				helicopter_state = "IDLE"
-				helicopter_timer = randf_range(60.0, 90.0)
+				var vip_mult: float = 1.0
+				var gm_heli = get_node_or_null("/root/GameManager")
+				if gm_heli != null and gm_heli.has_method("get_card_vip_spawn_multiplier"):
+					vip_mult = gm_heli.get_card_vip_spawn_multiplier()
+				helicopter_timer = randf_range(60.0, 90.0) / vip_mult
 
 func _on_helicopter_touchdown() -> void:
 	vip_helicopter_landed.emit()

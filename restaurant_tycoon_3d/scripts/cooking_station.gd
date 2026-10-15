@@ -164,3 +164,9 @@ func _on_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vect
 		var gm = get_node_or_null("/root/GameManager")
 		var lvl: int = gm.get_station_level(station_id) if gm != null else 1
 		station_clicked.emit(station_id, station_name, lvl)
+
+func get_cooking_speed_multiplier() -> float:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_method("get_card_cook_speed_multiplier"):
+		return gm.get_card_cook_speed_multiplier()
+	return 1.0
