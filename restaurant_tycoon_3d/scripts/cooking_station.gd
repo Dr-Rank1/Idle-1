@@ -13,6 +13,10 @@ signal station_clicked(station_id: String, station_name: String, level: int)
 var time_passed: float = 0.0
 var initial_badge_y: float = 2.4
 
+var highlight_ring: MeshInstance3D = null
+var is_highlighted: bool = false
+var highlight_time: float = 0.0
+
 func _ready() -> void:
 	if badge_root != null:
 		initial_badge_y = badge_root.position.y
@@ -39,6 +43,48 @@ func _process(delta: float) -> void:
 		if action_badge != null and action_badge.visible:
 			var pulse = 1.0 + sin(time_passed * 6.0) * 0.12
 			action_badge.scale = Vector3(pulse, pulse, pulse)
+
+	# Subtle pulsing golden floor rim highlight for cooking station
+	if is_highlighted and highlight_ring != null and highlight_ring.visible:
+		highlight_time += delta
+		var pulse_scale = 1.0 + sin(highlight_time * 4.5) * 0.05
+		highlight_ring.scale = Vector3(2.0 * pulse_scale, 0.5, 0.75 * pulse_scale)
+		if highlight_ring.material_override is StandardMaterial3D:
+			var alpha = 0.65 + sin(highlight_time * 4.5) * 0.25
+			highlight_ring.material_override.albedo_color = Color(1.0, 0.84, 0.2, alpha)
+
+func set_highlight(active: bool) -> void:
+	is_highlighted = active
+	if is_highlighted:
+		if highlight_ring == null:
+			_create_highlight_ring()
+		if highlight_ring != null:
+			highlight_ring.visible = true
+			highlight_time = 0.0
+	else:
+		if highlight_ring != null:
+			highlight_ring.visible = false
+
+func _create_highlight_ring() -> void:
+	highlight_ring = MeshInstance3D.new()
+	highlight_ring.name = "FloorHighlightRing"
+	
+	var torus = TorusMesh.new()
+	torus.inner_radius = 1.7
+	torus.outer_radius = 1.95
+	torus.rings = 36
+	torus.ring_segments = 16
+	highlight_ring.mesh = torus
+	
+	var mat = StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(1.0, 0.85, 0.2, 0.8)
+	highlight_ring.material_override = mat
+	
+	highlight_ring.position = Vector3(0.0, 0.04, 0.0)
+	highlight_ring.scale = Vector3(2.0, 0.5, 0.75)
+	add_child(highlight_ring)
 
 func _on_cash_changed(_val: float) -> void:
 	var gm = get_node_or_null("/root/GameManager")

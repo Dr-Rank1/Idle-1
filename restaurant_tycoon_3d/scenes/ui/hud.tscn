@@ -194,6 +194,46 @@ content_margin_top = 6.0
 content_margin_right = 12.0
 content_margin_bottom = 6.0
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_header_multi_pill"]
+bg_color = Color(0.06, 0.08, 0.14, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.95, 0.78, 0.25, 0.7)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 6.0
+content_margin_top = 2.0
+content_margin_right = 6.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_multi_btn_active"]
+bg_color = Color(0.96, 0.65, 0.12, 1)
+border_width_bottom = 2
+border_color = Color(0.7, 0.42, 0.05, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 8.0
+content_margin_top = 3.0
+content_margin_right = 8.0
+content_margin_bottom = 3.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_multi_btn_inactive"]
+bg_color = Color(0.12, 0.15, 0.22, 0.8)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 8.0
+content_margin_top = 3.0
+content_margin_right = 8.0
+content_margin_bottom = 3.0
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_green_3d"]
 bg_color = Color(0.18, 0.8, 0.4, 1)
 border_width_bottom = 4
@@ -237,6 +277,13 @@ corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gold_progress_fill"]
+bg_color = Color(0.96, 0.72, 0.15, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_avatar_purple"]
 bg_color = Color(0.18, 0.10, 0.28, 0.96)
@@ -657,6 +704,15 @@ theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
 theme_override_font_sizes/font_size = 11
 text = "★ Grand Diner"
 horizontal_alignment = 1
+
+[node name="CurrencyTrailsLayer" type="Control" parent="HUD"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="TopBar" type="HBoxContainer" parent="HUD"]
 layout_mode = 1
@@ -1156,6 +1212,37 @@ text = "🥤 Retro Milkshake Bar"
 layout_mode = 2
 size_flags_horizontal = 3
 
+[node name="MultiTogglePill" type="PanelContainer" parent="UpgradePanel/VBox/HeaderBar/HBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_header_multi_pill")
+
+[node name="PillHBox" type="HBoxContainer" parent="UpgradePanel/VBox/HeaderBar/HBox/MultiTogglePill"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HeaderMulti1Btn" type="Button" parent="UpgradePanel/VBox/HeaderBar/HBox/MultiTogglePill/PillHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_multi_btn_active")
+text = "x1"
+
+[node name="HeaderMulti10Btn" type="Button" parent="UpgradePanel/VBox/HeaderBar/HBox/MultiTogglePill/PillHBox"]
+modulate = Color(0.75, 0.8, 0.9, 0.8)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_multi_btn_inactive")
+text = "x10"
+
+[node name="HeaderMultiMaxBtn" type="Button" parent="UpgradePanel/VBox/HeaderBar/HBox/MultiTogglePill/PillHBox"]
+modulate = Color(0.75, 0.8, 0.9, 0.8)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_multi_btn_inactive")
+text = "MAX"
+
 [node name="HoursBadge" type="Label" parent="UpgradePanel/VBox/HeaderBar/HBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.88, 0.7, 1)
@@ -1233,6 +1320,40 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 11
 theme_override_styles/normal = SubResource("StyleBoxFlat_badge_blue_max")
 text = "MAX"
+
+[node name="StationMilestoneBox" type="VBoxContainer" parent="UpgradePanel/VBox/StationCard/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="BarTrack" type="Control" parent="UpgradePanel/VBox/StationCard/VBox/StationMilestoneBox"]
+custom_minimum_size = Vector2(0, 14)
+layout_mode = 2
+
+[node name="StationProgressBar" type="ProgressBar" parent="UpgradePanel/VBox/StationCard/VBox/StationMilestoneBox/BarTrack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_xp_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_gold_progress_fill")
+max_value = 50.0
+value = 1.0
+show_percentage = false
+
+[node name="TicksOverlay" type="Control" parent="UpgradePanel/VBox/StationCard/VBox/StationMilestoneBox/BarTrack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MilestoneLabelsHBox" type="HBoxContainer" parent="UpgradePanel/VBox/StationCard/VBox/StationMilestoneBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
 
 [node name="BodyHBox" type="HBoxContainer" parent="UpgradePanel/VBox/StationCard/VBox"]
 layout_mode = 2

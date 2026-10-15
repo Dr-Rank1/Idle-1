@@ -8,6 +8,7 @@ signal level_updated(new_level: int, current_xp: float, target_xp: float)
 signal reputation_changed(new_rep: int)
 signal station_upgraded(station_id: String, new_level: int)
 signal spawn_floating_cash(amount: float, world_pos: Vector3)
+signal spawn_flying_currency_trail(world_pos: Vector3, amount: float)
 signal boost_toggled(active: bool)
 signal menu_updated()
 signal staff_updated(staff_id: String)
@@ -800,6 +801,7 @@ func add_cash(amount: float, world_pos: Vector3 = Vector3.ZERO) -> void:
 	cash_changed.emit(cash)
 	if world_pos != Vector3.ZERO:
 		spawn_floating_cash.emit(final_amount, world_pos)
+		spawn_flying_currency_trail.emit(world_pos, final_amount)
 	
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("play_sfx"):
@@ -954,10 +956,11 @@ func get_upgrade_multi_info(station_id: String, mode: String) -> Dictionary:
 	if max_avail <= 0:
 		return {"cost": 0.0, "levels": 0, "can_afford": false}
 	
+	var norm_mode: String = mode.to_upper().trim_prefix("X")
 	var target_levels: int = 1
-	if mode == "10":
+	if norm_mode == "10":
 		target_levels = min(10, max_avail)
-	elif mode == "MAX":
+	elif norm_mode == "MAX":
 		target_levels = max_avail
 		
 	var cfg = get_station_config(station_id)
@@ -967,7 +970,7 @@ func get_upgrade_multi_info(station_id: String, mode: String) -> Dictionary:
 	
 	for i in range(target_levels):
 		var c = round(cfg.base_cost * pow(cfg.cost_mult, temp_lvl - 1))
-		if mode == "MAX":
+		if norm_mode == "MAX":
 			if cash >= total_cost + c:
 				total_cost += c
 				affordable_levels += 1
@@ -979,13 +982,13 @@ func get_upgrade_multi_info(station_id: String, mode: String) -> Dictionary:
 			affordable_levels += 1
 			temp_lvl += 1
 			
-	if mode == "MAX" and affordable_levels == 0:
+	if norm_mode == "MAX" and affordable_levels == 0:
 		total_cost = round(cfg.base_cost * pow(cfg.cost_mult, current_lvl - 1))
 		return {"cost": total_cost, "levels": 1, "can_afford": cash >= total_cost}
 		
 	return {"cost": total_cost, "levels": affordable_levels, "can_afford": cash >= total_cost and affordable_levels > 0}
 
-func upgrade_station_multi(station_id: String, mode: String) -> bool:
+func upgrade_station_multi(station_id: String, mode: String, consecutive_step: int = 0) -> bool:
 	var info = get_upgrade_multi_info(station_id, mode)
 	if info.can_afford and spend_cash(info.cost):
 		var current_lvl = get_station_level(station_id)
@@ -1005,13 +1008,16 @@ func upgrade_station_multi(station_id: String, mode: String) -> bool:
 		save_game()
 		
 		var am = get_node_or_null("/root/AudioManager")
-		if am != null and am.has_method("play_sfx"):
-			am.play_sfx("upgrade")
+		if am != null:
+			if consecutive_step > 0 and am.has_method("play_upgrade_sfx"):
+				am.play_upgrade_sfx(consecutive_step)
+			elif am.has_method("play_sfx"):
+				am.play_sfx("upgrade")
 		return true
 	return false
 
 func upgrade_station(station_id: String) -> bool:
-	return upgrade_station_multi(station_id, "1")
+	return upgrade_station_multi(station_id, "1", 0)
 
 func get_effective_cash_per_sec() -> float:
 	if cash_per_sec >= 1.0:

@@ -61,6 +61,11 @@ var janitor_speed: float = 3.2
 var breakroom_routine_timer: float = 28.0
 var sign_board_mat: StandardMaterial3D = null
 
+# ─── Swipe-to-Collect & Combo Tracking ──────────────────────────────────────
+var active_counter_stacks: Array[Dictionary] = []
+var last_cash_collect_time: float = -999.0
+var cash_collect_combo: int = 0
+
 # Front sliding entrance door controller
 const SLIDE_DOOR_POS: Vector3 = Vector3(-1.5, 0.0, 10.5)
 const SLIDE_DOOR_MAX_OFFSET: float = 0.85
@@ -92,9 +97,10 @@ func _ready() -> void:
 		gm.station_upgraded.connect(_on_station_upgraded)
 		_check_spawn_hired_staff()
 	
-	for table in tables_container.get_children():
-		if table.has_signal("table_clicked"):
-			table.table_clicked.connect(_on_table_clicked)
+	if tables_container != null:
+		for table in tables_container.get_children():
+			if table.has_signal("table_clicked"):
+				table.table_clicked.connect(_on_table_clicked)
 			
 	# Remove any legacy static queue guests so dynamic queuing is unobstructed
 	for node_name in ["HostQueueGuest1", "HostQueueGuest2", "HostQueueGuest3", "WaitingGuest", "WaitingGuest1A", "WaitingGuest1B"]:
@@ -2537,6 +2543,18 @@ func _spawn_counter_cash_stack(pos: Vector3, amount: float) -> void:
 	if am != null and am.has_method("play_sfx"):
 		am.play_sfx("coin", 0.04, 1.0)
 		
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_signal("spawn_flying_currency_trail"):
+		gm.spawn_flying_currency_trail.emit(pos, amount)
+		
+	var stack_data = {
+		"node": stack_root,
+		"pos": pos,
+		"amount": amount,
+		"collected": false
+	}
+	active_counter_stacks.append(stack_data)
+		
 	var tw = create_tween()
 	tw.set_parallel(true)
 	tw.tween_property(sprite, "scale", Vector3(0.5, 0.5, 0.5), 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -2544,7 +2562,108 @@ func _spawn_counter_cash_stack(pos: Vector3, amount: float) -> void:
 	tw.chain().tween_property(sprite, "modulate:a", 0.0, 0.4)
 	tw.set_parallel(true)
 	tw.tween_property(lbl, "modulate:a", 0.0, 0.4)
-	tw.chain().tween_callback(stack_root.queue_free)
+	tw.chain().tween_callback(func():
+		active_counter_stacks.erase(stack_data)
+		if is_instance_valid(stack_root):
+			stack_root.queue_free()
+	)
+
+func collect_counter_stack(item: Dictionary) -> void:
+	if item.get("collected", false):
+		return
+	item["collected"] = true
+	active_counter_stacks.erase(item)
+	var pos: Vector3 = item.get("pos", Vector3.ZERO)
+	var amount: float = item.get("amount", 25.0)
+	var node: Node3D = item.get("node", null)
+	
+	register_cash_collection(pos, amount)
+	
+	if is_instance_valid(node):
+		var tw = create_tween()
+		tw.tween_property(node, "scale", Vector3.ZERO, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		tw.tween_callback(node.queue_free)
+
+func register_cash_collection(pos: Vector3, base_amount: float) -> void:
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if (now - last_cash_collect_time) <= 1.0:
+		cash_collect_combo += 1
+	else:
+		cash_collect_combo = 1
+	last_cash_collect_time = now
+	
+	var multiplier: int = 1
+	if cash_collect_combo >= 3:
+		multiplier = cash_collect_combo - 1
+		_spawn_combo_floating_text(pos, multiplier)
+		
+	var final_amount: float = base_amount * float(multiplier)
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null:
+		gm.add_cash(final_amount, pos)
+		if gm.has_signal("spawn_flying_currency_trail"):
+			gm.spawn_flying_currency_trail.emit(pos, final_amount)
+			
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		var pitch = clamp(1.0 + float(cash_collect_combo - 1) * 0.08, 1.0, 1.8)
+		am.play_sfx("coin", 0.04, pitch)
+
+func _spawn_combo_floating_text(world_pos: Vector3, multiplier: int) -> void:
+	var label = Label3D.new()
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.double_sided = false
+	label.text = "x%d COMBO!" % multiplier
+	label.font_size = 36
+	label.outline_size = 9
+	label.modulate = Color(1.0, 0.88, 0.15, 1.0)
+	label.outline_modulate = Color(0.65, 0.22, 0.0, 0.95)
+	label.position = world_pos + Vector3(0.0, 0.6, 0.0)
+	add_child(label)
+	
+	label.scale = Vector3(0.5, 0.5, 0.5)
+	var tw = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(label, "scale", Vector3(1.3, 1.3, 1.3), 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(label, "position:y", label.position.y + 1.1, 0.85).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_property(label, "scale", Vector3.ONE, 0.2)
+	tw.parallel().tween_property(label, "modulate:a", 0.0, 0.4).set_delay(0.3)
+	tw.chain().tween_callback(label.queue_free)
+
+func _check_swipe_cash_collection(screen_pos: Vector2) -> void:
+	var cam: Camera3D = get_viewport().get_camera_3d() if get_viewport() != null else null
+	if cam == null:
+		return
+		
+	# 1. Check dining tables
+	if tables_container != null:
+		for table in tables_container.get_children():
+			if table.has_method("has_visible_cash_stack") and table.has_visible_cash_stack():
+				var stack_pos: Vector3 = table.get_cash_stack_world_pos()
+				if not cam.is_position_behind(stack_pos):
+					var screen_pt: Vector2 = cam.unproject_position(stack_pos)
+					if screen_pt.distance_to(screen_pos) <= 52.0:
+						table.collect_booth_cash()
+						
+	# 2. Check active counter stacks
+	for i in range(active_counter_stacks.size() - 1, -1, -1):
+		var item = active_counter_stacks[i]
+		if not item.get("collected", false) and is_instance_valid(item.get("node", null)):
+			var stack_pos: Vector3 = item.get("pos", Vector3.ZERO)
+			if not cam.is_position_behind(stack_pos):
+				var screen_pt: Vector2 = cam.unproject_position(stack_pos)
+				if screen_pt.distance_to(screen_pos) <= 52.0:
+					collect_counter_stack(item)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenDrag:
+		_check_swipe_cash_collection(event.position)
+	elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		_check_swipe_cash_collection(event.position)
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		_check_swipe_cash_collection(event.position)
+	elif event is InputEventScreenTouch and event.pressed:
+		_check_swipe_cash_collection(event.position)
 
 func _on_milkshake_bar_clicked(_cam: Node, event: InputEvent, _pos: Vector3, _normal: Vector3, _idx: int) -> void:
 	if (event is InputEventMouseButton and (event.button_index == MOUSE_BUTTON_LEFT or event.button_index == 1) and event.pressed) or (event is InputEventScreenTouch and event.pressed):

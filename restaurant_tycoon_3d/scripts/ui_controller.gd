@@ -50,6 +50,29 @@ extends CanvasLayer
 @onready var zone_title_label: Label = get_node_or_null("UpgradePanel/VBox/HeaderBar/HBox/ZoneTitle")
 @onready var hours_badge_label: Label = get_node_or_null("UpgradePanel/VBox/HeaderBar/HBox/HoursBadge")
 @onready var upgrade_milestone_bar: ProgressBar = get_node_or_null("UpgradePanel/VBox/MilestoneBar")
+var _station_progress_bar: ProgressBar = null
+var station_progress_bar: ProgressBar:
+	get:
+		if _station_progress_bar != null and is_instance_valid(_station_progress_bar):
+			return _station_progress_bar
+		_station_progress_bar = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/StationMilestoneBox/BarTrack/StationProgressBar")
+		return _station_progress_bar
+
+var _ticks_overlay: Control = null
+var ticks_overlay: Control:
+	get:
+		if _ticks_overlay != null and is_instance_valid(_ticks_overlay):
+			return _ticks_overlay
+		_ticks_overlay = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/StationMilestoneBox/BarTrack/TicksOverlay")
+		return _ticks_overlay
+
+var _milestone_labels_hbox: HBoxContainer = null
+var milestone_labels_hbox: HBoxContainer:
+	get:
+		if _milestone_labels_hbox != null and is_instance_valid(_milestone_labels_hbox):
+			return _milestone_labels_hbox
+		_milestone_labels_hbox = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/StationMilestoneBox/MilestoneLabelsHBox")
+		return _milestone_labels_hbox
 @onready var sub_upgrade_grid: GridContainer = get_node_or_null("UpgradePanel/VBox/SubUpgradeGrid")
 @onready var stat_cash_lbl: Label = get_node_or_null("UpgradePanel/VBox/StatsRibbon/HBox/CashStat")
 @onready var stat_energy_lbl: Label = get_node_or_null("UpgradePanel/VBox/StatsRibbon/HBox/EnergyStat")
@@ -123,11 +146,58 @@ var boost_timer_bar: Panel = null
 @onready var perks_vbox: VBoxContainer = get_node_or_null("PerksPanel/VBox/Scroll/VBox")
 @onready var close_perks_btn: Button = get_node_or_null("PerksPanel/VBox/CloseBtn")
 
+@onready var currency_trails_layer: Control = get_node_or_null("HUD/CurrencyTrailsLayer")
+@onready var header_multi_pill: PanelContainer = get_node_or_null("UpgradePanel/VBox/HeaderBar/HBox/MultiTogglePill")
+@onready var header_multi_1_btn: Button = get_node_or_null("UpgradePanel/VBox/HeaderBar/HBox/MultiTogglePill/PillHBox/HeaderMulti1Btn")
+@onready var header_multi_10_btn: Button = get_node_or_null("UpgradePanel/VBox/HeaderBar/HBox/MultiTogglePill/PillHBox/HeaderMulti10Btn")
+@onready var header_multi_max_btn: Button = get_node_or_null("UpgradePanel/VBox/HeaderBar/HBox/MultiTogglePill/PillHBox/HeaderMultiMaxBtn")
+
 var current_station_id: String = ""
 var current_multiplier: String = "1"
 var displayed_cash: float = 650.0
+var displayed_rate: float = 0.0
+var cash_tween: Tween = null
+var rate_tween: Tween = null
 var sim_time_minutes: float = 8.0 * 60.0 + 34.0
 var analytics_refresh_timer: float = 0.0
+
+# ─── Hold-to-Upgrade State ──────────────────────────────────────────────────
+var _is_holding_upgrade: bool = false
+var _hold_station_id: String = ""
+var _hold_is_staff: bool = false
+var _hold_timer: float = 0.0
+var _hold_consecutive: int = 0
+var _hold_delay_passed: bool = false
+var _just_upgraded_on_hold: bool = false
+const HOLD_INITIAL_DELAY: float = 0.35
+
+var cash_texture: Texture2D = null
+var style_multi_active: StyleBoxFlat = null
+var style_multi_inactive: StyleBoxFlat = null
+
+func _get_game_manager() -> Node:
+	if is_inside_tree():
+		var n = get_node_or_null("/root/GameManager")
+		if n != null:
+			return n
+	var loop = Engine.get_main_loop()
+	if loop is SceneTree:
+		var st = loop as SceneTree
+		if st.root != null:
+			return st.root.get_node_or_null("GameManager")
+	return null
+
+func _get_audio_manager() -> Node:
+	if is_inside_tree():
+		var n = get_node_or_null("/root/AudioManager")
+		if n != null:
+			return n
+	var loop = Engine.get_main_loop()
+	if loop is SceneTree:
+		var st = loop as SceneTree
+		if st.root != null:
+			return st.root.get_node_or_null("AudioManager")
+	return null
 
 func _ready() -> void:
 	_hide_all_modals()
@@ -180,11 +250,34 @@ func _ready() -> void:
 	quest_banner.gui_input.connect(_on_quest_banner_input)
 	quest_claim_btn.pressed.connect(_on_banner_claim_pressed)
 	
-	# Upgrade Modal
+	# Upgrade Modal & Multiplier Buttons
+	style_multi_active = StyleBoxFlat.new()
+	style_multi_active.bg_color = Color(0.96, 0.65, 0.12, 1.0)
+	style_multi_active.border_width_bottom = 2
+	style_multi_active.border_color = Color(0.7, 0.42, 0.05, 1.0)
+	style_multi_active.set_corner_radius_all(8)
+	style_multi_active.content_margin_left = 8.0
+	style_multi_active.content_margin_top = 3.0
+	style_multi_active.content_margin_right = 8.0
+	style_multi_active.content_margin_bottom = 3.0
+
+	style_multi_inactive = StyleBoxFlat.new()
+	style_multi_inactive.bg_color = Color(0.12, 0.15, 0.22, 0.8)
+	style_multi_inactive.set_corner_radius_all(8)
+	style_multi_inactive.content_margin_left = 8.0
+	style_multi_inactive.content_margin_top = 3.0
+	style_multi_inactive.content_margin_right = 8.0
+	style_multi_inactive.content_margin_bottom = 3.0
+
 	if multi_1_btn != null: multi_1_btn.pressed.connect(func(): _set_multiplier("1"))
 	if multi_10_btn != null: multi_10_btn.pressed.connect(func(): _set_multiplier("10"))
 	if multi_max_btn != null: multi_max_btn.pressed.connect(func(): _set_multiplier("MAX"))
-	if upgrade_btn != null: upgrade_btn.pressed.connect(_on_upgrade_pressed)
+	if header_multi_1_btn != null: header_multi_1_btn.pressed.connect(func(): _set_multiplier("1"))
+	if header_multi_10_btn != null: header_multi_10_btn.pressed.connect(func(): _set_multiplier("10"))
+	if header_multi_max_btn != null: header_multi_max_btn.pressed.connect(func(): _set_multiplier("MAX"))
+	if upgrade_btn != null:
+		_connect_hold_upgrade_button(upgrade_btn, func(): return current_station_id)
+		upgrade_btn.pressed.connect(_on_upgrade_pressed)
 	if close_btn != null: close_btn.pressed.connect(func(): _close_modal(upgrade_panel))
 	if tab_upgrades_btn != null: tab_upgrades_btn.pressed.connect(func():
 		_play_click_sfx()
@@ -310,6 +403,8 @@ func _ready() -> void:
 		gm.campaign_updated.connect(_on_campaign_updated)
 		gm.offline_earnings_available.connect(_on_offline_earnings_available)
 		gm.critic_review_awarded.connect(_on_critic_review_awarded)
+		if gm.has_signal("spawn_flying_currency_trail"):
+			gm.spawn_flying_currency_trail.connect(spawn_flying_currency_trail)
 		if gm.has_signal("marketing_changed"):
 			gm.marketing_changed.connect(func():
 				_update_marketing_ribbon()
@@ -345,15 +440,248 @@ func _ready() -> void:
 		)
 		
 		displayed_cash = gm.cash
+		displayed_rate = gm.get_effective_cash_per_sec()
 		_update_top_bar(gm.cash, gm.gems, gm.star_rating, gm.restaurant_name, gm.restaurant_level, gm.restaurant_xp, gm.xp_to_next_level)
+		if cash_rate_label != null:
+			cash_rate_label.text = "+%s/s" % _format_money(displayed_rate)
+		_set_multiplier("1")
 		_refresh_quest_banner()
+	
+	_wire_all_buttons_in_tree(self)
+	_update_affordability_badges()
+
+# ─── Tactile Squash-and-Stretch & Affordability Feedback ────────────────────
+func apply_button_squash_and_stretch(btn: Button) -> void:
+	if btn == null or not is_instance_valid(btn):
+		return
+	btn.pivot_offset = btn.size * 0.5
+	var tw = create_tween()
+	tw.tween_property(btn, "scale", Vector2(0.92, 0.92), 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(btn, "scale", Vector2(1.04, 1.04), 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(btn, "scale", Vector2.ONE, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+func _wire_button_bounce(btn: Button) -> void:
+	if btn == null or not is_instance_valid(btn):
+		return
+	if btn.has_meta("bounce_wired"):
+		return
+	btn.set_meta("bounce_wired", true)
+	btn.pressed.connect(func():
+		apply_button_squash_and_stretch(btn)
+	)
+
+func _wire_all_buttons_in_tree(root_node: Node) -> void:
+	if root_node == null:
+		return
+	if root_node is Button:
+		_wire_button_bounce(root_node as Button)
+	for child in root_node.get_children():
+		_wire_all_buttons_in_tree(child)
+
+func _set_button_affordability_badge(btn: Button, affordable: bool) -> void:
+	if btn == null or not is_instance_valid(btn):
+		return
+	var badge = btn.get_node_or_null("AffordabilityBadge")
+	if not affordable:
+		if badge != null:
+			badge.visible = false
+		return
+		
+	if badge == null:
+		badge = PanelContainer.new()
+		badge.name = "AffordabilityBadge"
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.anchor_left = 1.0
+		badge.anchor_top = 0.0
+		badge.anchor_right = 1.0
+		badge.anchor_bottom = 0.0
+		badge.offset_left = -16.0
+		badge.offset_top = -2.0
+		badge.offset_right = 2.0
+		badge.offset_bottom = 16.0
+		badge.custom_minimum_size = Vector2(18, 18)
+		badge.z_index = 5
+		
+		var sb = StyleBoxFlat.new()
+		sb.bg_color = Color(0.18, 0.78, 0.35, 1.0)
+		sb.set_corner_radius_all(9)
+		sb.border_width_left = 1
+		sb.border_width_top = 1
+		sb.border_width_right = 1
+		sb.border_width_bottom = 1
+		sb.border_color = Color(1.0, 1.0, 1.0, 0.9)
+		badge.add_theme_stylebox_override("panel", sb)
+		
+		var lbl = Label.new()
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lbl.text = "▲"
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_size_override("font_size", 10)
+		lbl.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+		badge.add_child(lbl)
+		
+		btn.add_child(badge)
+		
+	badge.visible = true
+
+func _update_affordability_badges() -> void:
+	var gm = _get_game_manager()
+	if gm == null:
+		return
+		
+	# 1. Parking category (nav_parking_btn)
+	var can_afford_parking: bool = false
+	if gm.get_station_level("parking_lot") < gm.get_station_max_level("parking_lot"):
+		var p_cost = gm.get_upgrade_cost("parking_lot")
+		if p_cost > 0.0 and gm.cash >= p_cost:
+			can_afford_parking = true
+	_set_button_affordability_badge(nav_parking_btn, can_afford_parking)
+	
+	# 2. Kitchen category (nav_kitchen_btn)
+	var can_afford_kitchen: bool = false
+	for k_sid in ["stove", "kitchen_cook"]:
+		if gm.get_station_level(k_sid) < gm.get_station_max_level(k_sid):
+			var k_cost = gm.get_upgrade_cost(k_sid)
+			if k_cost > 0.0 and gm.cash >= k_cost:
+				can_afford_kitchen = true
+				break
+	_set_button_affordability_badge(nav_kitchen_btn, can_afford_kitchen)
+	
+	# 3. Dining category (nav_dining_btn)
+	var can_afford_dining: bool = false
+	for i in range(1, 9):
+		var t_id = "table_%d" % i
+		if not gm.is_table_unlocked(t_id):
+			if gm.cash >= gm.get_table_unlock_cost(t_id):
+				can_afford_dining = true
+				break
+		else:
+			if gm.get_station_level(t_id) < gm.get_station_max_level(t_id):
+				var t_cost = gm.get_upgrade_cost(t_id)
+				if t_cost > 0.0 and gm.cash >= t_cost:
+					can_afford_dining = true
+					break
+	_set_button_affordability_badge(nav_dining_btn, can_afford_dining)
+	
+	# 4. Milkshake Diner category (nav_milkshake_btn)
+	var can_afford_milkshake: bool = false
+	for m_sid in ["milkshake_bar", "milkshake_blender", "jukebox"]:
+		if gm.get_station_level(m_sid) < gm.get_station_max_level(m_sid):
+			var m_cost = gm.get_upgrade_cost(m_sid)
+			if m_cost > 0.0 and gm.cash >= m_cost:
+				can_afford_milkshake = true
+				break
+	_set_button_affordability_badge(nav_milkshake_btn, can_afford_milkshake)
+	
+	# 5. Terrace category (nav_terrace_btn)
+	var can_afford_terrace: bool = false
+	for i in range(9, 13):
+		var t_id = "table_%d" % i
+		if not gm.is_table_unlocked(t_id):
+			if gm.cash >= gm.get_table_unlock_cost(t_id):
+				can_afford_terrace = true
+				break
+		else:
+			if gm.get_station_level(t_id) < gm.get_station_max_level(t_id):
+				var t_cost = gm.get_upgrade_cost(t_id)
+				if t_cost > 0.0 and gm.cash >= t_cost:
+					can_afford_terrace = true
+					break
+	if not can_afford_terrace:
+		for l_sid in ["cocktail_lounge", "cocktail_bar"]:
+			if gm.get_station_level(l_sid) < gm.get_station_max_level(l_sid):
+				var l_cost = gm.get_upgrade_cost(l_sid)
+				if l_cost > 0.0 and gm.cash >= l_cost:
+					can_afford_terrace = true
+					break
+	_set_button_affordability_badge(nav_terrace_btn, can_afford_terrace)
+	
+	# 6. Staff category (nav_staff_btn, side_staff_btn, tab_staff_btn)
+	var can_afford_staff: bool = false
+	for sid in gm.staff_roster.keys():
+		var s_data = gm.staff_roster[sid]
+		var hired = gm.is_staff_hired(sid)
+		if not hired:
+			var hire_cost = s_data.get("hire_cost", 0.0)
+			if hire_cost > 0.0 and gm.cash >= hire_cost:
+				can_afford_staff = true
+				break
+		else:
+			var lvl = gm.get_staff_level(sid)
+			if lvl < 25:
+				var up_cost = gm.get_staff_upgrade_cost(sid)
+				if up_cost > 0.0 and gm.cash >= up_cost:
+					can_afford_staff = true
+					break
+	_set_button_affordability_badge(nav_staff_btn, can_afford_staff)
+	_set_button_affordability_badge(side_staff_btn, can_afford_staff)
+	_set_button_affordability_badge(tab_staff_btn, can_afford_staff)
+	
+	# 7. Station Tabs (tab_upgrades_btn, staff_tab_upgrades_btn)
+	var can_afford_current_station: bool = false
+	var active_sid = current_station_id if current_station_id != "" else "milkshake_bar"
+	if gm.get_station_level(active_sid) < gm.get_station_max_level(active_sid):
+		var s_cost = gm.get_upgrade_cost(active_sid)
+		if s_cost > 0.0 and gm.cash >= s_cost:
+			can_afford_current_station = true
+	_set_button_affordability_badge(tab_upgrades_btn, can_afford_current_station)
+	_set_button_affordability_badge(staff_tab_upgrades_btn, can_afford_kitchen or can_afford_current_station)
 
 func _focus_camera(zone: String) -> void:
 	var cam = get_viewport().get_camera_3d()
 	if cam != null and cam.has_method("focus_zone"):
-		cam.focus_zone(zone)
+		cam.focus_zone(zone, true)
+
+func _focus_camera_on_station(station_id: String) -> void:
+	var cam = get_viewport().get_camera_3d()
+	if cam != null:
+		if cam.has_method("focus_station"):
+			cam.focus_station(station_id)
+		elif cam.has_method("focus_zone"):
+			cam.focus_zone(station_id, true)
+
+func _highlight_station_in_3d(station_id: String) -> void:
+	_clear_3d_highlights()
+	var search_root: Node = null
+	if get_tree() != null:
+		search_root = get_tree().current_scene if get_tree().current_scene != null else get_tree().root
+	if search_root == null:
+		return
+		
+	var target_node: Node = null
+	if station_id.begins_with("table_"):
+		var t_num = station_id.trim_prefix("table_")
+		target_node = search_root.find_child("Table" + t_num, true, false)
+		if target_node == null:
+			target_node = search_root.find_child("Table_" + t_num, true, false)
+	elif station_id == "stove" or station_id == "kitchen_cook":
+		target_node = search_root.find_child("CookingStation", true, false)
+		
+	if target_node != null and target_node.has_method("set_highlight"):
+		target_node.set_highlight(true)
+
+func _clear_3d_highlights() -> void:
+	var search_root: Node = null
+	if get_tree() != null:
+		search_root = get_tree().current_scene if get_tree().current_scene != null else get_tree().root
+	if search_root == null:
+		return
+	var tables_node = search_root.find_child("Tables", true, false)
+	if tables_node != null:
+		for t in tables_node.get_children():
+			if t.has_method("set_highlight"):
+				t.set_highlight(false)
+	else:
+		for c in search_root.get_children():
+			if c.has_method("set_highlight"):
+				c.set_highlight(false)
+	var stove_node = search_root.find_child("CookingStation", true, false)
+	if stove_node != null and stove_node.has_method("set_highlight"):
+		stove_node.set_highlight(false)
 
 func _hide_all_modals() -> void:
+	_clear_3d_highlights()
 	if upgrade_panel != null: upgrade_panel.visible = false
 	if dining_panel != null: dining_panel.visible = false
 	if kitchen_panel != null: kitchen_panel.visible = false
@@ -371,6 +699,8 @@ func _open_modal(panel: PanelContainer) -> void:
 	if panel == null: return
 	_play_click_sfx()
 	_hide_all_modals()
+	_wire_all_buttons_in_tree(panel)
+	_update_affordability_badges()
 	panel.visible = true
 	panel.scale = Vector2(0.88, 0.88)
 	var tw = create_tween()
@@ -379,6 +709,7 @@ func _open_modal(panel: PanelContainer) -> void:
 func _close_modal(panel: PanelContainer) -> void:
 	if panel == null: return
 	_play_click_sfx()
+	_clear_3d_highlights()
 	var tw = create_tween()
 	tw.tween_property(panel, "scale", Vector2(0.9, 0.9), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func(): panel.visible = false)
@@ -434,12 +765,14 @@ func _update_top_bar(c: float, g: int, stars: float, rest_name: String, lvl: int
 	if cash_label != null: cash_label.text = _format_money(c)
 
 func _on_cash_changed(new_cash: float) -> void:
-	var tw = create_tween()
-	tw.tween_method(func(val: float):
+	if cash_tween != null and cash_tween.is_valid():
+		cash_tween.kill()
+	cash_tween = create_tween()
+	cash_tween.tween_method(func(val: float):
 		displayed_cash = val
 		if cash_label != null:
 			cash_label.text = _format_money(val)
-	, displayed_cash, new_cash, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	, displayed_cash, new_cash, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	
 	if upgrade_panel != null and upgrade_panel.visible:
 		_refresh_upgrade_btn()
@@ -459,14 +792,22 @@ func _on_cash_changed(new_cash: float) -> void:
 		_refresh_world_map()
 	if shop_panel != null and shop_panel.visible:
 		_refresh_shop_panel()
+	_update_affordability_badges()
 
 func _on_gems_changed(new_gems: int) -> void:
 	if gem_label != null: gem_label.text = "%d" % new_gems
 	if shop_panel != null and shop_panel.visible:
 		_refresh_shop_panel()
 
-func _on_cash_rate_updated(rate: float) -> void:
-	if cash_rate_label != null: cash_rate_label.text = "+%s/s" % _format_money(rate)
+func _on_cash_rate_updated(new_rate: float) -> void:
+	if rate_tween != null and rate_tween.is_valid():
+		rate_tween.kill()
+	rate_tween = create_tween()
+	rate_tween.tween_method(func(val: float):
+		displayed_rate = val
+		if cash_rate_label != null:
+			cash_rate_label.text = "+%s/s" % _format_money(val)
+	, displayed_rate, new_rate, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 func _on_level_updated(lvl: int, cur_xp: float, max_xp: float) -> void:
 	if level_label != null: level_label.text = "Lv. %d" % lvl
@@ -517,6 +858,20 @@ func _process(delta: float) -> void:
 		if analytics_refresh_timer >= 0.5:
 			analytics_refresh_timer = 0.0
 			_refresh_analytics_panel()
+
+	# ─── Hold-to-Upgrade continuous loop ───────────────────────────────────────
+	if _is_holding_upgrade and _hold_station_id != "":
+		_hold_timer += delta
+		if not _hold_delay_passed:
+			if _hold_timer >= HOLD_INITIAL_DELAY:
+				_hold_delay_passed = true
+				_hold_timer = 0.0
+				_perform_hold_step()
+		else:
+			var interval = max(0.05, 0.14 - _hold_consecutive * 0.005)
+			if _hold_timer >= interval:
+				_hold_timer = 0.0
+				_perform_hold_step()
 
 func _on_boost_pressed() -> void:
 	_play_click_sfx()
@@ -735,6 +1090,10 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 	if stat_gem_lbl != null: stat_gem_lbl.text = "💎 %d" % gm.gems
 	if stat_energy_lbl != null: stat_energy_lbl.text = "⚡ %d" % max(12, gm.restaurant_level * 6)
 	
+	_focus_camera_on_station(station_id)
+	_highlight_station_in_3d(station_id)
+	_update_station_milestones(station_id, actual_level, station_max)
+	
 	_refresh_upgrade_tiles(gm)
 	_refresh_upgrade_btn()
 	_open_modal(upgrade_panel)
@@ -832,14 +1191,34 @@ func _refresh_upgrade_tiles(gm: Node) -> void:
 			open_upgrade(sid, st["name"], lvl)
 		)
 		sub_upgrade_grid.add_child(tile_btn)
+	_wire_all_buttons_in_tree(sub_upgrade_grid)
+	_update_affordability_badges()
 
 func _set_multiplier(mode: String) -> void:
 	_play_click_sfx()
-	current_multiplier = mode
-	if multi_1_btn != null: multi_1_btn.modulate = Color(1, 1, 1, 1) if mode == "1" else Color(0.65, 0.7, 0.8, 0.7)
-	if multi_10_btn != null: multi_10_btn.modulate = Color(1, 1, 1, 1) if mode == "10" else Color(0.65, 0.7, 0.8, 0.7)
-	if multi_max_btn != null: multi_max_btn.modulate = Color(1, 1, 1, 1) if mode == "MAX" else Color(0.65, 0.7, 0.8, 0.7)
+	var norm = mode.to_upper().trim_prefix("X")
+	if norm != "10" and norm != "MAX":
+		norm = "1"
+	current_multiplier = norm
+	if multi_1_btn != null: multi_1_btn.modulate = Color(1, 1, 1, 1) if norm == "1" else Color(0.65, 0.7, 0.8, 0.7)
+	if multi_10_btn != null: multi_10_btn.modulate = Color(1, 1, 1, 1) if norm == "10" else Color(0.65, 0.7, 0.8, 0.7)
+	if multi_max_btn != null: multi_max_btn.modulate = Color(1, 1, 1, 1) if norm == "MAX" else Color(0.65, 0.7, 0.8, 0.7)
+	_update_header_multi_styles(norm)
 	_refresh_upgrade_btn()
+
+func _update_header_multi_styles(norm: String) -> void:
+	if header_multi_1_btn != null:
+		if style_multi_active != null and style_multi_inactive != null:
+			header_multi_1_btn.add_theme_stylebox_override("normal", style_multi_active if norm == "1" else style_multi_inactive)
+		header_multi_1_btn.modulate = Color(1.0, 1.0, 1.0, 1.0) if norm == "1" else Color(0.75, 0.8, 0.9, 0.8)
+	if header_multi_10_btn != null:
+		if style_multi_active != null and style_multi_inactive != null:
+			header_multi_10_btn.add_theme_stylebox_override("normal", style_multi_active if norm == "10" else style_multi_inactive)
+		header_multi_10_btn.modulate = Color(1.0, 1.0, 1.0, 1.0) if norm == "10" else Color(0.75, 0.8, 0.9, 0.8)
+	if header_multi_max_btn != null:
+		if style_multi_active != null and style_multi_inactive != null:
+			header_multi_max_btn.add_theme_stylebox_override("normal", style_multi_active if norm == "MAX" else style_multi_inactive)
+		header_multi_max_btn.modulate = Color(1.0, 1.0, 1.0, 1.0) if norm == "MAX" else Color(0.75, 0.8, 0.9, 0.8)
 
 func _refresh_upgrade_btn() -> void:
 	var gm = get_node_or_null("/root/GameManager")
@@ -863,10 +1242,13 @@ func _refresh_upgrade_btn() -> void:
 			upgrade_max_badge.visible = false
 
 func _on_upgrade_pressed() -> void:
+	if _just_upgraded_on_hold:
+		return
 	_play_click_sfx()
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null and current_station_id != "":
-		gm.upgrade_station_multi(current_station_id, current_multiplier)
+		gm.upgrade_station_multi(current_station_id, current_multiplier, 0)
+		_punch_upgrade_btn()
 
 func _on_station_upgraded(station_id: String, new_lvl: int) -> void:
 	if station_id == current_station_id and upgrade_panel != null and upgrade_panel.visible:
@@ -889,6 +1271,7 @@ func _on_station_upgraded(station_id: String, new_lvl: int) -> void:
 					upgrade_milestone_bar.value = station_max
 				else:
 					upgrade_milestone_bar.value = new_lvl
+			_update_station_milestones(station_id, new_lvl, station_max)
 			_refresh_upgrade_btn()
 			_refresh_upgrade_tiles(gm)
 	if dining_panel != null and dining_panel.visible:
@@ -897,6 +1280,7 @@ func _on_station_upgraded(station_id: String, new_lvl: int) -> void:
 		_refresh_kitchen_panel()
 	if terrace_panel != null and terrace_panel.visible:
 		_refresh_terrace_panel()
+	_update_affordability_badges()
 
 # ─── Dining Floor Management Modal ──────────────────────────────────────────
 func _refresh_dining_panel() -> void:
@@ -956,9 +1340,12 @@ func _create_table_card(table_id: String, index: int, gm: Node) -> PanelContaine
 		else:
 			btn.text = "UPGRADE +%d\n(%s)" % [info.levels, _format_money(info.cost)]
 			btn.disabled = not info.can_afford
+			_connect_hold_upgrade_button(btn, func(): return table_id)
 			btn.pressed.connect(func():
+				if _just_upgraded_on_hold:
+					return
 				_play_click_sfx()
-				gm.upgrade_station_multi(table_id, current_multiplier)
+				gm.upgrade_station_multi(table_id, current_multiplier, 0)
 			)
 			btn.add_theme_stylebox_override("normal", _get_green_btn_style())
 	else:
@@ -978,6 +1365,7 @@ func _on_table_unlocked(_table_id: String) -> void:
 		_refresh_dining_panel()
 	if terrace_panel != null and terrace_panel.visible:
 		_refresh_terrace_panel()
+	_update_affordability_badges()
 
 # ─── Outdoor Terrace Panel ──────────────────────────────────────────────────
 func _refresh_terrace_panel() -> void:
@@ -1200,9 +1588,12 @@ func _create_kitchen_card(st_id: String, st_name: String, icon_str: String, gm: 
 	else:
 		btn.text = "UPGRADE +%d\n(%s)" % [info.levels, _format_money(info.cost)]
 		btn.disabled = not info.can_afford
+		_connect_hold_upgrade_button(btn, func(): return st_id)
 		btn.pressed.connect(func():
+			if _just_upgraded_on_hold:
+				return
 			_play_click_sfx()
-			gm.upgrade_station_multi(st_id, current_multiplier)
+			gm.upgrade_station_multi(st_id, current_multiplier, 0)
 		)
 		btn.add_theme_stylebox_override("normal", _get_green_btn_style())
 	hbox.add_child(btn)
@@ -1212,6 +1603,7 @@ func _create_kitchen_card(st_id: String, st_name: String, icon_str: String, gm: 
 func _on_staff_updated(_sid: String) -> void:
 	if staff_panel != null and staff_panel.visible:
 		_refresh_staff_panel()
+	_update_affordability_badges()
 
 func _refresh_staff_panel() -> void:
 	if staff_vbox == null:
@@ -1359,7 +1751,10 @@ func _create_staff_card(st: Dictionary, gm: Node) -> PanelContainer:
 		var cost = gm.get_staff_upgrade_cost(sid)
 		btn.text = "UPGRADE\n(%s)" % _format_money(cost)
 		btn.disabled = gm.cash < cost
+		_connect_hold_upgrade_button(btn, func(): return sid, true)
 		btn.pressed.connect(func():
+			if _just_upgraded_on_hold:
+				return
 			_play_click_sfx()
 			gm.upgrade_staff(sid)
 		)
@@ -2292,4 +2687,274 @@ func _create_shop_card(item_id: String, title_txt: String, desc_txt: String, val
 	)
 	hbox.add_child(btn)
 	return p
+
+# ─── 3D-to-HUD Flying Currency Trails ───────────────────────────────────────
+func spawn_flying_currency_trail(world_pos: Vector3, amount: float = 0.0, count: int = 5) -> void:
+	var cam: Camera3D = get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	if cam.is_position_behind(world_pos):
+		return
+	
+	var start_screen_pos: Vector2 = cam.unproject_position(world_pos)
+	
+	if currency_trails_layer == null:
+		currency_trails_layer = get_node_or_null("HUD/CurrencyTrailsLayer")
+		if currency_trails_layer == null:
+			var hud_node = get_node_or_null("HUD")
+			if hud_node != null:
+				currency_trails_layer = Control.new()
+				currency_trails_layer.name = "CurrencyTrailsLayer"
+				currency_trails_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+				currency_trails_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				hud_node.add_child(currency_trails_layer)
+	
+	if currency_trails_layer == null:
+		return
+		
+	var target_screen_pos: Vector2 = Vector2(160.0, 42.0)
+	var cash_panel = get_node_or_null("HUD/TopBar/CashPanel")
+	if cash_panel != null and cash_panel.is_inside_tree():
+		target_screen_pos = cash_panel.global_position + cash_panel.size * 0.5
+	elif cash_label != null and cash_label.is_inside_tree():
+		target_screen_pos = cash_label.global_position + cash_label.size * 0.5
+		
+	if cash_texture == null:
+		if ResourceLoader.exists("res://assets/textures/bubble_cash_stack.png"):
+			cash_texture = load("res://assets/textures/bubble_cash_stack.png")
+			
+	var coin_count: int = clampi(count, 3, 7)
+	if amount > 0.0:
+		coin_count = clampi(int(amount / 20.0), 3, 7)
+		
+	for i in range(coin_count):
+		var p0: Vector2 = start_screen_pos + Vector2(randf_range(-18.0, 18.0), randf_range(-18.0, 18.0))
+		var mid: Vector2 = (p0 + target_screen_pos) * 0.5
+		var arc_dir: Vector2 = Vector2(-(target_screen_pos.y - p0.y), target_screen_pos.x - p0.x).normalized()
+		if arc_dir.y > 0:
+			arc_dir = -arc_dir
+		var p1: Vector2 = mid + arc_dir * randf_range(60.0, 130.0) + Vector2(0.0, -randf_range(30.0, 70.0))
+		
+		var sprite = TextureRect.new()
+		sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if cash_texture != null:
+			sprite.texture = cash_texture
+			sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			sprite.custom_minimum_size = Vector2(26, 26)
+			sprite.size = Vector2(26, 26)
+			sprite.pivot_offset = Vector2(13, 13)
+		else:
+			var lbl = Label.new()
+			lbl.text = "💵"
+			lbl.add_theme_font_size_override("font_size", 20)
+			sprite.add_child(lbl)
+			sprite.custom_minimum_size = Vector2(26, 26)
+			sprite.size = Vector2(26, 26)
+			sprite.pivot_offset = Vector2(13, 13)
+			
+		sprite.global_position = p0 - sprite.pivot_offset
+		sprite.scale = Vector2.ZERO
+		sprite.modulate.a = 0.0
+		currency_trails_layer.add_child(sprite)
+		
+		var delay: float = float(i) * 0.04
+		var tw = create_tween()
+		if delay > 0.0:
+			tw.tween_interval(delay)
+		tw.chain().tween_property(sprite, "modulate:a", 1.0, 0.06)
+		tw.parallel().tween_property(sprite, "scale", Vector2.ONE, 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		
+		# 0.45 second smooth arc flight to treasury counter
+		tw.parallel().tween_method(func(t: float):
+			if not is_instance_valid(sprite):
+				return
+			var u: float = 1.0 - t
+			var pt: Vector2 = u * u * p0 + 2.0 * u * t * p1 + t * t * target_screen_pos
+			sprite.global_position = pt - sprite.pivot_offset
+		, 0.0, 1.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		
+		tw.chain().tween_callback(func():
+			if is_instance_valid(sprite):
+				sprite.queue_free()
+			var am = _get_audio_manager()
+			if am != null and am.has_method("play_sfx"):
+				am.play_sfx("coin", 0.06, 0.5)
+			_punch_treasury_counter()
+		)
+
+func _punch_treasury_counter() -> void:
+	var cash_panel = get_node_or_null("HUD/TopBar/CashPanel")
+	if cash_panel != null and cash_panel.is_inside_tree():
+		cash_panel.pivot_offset = cash_panel.size * 0.5
+		var tw = create_tween()
+		tw.tween_property(cash_panel, "scale", Vector2(1.14, 1.14), 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(cash_panel, "scale", Vector2.ONE, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+# ─── Hold-to-Upgrade Implementation ─────────────────────────────────────────
+func _start_hold_upgrade(station_or_staff_id: String, is_staff: bool = false) -> void:
+	if station_or_staff_id == "":
+		return
+	_is_holding_upgrade = true
+	_hold_station_id = station_or_staff_id
+	_hold_is_staff = is_staff
+	_hold_timer = 0.0
+	_hold_consecutive = 0
+	_hold_delay_passed = false
+	_perform_hold_step()
+
+func _stop_hold_upgrade() -> void:
+	_is_holding_upgrade = false
+	_hold_station_id = ""
+	_hold_is_staff = false
+	_hold_timer = 0.0
+	_hold_consecutive = 0
+	_hold_delay_passed = false
+	if _just_upgraded_on_hold:
+		var tree = get_tree()
+		if tree != null:
+			tree.process_frame.connect(func(): _just_upgraded_on_hold = false, CONNECT_ONE_SHOT)
+		else:
+			_just_upgraded_on_hold = false
+
+func _perform_hold_step() -> void:
+	var gm = _get_game_manager()
+	if gm == null or _hold_station_id == "":
+		_stop_hold_upgrade()
+		return
+		
+	if _hold_is_staff:
+		var cost = gm.get_staff_upgrade_cost(_hold_station_id)
+		if gm.cash < cost:
+			_stop_hold_upgrade()
+			return
+		_just_upgraded_on_hold = true
+		var success = gm.upgrade_staff(_hold_station_id)
+		if success:
+			_hold_consecutive += 1
+			var am = _get_audio_manager()
+			if am != null and am.has_method("play_upgrade_sfx"):
+				am.play_upgrade_sfx(_hold_consecutive)
+		else:
+			_stop_hold_upgrade()
+		return
+		
+	var lvl = gm.get_station_level(_hold_station_id)
+	var max_lvl = gm.get_station_max_level(_hold_station_id)
+	if lvl >= max_lvl:
+		_stop_hold_upgrade()
+		return
+		
+	var info = gm.get_upgrade_multi_info(_hold_station_id, current_multiplier)
+	if not info.can_afford or info.levels <= 0:
+		_stop_hold_upgrade()
+		return
+		
+	_just_upgraded_on_hold = true
+	var success = gm.upgrade_station_multi(_hold_station_id, current_multiplier, _hold_consecutive)
+	if success:
+		_hold_consecutive += 1
+		_punch_upgrade_btn()
+	else:
+		_stop_hold_upgrade()
+
+func _punch_upgrade_btn() -> void:
+	if upgrade_btn != null and upgrade_btn.is_inside_tree():
+		upgrade_btn.pivot_offset = upgrade_btn.size * 0.5
+		var tw = create_tween()
+		tw.tween_property(upgrade_btn, "scale", Vector2(1.07, 1.07), 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(upgrade_btn, "scale", Vector2.ONE, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+func _connect_hold_upgrade_button(btn: Button, get_id_callable: Callable, is_staff: bool = false) -> void:
+	if btn == null:
+		return
+	btn.button_down.connect(func():
+		var id = get_id_callable.call()
+		_start_hold_upgrade(id, is_staff)
+	)
+	btn.button_up.connect(func():
+		_stop_hold_upgrade()
+	)
+	btn.mouse_exited.connect(func():
+		if _is_holding_upgrade:
+			_stop_hold_upgrade()
+	)
+
+# ─── Milestone Progress Bar Ticks & Stars ───────────────────────────────────
+func _update_station_milestones(_sid: String, cur_lvl: int, max_lvl: int) -> void:
+	if station_progress_bar != null:
+		station_progress_bar.max_value = max_lvl
+		station_progress_bar.value = cur_lvl
+		
+	if ticks_overlay != null:
+		for c in ticks_overlay.get_children():
+			c.queue_free()
+	if milestone_labels_hbox != null:
+		for c in milestone_labels_hbox.get_children():
+			c.queue_free()
+			
+	var milestones: Array[int] = [10, 25, 50]
+	var multipliers: Dictionary = {10: "2x", 25: "3x", 50: "5x"}
+	
+	for m in milestones:
+		if m > max_lvl:
+			continue
+		var frac: float = float(m) / float(max_lvl)
+		var is_reached: bool = cur_lvl >= m
+		
+		if ticks_overlay != null:
+			# Vertical tick divider through the progress bar
+			var tick = ColorRect.new()
+			tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tick.anchor_left = frac
+			tick.anchor_right = frac
+			tick.anchor_top = 0.0
+			tick.anchor_bottom = 1.0
+			tick.offset_left = -1.0
+			tick.offset_right = 1.0
+			tick.color = Color(1.0, 0.88, 0.25, 0.95) if is_reached else Color(0.18, 0.22, 0.30, 0.85)
+			ticks_overlay.add_child(tick)
+			
+			# Tick notch marker
+			var notch = ColorRect.new()
+			notch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			notch.anchor_left = frac
+			notch.anchor_right = frac
+			notch.anchor_top = 0.5
+			notch.anchor_bottom = 0.5
+			notch.offset_left = -2.0
+			notch.offset_right = 2.0
+			notch.offset_top = -4.0
+			notch.offset_bottom = 4.0
+			notch.color = Color(1.0, 1.0, 1.0, 0.95) if is_reached else Color(0.45, 0.5, 0.6, 0.8)
+			ticks_overlay.add_child(notch)
+			
+		if milestone_labels_hbox != null:
+			var mult_str = multipliers.get(m, "2x")
+			var pill = PanelContainer.new()
+			pill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var sb = StyleBoxFlat.new()
+			sb.set_corner_radius_all(6)
+			sb.content_margin_left = 4.0
+			sb.content_margin_right = 4.0
+			sb.content_margin_top = 2.0
+			sb.content_margin_bottom = 2.0
+			
+			var lbl = Label.new()
+			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lbl.add_theme_font_size_override("font_size", 10)
+			
+			if is_reached:
+				sb.bg_color = Color(0.96, 0.65, 0.12, 1.0)
+				sb.border_width_bottom = 1
+				sb.border_color = Color(0.7, 0.45, 0.05, 1.0)
+				lbl.text = "★ Lv.%d (%s BONUS)" % [m, mult_str]
+				lbl.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+			else:
+				sb.bg_color = Color(0.12, 0.15, 0.22, 0.75)
+				lbl.text = "☆ Lv.%d (%s)" % [m, mult_str]
+				lbl.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8, 0.7))
+				
+			pill.add_theme_stylebox_override("panel", sb)
+			pill.add_child(lbl)
+			milestone_labels_hbox.add_child(pill)
 

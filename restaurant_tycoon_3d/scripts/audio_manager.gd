@@ -36,7 +36,7 @@ func _on_ambience_finished() -> void:
 	if ambience_player != null and is_instance_valid(ambience_player):
 		ambience_player.play()
 
-func play_sfx(sound_name: String, pitch_range: float = 0.05, volume_offset: float = 0.0) -> void:
+func play_sfx(sound_name: String, pitch_range: float = 0.05, volume_offset: float = 0.0, custom_pitch: float = 1.0) -> void:
 	var stream = sounds.get(sound_name)
 	if stream == null:
 		return
@@ -44,7 +44,12 @@ func play_sfx(sound_name: String, pitch_range: float = 0.05, volume_offset: floa
 	for p in sfx_players:
 		if not p.playing:
 			p.stream = stream
-			p.pitch_scale = 1.0 + randf_range(-pitch_range, pitch_range)
+			p.pitch_scale = custom_pitch + randf_range(-pitch_range, pitch_range)
 			p.volume_db = -4.0 + volume_offset
 			p.play()
 			return
+
+func play_upgrade_sfx(consecutive_step: int = 0) -> void:
+	# Pitch increases with each consecutive upgrade hold step up to +0.85
+	var pitch: float = 1.0 + clamp(consecutive_step * 0.04, 0.0, 0.85)
+	play_sfx("upgrade", 0.02, 1.0, pitch)

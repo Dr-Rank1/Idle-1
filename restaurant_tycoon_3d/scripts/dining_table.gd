@@ -44,6 +44,11 @@ var initial_badge_y: float = 1.35
 var pending_cash_amount: float = 0.0
 var booth_bubble_root: Node3D = null
 var booth_cash_stack: Node3D = null
+var cash_respawn_timer: float = 0.0
+
+var highlight_ring: MeshInstance3D = null
+var is_highlighted: bool = false
+var highlight_time: float = 0.0
 
 func _ready() -> void:
 	if food_dish != null: food_dish.visible = false
@@ -103,8 +108,56 @@ func _process(delta: float) -> void:
 	var phi = float(t_idx) * 0.72
 	if booth_cash_stack != null and booth_cash_stack.visible:
 		booth_cash_stack.position.y = 1.65 + 0.05 * sin(3.2 * time_passed + phi)
+	elif is_unlocked and booth_cash_stack != null and not is_dirty:
+		cash_respawn_timer += delta
+		if cash_respawn_timer >= 15.0:
+			booth_cash_stack.visible = true
+			cash_respawn_timer = 0.0
+
 	if booth_bubble_root != null and booth_bubble_root.visible:
 		booth_bubble_root.position.y = 1.70 + 0.05 * sin(2.8 * time_passed + float(t_idx) * 0.8)
+
+	# Subtle pulsing golden floor ring highlight
+	if is_highlighted and highlight_ring != null and highlight_ring.visible:
+		highlight_time += delta
+		var pulse_scale = 1.0 + sin(highlight_time * 4.5) * 0.05
+		highlight_ring.scale = Vector3(1.25 * pulse_scale, 0.5, 1.1 * pulse_scale)
+		if highlight_ring.material_override is StandardMaterial3D:
+			var alpha = 0.65 + sin(highlight_time * 4.5) * 0.25
+			highlight_ring.material_override.albedo_color = Color(1.0, 0.84, 0.2, alpha)
+
+func set_highlight(active: bool) -> void:
+	is_highlighted = active
+	if is_highlighted:
+		if highlight_ring == null:
+			_create_highlight_ring()
+		if highlight_ring != null:
+			highlight_ring.visible = true
+			highlight_time = 0.0
+	else:
+		if highlight_ring != null:
+			highlight_ring.visible = false
+
+func _create_highlight_ring() -> void:
+	highlight_ring = MeshInstance3D.new()
+	highlight_ring.name = "FloorHighlightRing"
+	
+	var torus = TorusMesh.new()
+	torus.inner_radius = 1.35
+	torus.outer_radius = 1.55
+	torus.rings = 32
+	torus.ring_segments = 16
+	highlight_ring.mesh = torus
+	
+	var mat = StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(1.0, 0.84, 0.2, 0.8)
+	highlight_ring.material_override = mat
+	
+	highlight_ring.position = Vector3(0.0, 0.04, 0.0)
+	highlight_ring.scale = Vector3(1.25, 0.5, 1.1)
+	add_child(highlight_ring)
 
 func _on_cash_changed(_cash_val: float) -> void:
 	var gm = get_node_or_null("/root/GameManager")
@@ -682,6 +735,8 @@ func clean_table() -> void:
 		action_badge.visible = false
 	if booth_bubble_root != null:
 		booth_bubble_root.visible = true
+	if booth_cash_stack != null:
+		booth_cash_stack.visible = true
 	
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
@@ -694,8 +749,48 @@ func clean_table() -> void:
 		am.play_sfx("coin", 0.05, 1.15)
 	_spawn_floating_text("✨ Table Reset! +$10 ✨", Color(0.35, 1.0, 0.55, 1.0))
 
+func has_visible_cash_stack() -> bool:
+	return is_unlocked and booth_cash_stack != null and booth_cash_stack.visible
+
+func get_cash_stack_world_pos() -> Vector3:
+	if booth_cash_stack != null and is_instance_valid(booth_cash_stack):
+		return booth_cash_stack.global_position
+	return global_position + Vector3(-1.15, 1.65, 0.0)
+
+func collect_booth_cash() -> float:
+	if not has_visible_cash_stack():
+		return 0.0
+	booth_cash_stack.visible = false
+	var amount: float = 50.0
+	var c_pos: Vector3 = get_cash_stack_world_pos()
+	
+	var rest = find_parent("Restaurant")
+	if rest != null and rest.has_method("register_cash_collection"):
+		rest.register_cash_collection(c_pos, amount)
+	else:
+		var gm = get_node_or_null("/root/GameManager")
+		if gm != null:
+			gm.add_cash(amount, c_pos)
+			if gm.has_signal("spawn_flying_currency_trail"):
+				gm.spawn_flying_currency_trail.emit(c_pos, amount)
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("coin", 0.04, 1.0)
+			
+	_spawn_floating_text("💵 +$%d COLLECTED! ✨" % int(amount), Color(0.35, 1.0, 0.55))
+	return amount
+
 func _on_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+	if (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) \
+		or (event is InputEventScreenTouch and event.pressed) \
+		or (event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0) \
+		or (event is InputEventScreenDrag):
+		if has_visible_cash_stack():
+			collect_booth_cash()
+			return
+
+	if (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) \
+		or (event is InputEventScreenTouch and event.pressed):
 		var gm = get_node_or_null("/root/GameManager")
 		if gm == null:
 			return
