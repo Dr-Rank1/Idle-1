@@ -514,6 +514,7 @@ func _set_unlocked_visual(lvl: int) -> void:
 		food_dish.visible = true
 	_setup_booth_materials()
 	_setup_unique_booth_diners()
+	apply_visual_tier(lvl)
 	if booth_bubble_root != null:
 		booth_bubble_root.visible = not is_occupied
 	if booth_cash_stack != null:
@@ -580,13 +581,216 @@ func _on_table_unlocked(id: String) -> void:
 func _on_station_upgraded(id: String, new_lvl: int) -> void:
 	if id == table_id and is_unlocked:
 		update_level_display(new_lvl)
+		apply_visual_tier(new_lvl)
 		if upgrade_particles != null:
 			upgrade_particles.restart()
 		_spawn_upgrade_text(new_lvl)
-		var bounce_scale = Vector3(1.22, 1.22, 1.22) if (new_lvl == 5 or new_lvl == 10) else Vector3(1.14, 1.14, 1.14)
+		var bounce_scale = Vector3(1.28, 1.28, 1.28) if new_lvl in [10, 25, 50] else \
+			(Vector3(1.22, 1.22, 1.22) if (new_lvl == 5) else Vector3(1.14, 1.14, 1.14))
 		var tween: Tween = create_tween()
 		tween.tween_property(self, "scale", bounce_scale, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.tween_property(self, "scale", Vector3.ONE, 0.16)
+		tween.tween_property(self, "scale", Vector3.ONE, 0.18)
+		# Milestone burst at 10, 25, 50
+		if new_lvl in [10, 25, 50]:
+			_spawn_milestone_star_burst(new_lvl)
+			var am = get_node_or_null("/root/AudioManager")
+			if am != null and am.has_method("play_milestone_chime"):
+				am.play_milestone_chime(new_lvl)
+
+## ── Visual Tier System ──────────────────────────────────────────────────────
+## Applies progressive material upgrades at Milestone Levels 10, 25, and 50.
+## Called on startup (via update_level_display) and on each upgrade.
+
+func apply_visual_tier(lvl: int) -> void:
+	if not is_unlocked:
+		return
+	if lvl >= 50:
+		_apply_tier_max()
+	elif lvl >= 25:
+		_apply_tier3()
+	elif lvl >= 10:
+		_apply_tier2()
+	# else tier1 is the default set in _setup_booth_materials()
+
+func _apply_tier2() -> void:
+	# Level 10-24: polished chrome edge trim + silver candelabra caddy
+	var chrome = StandardMaterial3D.new()
+	chrome.albedo_color = Color(0.88, 0.92, 0.96)
+	chrome.metallic = 0.92
+	chrome.roughness = 0.12
+	var trim = get_node_or_null("TableChromeTrim")
+	if trim is MeshInstance3D:
+		trim.material_override = chrome
+
+	# Silver candelabra / condiment caddy centrepiece
+	if get_node_or_null("Tier2Caddy") == null:
+		var caddy_root = Node3D.new()
+		caddy_root.name = "Tier2Caddy"
+		caddy_root.position = Vector3(0.0, 0.76, 0.0)
+		add_child(caddy_root)
+		# Stem
+		var stem = MeshInstance3D.new()
+		var cyl = CylinderMesh.new()
+		cyl.top_radius = 0.018
+		cyl.bottom_radius = 0.022
+		cyl.height = 0.14
+		stem.mesh = cyl
+		var silver = StandardMaterial3D.new()
+		silver.albedo_color = Color(0.80, 0.82, 0.86)
+		silver.metallic = 0.85
+		silver.roughness = 0.18
+		stem.material_override = silver
+		caddy_root.add_child(stem)
+		# Candle flame sprite
+		var flame = MeshInstance3D.new()
+		var sphere = SphereMesh.new()
+		sphere.radius = 0.025
+		sphere.height = 0.05
+		flame.mesh = sphere
+		var flame_mat = StandardMaterial3D.new()
+		flame_mat.albedo_color = Color(1.0, 0.72, 0.12)
+		flame_mat.emission_enabled = true
+		flame_mat.emission = Color(1.0, 0.55, 0.05)
+		flame_mat.emission_energy_multiplier = 2.2
+		flame.material_override = flame_mat
+		flame.position = Vector3(0.0, 0.09, 0.0)
+		caddy_root.add_child(flame)
+		# Warm omni glow
+		var candle_light = OmniLight3D.new()
+		candle_light.light_color = Color(1.0, 0.65, 0.25)
+		candle_light.light_energy = 0.6
+		candle_light.omni_range = 1.2
+		candle_light.position = Vector3(0.0, 0.12, 0.0)
+		caddy_root.add_child(candle_light)
+
+func _apply_tier3() -> void:
+	_apply_tier2()
+	# Level 25-49: brushed brass / gold piping caps + lush floral planter upgrades
+	var brass = StandardMaterial3D.new()
+	brass.albedo_color = Color(0.80, 0.62, 0.22)
+	brass.metallic = 0.78
+	brass.roughness = 0.28
+	for path in ["BoothDecor/BenchNorthCap", "BoothDecor/BenchSouthCap"]:
+		var node = get_node_or_null(path)
+		if node is MeshInstance3D:
+			node.material_override = brass
+
+	var gold_trim = StandardMaterial3D.new()
+	gold_trim.albedo_color = Color(1.0, 0.82, 0.28)
+	gold_trim.metallic = 0.90
+	gold_trim.roughness = 0.15
+	var trim = get_node_or_null("TableChromeTrim")
+	if trim is MeshInstance3D:
+		trim.material_override = gold_trim
+
+	# Lush floral arrangements: vivid magenta + yellow blooms replace standard reds
+	var fl_magenta = StandardMaterial3D.new()
+	fl_magenta.albedo_color = Color(0.92, 0.18, 0.65)
+	fl_magenta.roughness = 0.55
+	var fl_gold = StandardMaterial3D.new()
+	fl_gold.albedo_color = Color(1.0, 0.88, 0.05)
+	fl_gold.roughness = 0.55
+	var fl_white = StandardMaterial3D.new()
+	fl_white.albedo_color = Color(0.98, 0.98, 0.96)
+	fl_white.roughness = 0.55
+	var lush_flowers = [
+		{"path": "BoothDecor/PartitionBack/PlanterBack/FlowerB1", "mat": fl_magenta},
+		{"path": "BoothDecor/PartitionBack/PlanterBack/FlowerB2", "mat": fl_gold},
+		{"path": "BoothDecor/PartitionBack/PlanterBack/FlowerB3", "mat": fl_white},
+		{"path": "BoothDecor/PartitionBack/PlanterBack/FlowerB4", "mat": fl_magenta},
+		{"path": "BoothDecor/PartitionBack/PlanterBack/FlowerB5", "mat": fl_gold},
+		{"path": "BoothDecor/PartitionFront/PlanterFront/FlowerF1", "mat": fl_white},
+		{"path": "BoothDecor/PartitionFront/PlanterFront/FlowerF2", "mat": fl_magenta},
+		{"path": "BoothDecor/PartitionFront/PlanterFront/FlowerF3", "mat": fl_gold},
+		{"path": "BoothDecor/PartitionFront/PlanterFront/FlowerF4", "mat": fl_white},
+		{"path": "BoothDecor/PartitionFront/PlanterFront/FlowerF5", "mat": fl_magenta},
+	]
+	for fc in lush_flowers:
+		var f = get_node_or_null(fc["path"])
+		if f is MeshInstance3D:
+			f.material_override = fc["mat"]
+
+func _apply_tier_max() -> void:
+	_apply_tier3()
+	# Level 50 Max: royal crimson velvet benches + gleaming gold rim + warm overhead spot
+
+	# Crimson velvet benches
+	var velvet = StandardMaterial3D.new()
+	velvet.albedo_color = Color(0.62, 0.04, 0.12)
+	velvet.roughness = 0.82
+	for path in [
+		"BoothDecor/BenchNorthSeat", "BoothDecor/BenchNorthBack",
+		"BoothDecor/BenchSouthSeat", "BoothDecor/BenchSouthBack"
+	]:
+		var node = get_node_or_null(path)
+		if node is MeshInstance3D:
+			node.material_override = velvet
+
+	# Gleaming gold table rim
+	var gold_rim = StandardMaterial3D.new()
+	gold_rim.albedo_color = Color(1.0, 0.85, 0.18)
+	gold_rim.metallic = 0.98
+	gold_rim.roughness = 0.08
+	var trim = get_node_or_null("TableChromeTrim")
+	if trim is MeshInstance3D:
+		trim.material_override = gold_rim
+
+	# Golden table number plaque (floats above table centre)
+	if get_node_or_null("GoldPlaque") == null:
+		var plaque_lbl = Label3D.new()
+		plaque_lbl.name = "GoldPlaque"
+		plaque_lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		plaque_lbl.double_sided = false
+		plaque_lbl.font_size = 20
+		plaque_lbl.outline_size = 5
+		var t_idx = int(table_id.trim_prefix("table_"))
+		plaque_lbl.text = "♛  TABLE %d  ♛" % max(t_idx, 1)
+		plaque_lbl.modulate = Color(1.0, 0.88, 0.2)
+		plaque_lbl.outline_modulate = Color(0.15, 0.08, 0.0, 0.95)
+		plaque_lbl.position = Vector3(0.0, 0.80, 0.0)
+		add_child(plaque_lbl)
+
+	# Warm royal-gold overhead spotlight
+	if get_node_or_null("MaxSpotLight") == null:
+		var spot = SpotLight3D.new()
+		spot.name = "MaxSpotLight"
+		spot.light_color = Color(1.0, 0.88, 0.55)
+		spot.light_energy = 1.4
+		spot.spot_range = 3.0
+		spot.spot_angle = 28.0
+		spot.position = Vector3(0.0, 2.8, 0.0)
+		spot.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+		add_child(spot)
+
+func _spawn_milestone_star_burst(milestone_lvl: int) -> void:
+	# Golden star CPUParticles3D burst centred above the table
+	var stars = CPUParticles3D.new()
+	stars.name = "MilestoneStarBurst"
+	stars.emitting = true
+	stars.one_shot = true
+	stars.amount = 28 if milestone_lvl >= 50 else (20 if milestone_lvl >= 25 else 14)
+	stars.lifetime = 1.6
+	stars.explosiveness = 0.92
+	stars.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	stars.emission_sphere_radius = 0.3
+	stars.direction = Vector3(0, 1, 0)
+	stars.spread = 80.0
+	stars.gravity = Vector3(0.0, -3.0, 0.0)
+	stars.initial_velocity_min = 2.0
+	stars.initial_velocity_max = 4.5
+	stars.scale_amount_min = 0.06
+	stars.scale_amount_max = 0.14
+	var col = Color(1.0, 0.85, 0.18) if milestone_lvl < 50 else Color(1.0, 0.45, 0.88)
+	stars.color = col
+	stars.position = Vector3(0.0, 1.2, 0.0)
+	add_child(stars)
+	# Auto-free after burst finishes
+	var t = get_tree().create_timer(2.2)
+	t.timeout.connect(func():
+		if is_instance_valid(stars):
+			stars.queue_free()
+	)
+
 
 func _spawn_upgrade_text(new_lvl: int) -> void:
 	if new_lvl == 5:

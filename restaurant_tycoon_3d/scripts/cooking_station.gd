@@ -124,13 +124,130 @@ func update_level_display(lvl: int) -> void:
 func _on_station_upgraded(id: String, new_lvl: int) -> void:
 	if id == station_id:
 		update_level_display(new_lvl)
+		apply_station_visual_tier(new_lvl)
 		if upgrade_particles != null:
 			upgrade_particles.restart()
 		_spawn_upgrade_text(new_lvl)
-		var bounce_scale = Vector3(1.22, 1.22, 1.22) if (new_lvl == 5 or new_lvl == 10) else Vector3(1.14, 1.14, 1.14)
+		var bounce_scale = Vector3(1.28, 1.28, 1.28) if new_lvl in [10, 25, 50] else \
+			(Vector3(1.22, 1.22, 1.22) if new_lvl == 5 else Vector3(1.14, 1.14, 1.14))
 		var tween: Tween = create_tween()
 		tween.tween_property(self, "scale", bounce_scale, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.tween_property(self, "scale", Vector3.ONE, 0.16)
+		tween.tween_property(self, "scale", Vector3.ONE, 0.18)
+		if new_lvl in [10, 25, 50]:
+			_spawn_milestone_star_burst(new_lvl)
+			var am = get_node_or_null("/root/AudioManager")
+			if am != null and am.has_method("play_milestone_chime"):
+				am.play_milestone_chime(new_lvl)
+
+## ── Kitchen/Bar Visual Tier System ─────────────────────────────────────────
+## Tier 1 (Lv 1-24):  brushed stainless steel hood + cool white burner glow
+## Tier 2 (Lv 25-49): copper-trimmed hood accent + amber burner intensification
+## Tier 3 (Lv 50):    gold-trimmed commercial suite + red-gold high-output burner
+
+func apply_station_visual_tier(lvl: int) -> void:
+	if lvl >= 50:
+		_apply_station_tier_max()
+	elif lvl >= 25:
+		_apply_station_tier_copper()
+	elif lvl >= 10:
+		_apply_station_tier_stainless()
+
+func _apply_station_tier_stainless() -> void:
+	# Refined stainless steel at level 10: slightly more metallic
+	var steel = StandardMaterial3D.new()
+	steel.albedo_color = Color(0.82, 0.84, 0.88)
+	steel.metallic = 0.78
+	steel.roughness = 0.30
+	for part_name in ["StoveHood", "HoodTrim", "CounterTop", "CounterFront"]:
+		var node = find_child(part_name, true, false)
+		if node is MeshInstance3D:
+			node.material_override = steel
+	# Increase burner glow brightness
+	_set_burner_glow(Color(0.55, 0.75, 1.0), 1.4)
+
+func _apply_station_tier_copper() -> void:
+	_apply_station_tier_stainless()
+	# Copper accent trim on hood
+	var copper = StandardMaterial3D.new()
+	copper.albedo_color = Color(0.78, 0.44, 0.22)
+	copper.metallic = 0.82
+	copper.roughness = 0.22
+	for part_name in ["HoodTrim", "BurnerRing", "KnobRow"]:
+		var node = find_child(part_name, true, false)
+		if node is MeshInstance3D:
+			node.material_override = copper
+	# Amber intensified burner
+	_set_burner_glow(Color(1.0, 0.55, 0.12), 2.2)
+
+func _apply_station_tier_max() -> void:
+	_apply_station_tier_copper()
+	# Gold-trimmed high-output commercial suite
+	var gold = StandardMaterial3D.new()
+	gold.albedo_color = Color(1.0, 0.82, 0.18)
+	gold.metallic = 0.95
+	gold.roughness = 0.10
+	for part_name in ["HoodTrim", "BurnerRing", "KnobRow", "HandleBar"]:
+		var node = find_child(part_name, true, false)
+		if node is MeshInstance3D:
+			node.material_override = gold
+	# Deep red-gold high-output burner
+	_set_burner_glow(Color(1.0, 0.28, 0.08), 3.5)
+	# Prestige label
+	if get_node_or_null("PrestigePlaque") == null:
+		var plaque = Label3D.new()
+		plaque.name = "PrestigePlaque"
+		plaque.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		plaque.double_sided = false
+		plaque.font_size = 18
+		plaque.outline_size = 5
+		plaque.text = "♛ MASTER CULINARY SUITE Lv.50 ♛"
+		plaque.modulate = Color(1.0, 0.88, 0.2)
+		plaque.outline_modulate = Color(0.15, 0.06, 0.0, 0.95)
+		plaque.position = Vector3(0.0, 3.1, 0.0)
+		add_child(plaque)
+
+func _set_burner_glow(col: Color, energy: float) -> void:
+	# Find any OmniLight3D children used for burner glow and update them
+	for child in get_children():
+		if child is OmniLight3D:
+			child.light_color = col
+			child.light_energy = energy
+			return
+	# If none found, create one
+	var glow = OmniLight3D.new()
+	glow.name = "BurnerGlow"
+	glow.light_color = col
+	glow.light_energy = energy
+	glow.omni_range = 1.8
+	glow.position = Vector3(0.0, 0.65, 0.0)
+	add_child(glow)
+
+func _spawn_milestone_star_burst(milestone_lvl: int) -> void:
+	var stars = CPUParticles3D.new()
+	stars.name = "MilestoneStarBurst"
+	stars.emitting = true
+	stars.one_shot = true
+	stars.amount = 28 if milestone_lvl >= 50 else (20 if milestone_lvl >= 25 else 14)
+	stars.lifetime = 1.6
+	stars.explosiveness = 0.92
+	stars.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	stars.emission_sphere_radius = 0.4
+	stars.direction = Vector3(0, 1, 0)
+	stars.spread = 75.0
+	stars.gravity = Vector3(0.0, -3.0, 0.0)
+	stars.initial_velocity_min = 2.5
+	stars.initial_velocity_max = 5.0
+	stars.scale_amount_min = 0.06
+	stars.scale_amount_max = 0.16
+	stars.color = Color(1.0, 0.85, 0.18) if milestone_lvl < 50 else Color(1.0, 0.45, 0.88)
+	stars.position = Vector3(0.0, 2.0, 0.0)
+	add_child(stars)
+	var t = get_tree().create_timer(2.2)
+	t.timeout.connect(func():
+		if is_instance_valid(stars):
+			stars.queue_free()
+	)
+
 
 func _spawn_upgrade_text(new_lvl: int) -> void:
 	var label = Label3D.new()

@@ -112,6 +112,8 @@ func _ready() -> void:
 		gm.station_upgraded.connect(_on_station_upgraded)
 		if gm.has_signal("rapid_sanitation_triggered"):
 			gm.rapid_sanitation_triggered.connect(_on_rapid_sanitation_triggered)
+		if gm.has_signal("station_milestone_reached"):
+			gm.station_milestone_reached.connect(_on_station_milestone_reached)
 		_check_spawn_hired_staff()
 	
 	if tables_container != null:
@@ -2117,14 +2119,16 @@ func _seat_customer_in_lounge(cust: Node3D, seat: Dictionary) -> void:
 	seat["is_occupied"] = true
 	seat["customer"] = cust
 	cust.lounge_drink_finished.connect(_on_lounge_drink_finished)
-	cust.order_placed.connect(_on_customer_order_placed)
+	if not cust.order_placed.is_connected(_on_customer_order_placed):
+		cust.order_placed.connect(_on_customer_order_placed)
 	cust.assign_lounge_seat(seat["seat_pos"], seat["seat_rot_y"], seat["id"], seat.get("table_node"))
 
 func _seat_customer_in_diner(cust: Node3D, seat: Dictionary) -> void:
 	seat["is_occupied"] = true
 	seat["customer"] = cust
 	cust.diner_treat_finished.connect(_on_diner_treat_finished)
-	cust.order_placed.connect(_on_customer_order_placed)
+	if not cust.order_placed.is_connected(_on_customer_order_placed):
+		cust.order_placed.connect(_on_customer_order_placed)
 	cust.assign_milkshake_seat(seat["seat_pos"], seat["seat_rot_y"], seat["id"], seat.get("table_node"))
 
 func _check_seat_waiting_customers() -> void:
@@ -2268,7 +2272,8 @@ func _spawn_waiting_customer_flow() -> void:
 	var spot_idx = waiting_customers.size() % WAITING_SPOTS.size()
 	var wait_spot = WAITING_SPOTS[spot_idx]
 	cust.set_as_waiting_in_lobby(wait_spot)
-	cust.order_placed.connect(_on_customer_order_placed)
+	if not cust.order_placed.is_connected(_on_customer_order_placed):
+		cust.order_placed.connect(_on_customer_order_placed)
 	cust.lobby_wait_timeout.connect(func(c): waiting_customers.erase(c))
 	waiting_customers.append(cust)
 
@@ -2309,7 +2314,8 @@ func _spawn_customer_flow(table: Node3D, is_critic: bool = false) -> void:
 	
 	cust.current_state = cust.State.WALKING_TO_HOST
 	cust.set_waypoints([cust.DOOR_POS, cust.HOST_POS])
-	cust.order_placed.connect(_on_customer_order_placed)
+	if not cust.order_placed.is_connected(_on_customer_order_placed):
+		cust.order_placed.connect(_on_customer_order_placed)
 
 func _on_customer_order_placed(table: Node3D, cust: Node3D) -> void:
 	if not is_instance_valid(cust):
@@ -2707,6 +2713,75 @@ func _on_station_upgraded(station_id: String, new_level: int) -> void:
 		var tw = create_tween()
 		tw.tween_property(milkshake_badge_label, "scale", Vector3(1.25, 1.25, 1.25), 0.15)
 		tw.tween_property(milkshake_badge_label, "scale", Vector3.ONE, 0.2)
+		_apply_milkshake_bar_visual_tier(new_level)
+
+func _apply_milkshake_bar_visual_tier(lvl: int) -> void:
+	var bar_node = find_child("MilkshakeBar", true, false)
+	if bar_node == null:
+		bar_node = find_child("SodaFountain", true, false)
+	if bar_node == null:
+		return
+	if lvl >= 50:
+		# Gold-trimmed high-output commercial soda fountain
+		var gold_mat = StandardMaterial3D.new()
+		gold_mat.albedo_color = Color(1.0, 0.82, 0.18)
+		gold_mat.metallic = 0.94
+		gold_mat.roughness = 0.10
+		for part_name in ["BarCounter", "BarTrim", "FountainHead", "NozzleRail"]:
+			var node = bar_node.find_child(part_name, true, false)
+			if node == null:
+				node = find_child(part_name, true, false)
+			if node is MeshInstance3D:
+				node.material_override = gold_mat
+	elif lvl >= 25:
+		# Copper-trimmed fountain accent
+		var copper_mat = StandardMaterial3D.new()
+		copper_mat.albedo_color = Color(0.76, 0.44, 0.20)
+		copper_mat.metallic = 0.80
+		copper_mat.roughness = 0.24
+		for part_name in ["BarTrim", "FountainHead", "NozzleRail"]:
+			var node = bar_node.find_child(part_name, true, false)
+			if node == null:
+				node = find_child(part_name, true, false)
+			if node is MeshInstance3D:
+				node.material_override = copper_mat
+
+func _on_station_milestone_reached(station_id: String, milestone_lvl: int, _bonus_d: int, _bonus_gc: int) -> void:
+	# Spawn a golden star burst at the station's world position
+	var target_node: Node3D = null
+	if tables_container != null:
+		for t in tables_container.get_children():
+			if t.get("table_id") == station_id:
+				target_node = t
+				break
+	if target_node == null and kitchen_container != null:
+		for s in kitchen_container.get_children():
+			if s.get("station_id") == station_id:
+				target_node = s
+				break
+	if target_node == null:
+		target_node = find_child(station_id, true, false)
+	var burst_pos = target_node.global_position + Vector3(0, 1.5, 0) if target_node != null else global_position + Vector3(0, 1.5, 0)
+	# Screen-space floating milestone banner
+	_spawn_milestone_world_banner(station_id, milestone_lvl, burst_pos)
+
+func _spawn_milestone_world_banner(station_id: String, milestone_lvl: int, world_pos: Vector3) -> void:
+	var lbl = Label3D.new()
+	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lbl.double_sided = false
+	lbl.font_size = 24
+	lbl.outline_size = 7
+	var tier_name = "MAX TIER" if milestone_lvl >= 50 else ("GOLD TIER" if milestone_lvl >= 25 else "SILVER TIER")
+	lbl.text = "★ %s  MILESTONE Lv.%d ★" % [station_id.to_upper().replace("_", " "), milestone_lvl]
+	lbl.modulate = Color(1.0, 0.88, 0.18) if milestone_lvl < 50 else Color(1.0, 0.45, 0.88)
+	lbl.outline_modulate = Color(0.12, 0.06, 0.0, 0.95)
+	lbl.position = world_pos
+	add_child(lbl)
+	var tw = create_tween()
+	tw.tween_property(lbl, "position:y", world_pos.y + 2.2, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(lbl, "modulate:a", 0.0, 0.9).set_delay(0.5)
+	tw.tween_callback(lbl.queue_free)
+
 
 func _on_table_clicked(station_id: String, station_name: String, level: int) -> void:
 	open_upgrade_ui.emit(station_id, station_name, level)
@@ -2752,7 +2827,8 @@ func spawn_customer_from_car(car_exit_pos: Vector3) -> Node3D:
 			free_seat["is_occupied"] = true
 			free_seat["customer"] = cust
 			cust.lounge_drink_finished.connect(_on_lounge_drink_finished)
-			cust.order_placed.connect(_on_customer_order_placed)
+			if not cust.order_placed.is_connected(_on_customer_order_placed):
+				cust.order_placed.connect(_on_customer_order_placed)
 			cust.sector_type = "lounge"
 			cust.seat_target_pos = free_seat["seat_pos"]
 			cust.seat_target_rot_y = free_seat["seat_rot_y"]
@@ -2769,7 +2845,8 @@ func spawn_customer_from_car(car_exit_pos: Vector3) -> Node3D:
 			free_seat["is_occupied"] = true
 			free_seat["customer"] = cust
 			cust.diner_treat_finished.connect(_on_diner_treat_finished)
-			cust.order_placed.connect(_on_customer_order_placed)
+			if not cust.order_placed.is_connected(_on_customer_order_placed):
+				cust.order_placed.connect(_on_customer_order_placed)
 			cust.sector_type = "milkshake"
 			cust.seat_target_pos = free_seat["seat_pos"]
 			cust.seat_target_rot_y = free_seat["seat_rot_y"]
@@ -2793,7 +2870,8 @@ func spawn_customer_from_car(car_exit_pos: Vector3) -> Node3D:
 			cust.current_state = cust.State.WALKING_TO_HOST
 			approach_pts.append(cust.HOST_POS)
 			cust.set_waypoints(approach_pts)
-			cust.order_placed.connect(_on_customer_order_placed)
+			if not cust.order_placed.is_connected(_on_customer_order_placed):
+				cust.order_placed.connect(_on_customer_order_placed)
 		elif avail_lounge.size() > 0:
 			var free_seat = avail_lounge.pick_random()
 			_seat_customer_in_lounge(cust, free_seat)
@@ -2907,7 +2985,8 @@ func spawn_vip_investor(spawn_pos: Vector3) -> Node3D:
 		cust.seat_target_pos = target_table.get_seat_position()
 		cust.seat_target_rot_y = target_table.get_seat_rotation_y()
 		cust.seat_identifier = target_table.table_id
-		cust.order_placed.connect(_on_customer_order_placed)
+		if not cust.order_placed.is_connected(_on_customer_order_placed):
+			cust.order_placed.connect(_on_customer_order_placed)
 		cust.current_state = cust.State.WALKING_TO_HOST
 		waypoints.append(cust.AISLE_POS)
 		waypoints.append(target_table.get_seat_position())
