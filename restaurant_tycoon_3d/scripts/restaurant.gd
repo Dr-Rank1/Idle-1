@@ -61,6 +61,19 @@ var janitor_speed: float = 3.2
 var breakroom_routine_timer: float = 28.0
 var sign_board_mat: StandardMaterial3D = null
 
+# ─── Restroom & Sanitation System ───────────────────────────────────────────
+const RESTROOM_STALL_X_POSITIONS: Array[float] = [-3.07, -2.37, -1.67, -0.97, -0.27, 0.43, 1.13]
+const RESTROOM_ENTRANCE_POS: Vector3 = Vector3(2.0, 0.0, -3.5)
+const RESTROOM_CORRIDOR_POS: Vector3 = Vector3(0.0, 0.0, -6.2)
+
+var restroom_stalls: Array[Dictionary] = []
+var restroom_sinks: Array[Dictionary] = [
+	{"pos": Vector3(-2.4, 0.0, -9.2), "occupied_by": null},
+	{"pos": Vector3(-1.4, 0.0, -9.2), "occupied_by": null},
+	{"pos": Vector3(-0.4, 0.0, -9.2), "occupied_by": null},
+	{"pos": Vector3(0.6, 0.0, -9.2), "occupied_by": null}
+]
+
 # ─── Swipe-to-Collect & Combo Tracking ──────────────────────────────────────
 var active_counter_stacks: Array[Dictionary] = []
 var last_cash_collect_time: float = -999.0
@@ -97,6 +110,8 @@ func _ready() -> void:
 		gm.spawn_floating_cash.connect(_on_spawn_floating_cash)
 		gm.staff_updated.connect(_on_staff_updated)
 		gm.station_upgraded.connect(_on_station_upgraded)
+		if gm.has_signal("rapid_sanitation_triggered"):
+			gm.rapid_sanitation_triggered.connect(_on_rapid_sanitation_triggered)
 		_check_spawn_hired_staff()
 	
 	if tables_container != null:
@@ -117,6 +132,7 @@ func _ready() -> void:
 				
 	_setup_custom_textures()
 	_setup_active_service_sectors()
+	_setup_restroom_fidelity()
 
 
 func _setup_custom_textures() -> void:
@@ -2285,9 +2301,10 @@ func _spawn_customer_flow(table: Node3D, is_critic: bool = false) -> void:
 	# Reserve table and assign
 	if table.has_method("occupy"):
 		table.occupy(cust)
-	else:
+	elif "is_occupied" in table:
 		table.is_occupied = true
-	cust.assigned_table_id = table.table_id
+	if "table_id" in table:
+		cust.assigned_table_id = table.table_id
 	cust.table_ref = table
 	
 	cust.current_state = cust.State.WALKING_TO_HOST
@@ -2951,5 +2968,207 @@ func get_sector_bottleneck_status() -> Dictionary:
 		"code": "OPTIMAL",
 		"icon": "🟢"
 	}
+
+# ─── Restroom & Sanitation System Methods ────────────────────────────────────
+func _setup_restroom_fidelity() -> void:
+	restroom_stalls.clear()
+	var restroom_node = find_child("Restroom", true, false)
+	for i in range(7):
+		var stall_num = i + 1
+		var door_name = "StallDoor%d" % stall_num
+		var toilet_name = "Toilet%d" % stall_num
+		var door: Node3D = null
+		var toilet: Node3D = null
+		if restroom_node != null:
+			door = restroom_node.find_child(door_name, true, false)
+			toilet = restroom_node.find_child(toilet_name, true, false)
+		
+		var base_x = RESTROOM_STALL_X_POSITIONS[i]
+		if door != null:
+			base_x = door.position.x
+		var base_z = -4.9
+		if door != null:
+			base_z = door.position.z
+			
+		var stall_dict = {
+			"stall_idx": i,
+			"door_node": door,
+			"toilet_node": toilet,
+			"base_x": base_x,
+			"base_z": base_z,
+			"stall_center": Vector3(base_x, 0.0, -4.2),
+			"stall_door_entry": Vector3(base_x, 0.0, -5.7),
+			"queue_pos": Vector3(base_x, 0.0, -6.6),
+			"occupant": null,
+			"waiting_queue": [],
+			"is_occupied": false,
+			"door_ratio": 0.0,
+			"door_tween": null
+		}
+		restroom_stalls.append(stall_dict)
+		set_stall_door_open_ratio(i, 0.0)
+
+func set_stall_door_open_ratio(stall_idx: int, ratio: float) -> void:
+	if stall_idx < 0 or stall_idx >= restroom_stalls.size():
+		return
+	var s = restroom_stalls[stall_idx]
+	s["door_ratio"] = ratio
+	var door: Node3D = s.get("door_node")
+	if door != null and is_instance_valid(door):
+		var base_x: float = s.get("base_x", RESTROOM_STALL_X_POSITIONS[stall_idx])
+		var base_z: float = s.get("base_z", -4.9)
+		var hinge_x: float = base_x - 0.31
+		var angle: float = -1.4 * ratio
+		door.rotation.y = angle
+		door.position.x = hinge_x + 0.31 * cos(angle)
+		door.position.z = base_z + 0.31 * sin(angle)
+
+func animate_stall_door(stall_idx: int, open: bool, duration: float = 0.45) -> Tween:
+	if stall_idx < 0 or stall_idx >= restroom_stalls.size():
+		return null
+	var s = restroom_stalls[stall_idx]
+	var tw_old = s.get("door_tween")
+	if tw_old != null and is_instance_valid(tw_old) and tw_old.is_valid():
+		tw_old.kill()
+	var tw = create_tween()
+	s["door_tween"] = tw
+	var cur_ratio: float = float(s.get("door_ratio", 0.0))
+	var target_ratio: float = 1.0 if open else 0.0
+	tw.tween_method(func(r: float): set_stall_door_open_ratio(stall_idx, r), cur_ratio, target_ratio, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if open else Tween.EASE_IN)
+	return tw
+
+func request_restroom_stall(customer: Node3D) -> Dictionary:
+	if restroom_stalls.is_empty():
+		_setup_restroom_fidelity()
+	
+	# 1. Search for an available unoccupied stall with no queue
+	for i in range(restroom_stalls.size()):
+		var s = restroom_stalls[i]
+		if not s.get("is_occupied", false) and s.get("waiting_queue", []).is_empty():
+			s["is_occupied"] = true
+			s["occupant"] = customer
+			return {
+				"stall_idx": i,
+				"is_queued": false,
+				"stall_pos": s.get("stall_center"),
+				"door_pos": s.get("stall_door_entry"),
+				"queue_pos": s.get("queue_pos")
+			}
+	
+	# 2. If all stalls occupied, find the stall with shortest queue
+	var best_idx: int = 0
+	var min_q: int = 999
+	for i in range(restroom_stalls.size()):
+		var s = restroom_stalls[i]
+		var q_len: int = s.get("waiting_queue", []).size()
+		if q_len < min_q:
+			min_q = q_len
+			best_idx = i
+			
+	var target_stall = restroom_stalls[best_idx]
+	target_stall["waiting_queue"].append(customer)
+	var q_idx = target_stall["waiting_queue"].size() - 1
+	var q_spot: Vector3 = target_stall.get("queue_pos") + Vector3(0.0, 0.0, -0.65 * float(q_idx))
+	return {
+		"stall_idx": best_idx,
+		"is_queued": true,
+		"stall_pos": target_stall.get("stall_center"),
+		"door_pos": target_stall.get("stall_door_entry"),
+		"queue_pos": q_spot
+	}
+
+func finish_using_stall(stall_idx: int, customer: Node3D) -> void:
+	if stall_idx < 0 or stall_idx >= restroom_stalls.size():
+		return
+	var s = restroom_stalls[stall_idx]
+	if s.get("occupant") == customer or s.get("occupant") == null:
+		s["occupant"] = null
+		s["is_occupied"] = false
+		
+		# Record restroom usage in GameManager for sanitation wear
+		var gm = get_node_or_null("/root/GameManager")
+		if gm != null and gm.has_method("record_restroom_use"):
+			gm.record_restroom_use()
+			
+		# Check if anyone is waiting in queue
+		var q: Array = s.get("waiting_queue", [])
+		while q.size() > 0:
+			var next_guest = q.pop_front()
+			if next_guest != null and is_instance_valid(next_guest):
+				s["is_occupied"] = true
+				s["occupant"] = next_guest
+				if next_guest.has_method("on_stall_became_available"):
+					next_guest.on_stall_became_available(stall_idx, s.get("stall_center"), s.get("stall_door_entry"))
+				break
+				
+		# Update queue positions for remaining waiting guests
+		for idx in range(q.size()):
+			var queued_guest = q[idx]
+			if queued_guest != null and is_instance_valid(queued_guest) and queued_guest.has_method("update_queue_position"):
+				var new_spot: Vector3 = s.get("queue_pos") + Vector3(0.0, 0.0, -0.65 * float(idx))
+				queued_guest.update_queue_position(new_spot)
+
+func get_available_sink_spot(customer: Node3D) -> Vector3:
+	for sink in restroom_sinks:
+		var occ = sink.get("occupied_by")
+		if occ == null or not is_instance_valid(occ):
+			sink["occupied_by"] = customer
+			return sink.get("pos", Vector3(-1.4, 0.0, -9.2))
+	var fallback = restroom_sinks.pick_random()
+	fallback["occupied_by"] = customer
+	return fallback.get("pos", Vector3(-1.4, 0.0, -9.2))
+
+func release_sink_spot(customer: Node3D) -> void:
+	for sink in restroom_sinks:
+		if sink.get("occupied_by") == customer:
+			sink["occupied_by"] = null
+
+func remove_customer_from_restroom(customer: Node3D) -> void:
+	for i in range(restroom_stalls.size()):
+		var s = restroom_stalls[i]
+		if s.get("occupant") == customer:
+			finish_using_stall(i, customer)
+		var q: Array = s.get("waiting_queue", [])
+		if customer in q:
+			q.erase(customer)
+	release_sink_spot(customer)
+
+func _on_rapid_sanitation_triggered(_cost: float) -> void:
+	# 1. Clean all dirty dining tables immediately
+	if tables_container != null:
+		for tbl in tables_container.get_children():
+			if tbl.get("is_dirty") == true and tbl.has_method("clean_table"):
+				tbl.clean_table()
+	
+	# 2. Dispatch Janitor Otis to rush through restaurant and sanitize restrooms
+	if is_instance_valid(janitor_character):
+		janitor_on_break = false
+		if janitor_status_label != null:
+			janitor_status_label.text = "🧹 Rapid Sanitation Dispatched! ⭐"
+		janitor_waypoints = [
+			Vector3(3.5, 0.0, 1.0),
+			Vector3(2.0, 0.0, -1.2),
+			Vector3(2.0, 0.0, -3.5),
+			Vector3(0.0, 0.0, -6.5)
+		]
+		var anim = _find_anim_player_in(janitor_character)
+		if anim != null and anim.has_animation("walk"):
+			var a = anim.get_animation("walk")
+			if a != null: a.loop_mode = Animation.LOOP_LINEAR
+			anim.play("walk")
+		
+		get_tree().create_timer(3.0).timeout.connect(func():
+			if is_instance_valid(janitor_character):
+				if janitor_status_label != null:
+					janitor_status_label.text = "🧹 Restroom & Dining 100% Spotless! ⭐"
+				var a2 = _find_anim_player_in(janitor_character)
+				if a2 != null and a2.has_animation("idle"):
+					a2.play("idle")
+		, CONNECT_ONE_SHOT)
+	elif waiters.size() > 0:
+		for w in waiters:
+			if is_instance_valid(w) and w.has_method("set_bubble_text"):
+				w.set_bubble_text("✨ 🧹")
+
 
 

@@ -15,7 +15,11 @@ enum State {
 	SEATED_ORDERING,
 	EATING,
 	CHEERING,
-	WALKING_TO_EXIT
+	WALKING_TO_EXIT,
+	WALKING_TO_RESTROOM,
+	WAITING_FOR_RESTROOM_STALL,
+	USING_RESTROOM_STALL,
+	WASHING_HANDS
 }
 
 var current_state: State = State.SPAWNING
@@ -30,6 +34,15 @@ var state_timer: float = 0.0
 var walk_cycle: float = 0.0
 var time_passed: float = 0.0
 var initial_bubble_y: float = 1.35
+
+# Restroom & Hygiene Sector State
+var assigned_stall_idx: int = -1
+var assigned_stall_pos: Vector3 = Vector3.ZERO
+var assigned_door_pos: Vector3 = Vector3.ZERO
+var assigned_queue_pos: Vector3 = Vector3.ZERO
+var assigned_sink_pos: Vector3 = Vector3.ZERO
+var is_visiting_restroom: bool = false
+var restroom_wait_timer: float = 0.0
 
 const LOUNGE_DRINKS: Array[Dictionary] = [
 	{"id": "wine_merlot", "name": "Vintage Merlot", "icon": "🍷", "price": 42.0},
@@ -402,9 +415,15 @@ func _physics_process(delta: float) -> void:
 			mesh_root.position.y = move_toward(mesh_root.position.y, 0.0, delta * 0.2)
 			mesh_root.rotation.z = move_toward(mesh_root.rotation.z, 0.0, delta * 0.5)
 
-	if current_state != State.SEATED_ORDERING and current_state != State.EATING and current_state != State.CHEERING and current_state != State.WAITING_IN_LOBBY:
+	if current_state != State.SEATED_ORDERING and current_state != State.EATING and current_state != State.CHEERING and current_state != State.WAITING_IN_LOBBY and current_state != State.WAITING_FOR_RESTROOM_STALL and current_state != State.USING_RESTROOM_STALL and current_state != State.WASHING_HANDS:
 		move_and_slide()
 	
+	if current_state == State.WAITING_FOR_RESTROOM_STALL:
+		restroom_wait_timer += delta
+		if restroom_wait_timer >= 14.0:
+			restroom_wait_timer = 0.0
+			_walk_to_sink()
+
 	if state_timer > 0.0:
 		state_timer -= delta
 		if current_state == State.AT_HOST:
@@ -609,6 +628,42 @@ func _on_all_waypoints_reached() -> void:
 		State.WALKING_TO_EXIT:
 			queue_free()
 
+		State.WALKING_TO_RESTROOM:
+			if assigned_queue_pos != Vector3.ZERO and position.distance_to(assigned_queue_pos) < 0.6:
+				current_state = State.WAITING_FOR_RESTROOM_STALL
+				velocity = Vector3.ZERO
+				rotation.y = 0.0
+				_play_anim("idle")
+				set_bubble_text("⏳ 🚻")
+			else:
+				_enter_assigned_stall()
+
+		State.USING_RESTROOM_STALL:
+			if position.distance_to(assigned_stall_pos) < 0.6:
+				var rest = _get_restaurant()
+				if rest != null and rest.has_method("animate_stall_door"):
+					rest.animate_stall_door(assigned_stall_idx, false, 0.35)
+				velocity = Vector3.ZERO
+				rotation.y = PI
+				_play_anim("idle")
+				set_bubble_text("🚽 ⏳")
+				state_timer = randf_range(2.0, 3.0)
+			else:
+				var rest = _get_restaurant()
+				if rest != null:
+					if rest.has_method("animate_stall_door"):
+						rest.animate_stall_door(assigned_stall_idx, false, 0.35)
+					if rest.has_method("finish_using_stall"):
+						rest.finish_using_stall(assigned_stall_idx, self)
+				_walk_to_sink()
+
+		State.WASHING_HANDS:
+			velocity = Vector3.ZERO
+			rotation.y = PI
+			_play_anim("idle")
+			set_bubble_text("🧼 💦")
+			state_timer = randf_range(1.5, 2.0)
+
 func set_as_waiting_in_lobby(spot: Vector3) -> void:
 	current_state = State.WAITING_IN_LOBBY
 	max_patience = 28.0
@@ -690,7 +745,7 @@ func _on_timer_complete() -> void:
 		State.AT_HOST:
 			if radial_ring != null:
 				radial_ring.visible = false
-			if table_ref != null:
+			if table_ref != null and table_ref.has_method("get_seat_position"):
 				var seat_pos: Vector3 = table_ref.get_seat_position()
 				current_state = State.WALKING_TO_TABLE
 				set_bubble_text("💭")
@@ -727,12 +782,61 @@ func _on_timer_complete() -> void:
 				table_ref.vacate()
 			
 			await get_tree().create_timer(1.0).timeout
+			if not is_instance_valid(self):
+				return
+			
+			# 25% chance for seated diners to visit northern Restroom wing before heading to exit
+			var will_visit_restroom: bool = (randf() < 0.25)
+			if will_visit_restroom and _start_restroom_visit():
+				return
+			
 			current_state = State.WALKING_TO_EXIT
 			set_bubble_text("")
 			status_bubble.visible = false
 			global_position.y = 0.0
 			_play_anim("walk")
 			set_waypoints(_get_waypoints_from_table(position))
+
+		State.USING_RESTROOM_STALL:
+			var rest = _get_restaurant()
+			if rest != null and rest.has_method("animate_stall_door"):
+				rest.animate_stall_door(assigned_stall_idx, true, 0.4)
+			_play_anim("walk")
+			rotation.y = 0.0
+			set_waypoints([assigned_door_pos])
+
+		State.WASHING_HANDS:
+			var rest = _get_restaurant()
+			if rest != null and rest.has_method("release_sink_spot"):
+				rest.release_sink_spot(self)
+			
+			var gm = get_node_or_null("/root/GameManager")
+			if gm != null:
+				var cln = gm.cleanliness if "cleanliness" in gm else 100.0
+				if cln >= 75.0:
+					var bonus_tip: float = float(randi_range(15, 35))
+					gm.add_cash(bonus_tip, global_position + Vector3(0, 1.8, 0))
+					_spawn_floating_text("+$%d Cleanliness Tip! ✨" % round(bonus_tip), Color(0.35, 1.0, 0.5, 1.0))
+					var am = get_node_or_null("/root/AudioManager")
+					if am != null and am.has_method("play_sfx"):
+						am.play_sfx("coin", 0.06, 1.15)
+			
+			set_bubble_text("✨ 😊")
+			_play_anim("walk")
+			current_state = State.WALKING_TO_EXIT
+			
+			var exit_pts = [
+				Vector3(0.0, 0.0, -7.0),
+				Vector3(2.0, 0.0, -5.0),
+				Vector3(2.0, 0.0, -3.5),
+				Vector3(2.0, 0.0, -1.2),
+				Vector3(2.0, 0.0, 4.5),
+				ARCH_POS,
+				HOST_POS,
+				DOOR_POS,
+				EXIT_POS
+			]
+			set_waypoints(exit_pts)
 
 # Called when waiter serves food to this customer's table
 func on_food_delivered() -> void:
@@ -941,3 +1045,114 @@ func on_milkshake_served(treat_id: String = "sundae") -> void:
 	global_position.y = 0.0
 	_play_anim("walk")
 	set_waypoints(_get_waypoints_from_diner(position))
+
+# ─── Restroom & Hygiene Navigation & Management ─────────────────────────────
+func _get_restaurant() -> Node3D:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_method("get_restaurant"):
+		var r = gm.get_restaurant()
+		if r != null: return r
+	if get_tree() != null and get_tree().root != null:
+		var r = get_tree().root.find_child("Restaurant", true, false)
+		if r != null: return r
+	return null
+
+func _cleanup_restroom_reservation() -> void:
+	if is_visiting_restroom:
+		var rest = _get_restaurant()
+		if rest != null and rest.has_method("remove_customer_from_restroom"):
+			rest.remove_customer_from_restroom(self)
+
+func _exit_tree() -> void:
+	_cleanup_restroom_reservation()
+
+func _start_restroom_visit() -> bool:
+	var rest = _get_restaurant()
+	if rest == null or not rest.has_method("request_restroom_stall"):
+		return false
+	var req: Dictionary = rest.request_restroom_stall(self)
+	if req.is_empty():
+		return false
+	
+	assigned_stall_idx = req.get("stall_idx", -1)
+	assigned_stall_pos = req.get("stall_pos", Vector3.ZERO)
+	assigned_door_pos = req.get("door_pos", Vector3.ZERO)
+	assigned_queue_pos = req.get("queue_pos", Vector3.ZERO)
+	var is_queued: bool = req.get("is_queued", false)
+	is_visiting_restroom = true
+	restroom_wait_timer = 0.0
+	
+	global_position.y = 0.0
+	_play_anim("walk")
+	set_bubble_text("🚻")
+	current_state = State.WALKING_TO_RESTROOM
+	
+	var pts = _get_waypoints_from_table_to_restroom(position)
+	if is_queued:
+		pts.append(assigned_queue_pos)
+	else:
+		pts.append(assigned_door_pos)
+	set_waypoints(pts)
+	return true
+
+func _get_waypoints_from_table_to_restroom(curr_pos: Vector3) -> Array:
+	var pts: Array = []
+	if curr_pos.x <= 3.0:
+		pts.append(Vector3(-0.1, 0.0, curr_pos.z))
+		pts.append(Vector3(-0.1, 0.0, -1.2))
+	elif curr_pos.x <= 6.8:
+		pts.append(Vector3(3.5, 0.0, curr_pos.z))
+		pts.append(Vector3(3.5, 0.0, -1.2))
+	elif curr_pos.x <= 10.8:
+		pts.append(Vector3(7.3, 0.0, curr_pos.z))
+		pts.append(Vector3(7.3, 0.0, -1.2))
+	else:
+		pts.append(Vector3(11.5, 0.0, curr_pos.z))
+		pts.append(Vector3(11.5, 0.0, -1.2))
+	
+	pts.append(Vector3(2.0, 0.0, -1.2))
+	pts.append(Vector3(2.0, 0.0, -3.5)) # Restroom south entrance opening
+	pts.append(Vector3(0.0, 0.0, -6.0)) # Restroom corridor
+	return pts
+
+func _enter_assigned_stall() -> void:
+	current_state = State.USING_RESTROOM_STALL
+	var rest = _get_restaurant()
+	if rest != null and rest.has_method("animate_stall_door"):
+		rest.animate_stall_door(assigned_stall_idx, true, 0.4)
+	
+	rotation.y = 0.0
+	_play_anim("walk")
+	set_waypoints([assigned_stall_pos])
+
+func _walk_to_sink() -> void:
+	current_state = State.WASHING_HANDS
+	var rest = _get_restaurant()
+	var sink_pos = Vector3(-1.4, 0.0, -9.2)
+	if rest != null and rest.has_method("get_available_sink_spot"):
+		sink_pos = rest.get_available_sink_spot(self)
+	assigned_sink_pos = sink_pos
+	
+	set_bubble_text("🧼")
+	_play_anim("walk")
+	set_waypoints([Vector3(0.0, 0.0, -7.2), assigned_sink_pos])
+
+func on_stall_became_available(stall_idx: int, stall_pos: Vector3, door_pos: Vector3) -> void:
+	if current_state != State.WAITING_FOR_RESTROOM_STALL:
+		return
+	assigned_stall_idx = stall_idx
+	assigned_stall_pos = stall_pos
+	assigned_door_pos = door_pos
+	assigned_queue_pos = Vector3.ZERO
+	current_state = State.WALKING_TO_RESTROOM
+	_play_anim("walk")
+	set_bubble_text("🚻")
+	set_waypoints([assigned_door_pos])
+
+func update_queue_position(new_queue_pos: Vector3) -> void:
+	if current_state != State.WAITING_FOR_RESTROOM_STALL:
+		return
+	assigned_queue_pos = new_queue_pos
+	_play_anim("walk")
+	set_waypoints([assigned_queue_pos])
+

@@ -698,6 +698,8 @@ func vacate() -> void:
 	_spawn_dirty_dishes()
 		
 	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_method("record_dirty_table"):
+		gm.record_dirty_table()
 	var lvl = gm.get_station_level(table_id) if gm != null else 1
 	update_level_display(lvl)
 
@@ -721,6 +723,10 @@ func clean_table() -> void:
 		return
 	is_dirty = false
 	
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_method("record_table_cleaned"):
+		gm.record_table_cleaned()
+	
 	if dirty_dishes != null:
 		var tw = create_tween()
 		tw.tween_property(dirty_dishes, "scale", Vector3(0.05, 0.05, 0.05), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -738,7 +744,6 @@ func clean_table() -> void:
 	if booth_cash_stack != null:
 		booth_cash_stack.visible = true
 	
-	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
 		gm.add_cash(10.0, global_position + Vector3(0, 1.6, 0)) # Bussing revenue
 		var lvl = gm.get_station_level(table_id)

@@ -41,6 +41,8 @@ signal objective_updated(objective: Dictionary)
 signal objective_claimed(rewards: Dictionary)
 signal spin_wheel_completed(slice_index: int, prize: Dictionary)
 signal daily_login_claimed(day: int, reward: Dictionary)
+signal cleanliness_updated(new_cleanliness: float)
+signal rapid_sanitation_triggered(cost_deducted: float)
 
 var restaurant_node: Node3D = null
 
@@ -65,7 +67,8 @@ var max_energy: int = 50
 var energy_regen_timer: float = 0.0
 var total_earned: float = 0.0
 var pending_offline_earnings: float = 0.0
-var star_rating: float = 4.8
+var star_rating: float = 5.0
+var cleanliness: float = 100.0
 var restaurant_name: String = "Idle Diner"
 var is_boosted: bool = false
 var boost_timer: float = 0.0
@@ -1042,6 +1045,7 @@ func save_game() -> void:
 		"energy_regen_timer": energy_regen_timer,
 		"total_earned": total_earned,
 		"star_rating": star_rating,
+		"cleanliness": cleanliness,
 		"restaurant_name": restaurant_name,
 		"restaurant_level": restaurant_level,
 		"restaurant_xp": restaurant_xp,
@@ -1064,6 +1068,9 @@ func save_game() -> void:
 		"last_free_spin_timestamp": last_free_spin_timestamp,
 		"login_streak_days": login_streak_days,
 		"last_login_claim_timestamp": last_login_claim_timestamp,
+		"is_boosted": is_boosted,
+		"boost_timer": boost_timer,
+		"boost_multiplier": boost_multiplier,
 		"world_restaurants_unlocked": {
 			"idle_diner": world_restaurants["idle_diner"].get("unlocked", true),
 			"idles_chain": world_restaurants["idles_chain"].get("unlocked", false),
@@ -1099,6 +1106,7 @@ func load_game() -> void:
 	energy_regen_timer = float(parsed.get("energy_regen_timer", energy_regen_timer))
 	total_earned = float(parsed.get("total_earned", total_earned))
 	star_rating = float(parsed.get("star_rating", star_rating))
+	cleanliness = float(parsed.get("cleanliness", cleanliness))
 	restaurant_name = str(parsed.get("restaurant_name", restaurant_name))
 	restaurant_level = int(parsed.get("restaurant_level", restaurant_level))
 	restaurant_xp = float(parsed.get("restaurant_xp", restaurant_xp))
@@ -1190,6 +1198,12 @@ func load_game() -> void:
 		login_streak_days = int(parsed["login_streak_days"])
 	if parsed.has("last_login_claim_timestamp"):
 		last_login_claim_timestamp = float(parsed["last_login_claim_timestamp"])
+	if parsed.has("is_boosted"):
+		is_boosted = bool(parsed["is_boosted"])
+	if parsed.has("boost_timer"):
+		boost_timer = float(parsed["boost_timer"])
+	if parsed.has("boost_multiplier"):
+		boost_multiplier = float(parsed["boost_multiplier"])
 
 	currencies_updated.emit(cash, golden_coins, diamonds, energy)
 	cash_changed.emit(cash)
@@ -2408,6 +2422,69 @@ func get_bottleneck_status() -> Dictionary:
 		"code": "OPTIMAL",
 		"icon": "🟢"
 	}
+
+# ─── Restroom & Sanitation Hygiene System ──────────────────────────────────
+func get_cleanliness() -> float:
+	return cleanliness
+
+func record_restroom_use() -> void:
+	var loss: float = 2.0
+	if is_perk_unlocked("spotless_hygiene"):
+		loss *= 0.5
+	var jan_lvl = get_card_level("master_janitor")
+	if jan_lvl > 0:
+		loss /= (1.0 + float(jan_lvl) * 0.25)
+	cleanliness = clampf(cleanliness - loss, 20.0, 100.0)
+	_update_hygiene_star_rating()
+	cleanliness_updated.emit(cleanliness)
+
+func record_dirty_table() -> void:
+	var loss: float = 2.5
+	if is_perk_unlocked("spotless_hygiene"):
+		loss *= 0.5
+	var jan_lvl = get_card_level("master_janitor")
+	if jan_lvl > 0:
+		loss /= (1.0 + float(jan_lvl) * 0.25)
+	cleanliness = clampf(cleanliness - loss, 20.0, 100.0)
+	_update_hygiene_star_rating()
+	cleanliness_updated.emit(cleanliness)
+
+func record_table_cleaned() -> void:
+	cleanliness = clampf(cleanliness + 4.0, 0.0, 100.0)
+	_update_hygiene_star_rating()
+	cleanliness_updated.emit(cleanliness)
+
+func _update_hygiene_star_rating() -> void:
+	if cleanliness >= 75.0:
+		star_rating = 5.0
+	else:
+		star_rating = clampf(4.0 + (cleanliness / 100.0) * 1.0, 4.0, 5.0)
+	reputation_changed.emit(round(star_rating * 10))
+
+func get_financial_summary() -> Dictionary:
+	return get_financial_breakdown()
+
+func get_cleaning_upkeep_cost() -> float:
+	var fin = get_financial_breakdown()
+	var base_upkeep = fin.get("expenses", {}).get("cleaning_min", 300.0)
+	if is_perk_unlocked("spotless_hygiene"):
+		base_upkeep *= 0.5
+	return max(150.0, base_upkeep)
+
+func trigger_rapid_sanitation() -> bool:
+	var cost = get_cleaning_upkeep_cost()
+	if spend_cash(cost):
+		cleanliness = 100.0
+		star_rating = 5.0
+		reputation_changed.emit(round(star_rating * 10))
+		cleanliness_updated.emit(cleanliness)
+		rapid_sanitation_triggered.emit(cost)
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("cash_register", 0.05, 1.2)
+		save_game()
+		return true
+	return false
 
 # ─── Collectible Card Management & Multipliers ──────────────────────────────
 func get_card(card_id: String) -> Dictionary:

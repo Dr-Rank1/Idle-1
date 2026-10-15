@@ -42,10 +42,11 @@ func _init():
 	for i in range(200):
 		await process_frame
 		
+	var base_dir = ProjectSettings.globalize_path("res://../")
 	var img = root.get_viewport().get_texture().get_image()
-	var out_path = "c:/Users/Ian/Documents/Apps/Idle-1/gameplay_view.png"
-	var err = img.save_png(out_path)
-	print("Snapshot result:", err)
+	if img != null:
+		var err = img.save_png(base_dir + "/gameplay_view.png")
+		print("Snapshot result:", err)
 
 	var gm = root.get_node_or_null("/root/GameManager")
 	if gm != null:
@@ -56,7 +57,8 @@ func _init():
 	for i in range(15):
 		await process_frame
 	var img_modal = root.get_viewport().get_texture().get_image()
-	img_modal.save_png("c:/Users/Ian/Documents/Apps/Idle-1/upgrade_modal_view.png")
+	if img_modal != null:
+		img_modal.save_png(base_dir + "/upgrade_modal_view.png")
 	if hud_node != null and hud_node.has_method("_hide_all_modals"):
 		hud_node._hide_all_modals()
 
@@ -68,7 +70,8 @@ func _init():
 	for i in range(30):
 		await process_frame
 	var img_exp = root.get_viewport().get_texture().get_image()
-	img_exp.save_png("c:/Users/Ian/Documents/Apps/Idle-1/expansion_view.png")
+	if img_exp != null:
+		img_exp.save_png(base_dir + "/expansion_view.png")
 
 	# Focus camera on parking lot to capture exterior, parking bays, courtyard, and helipad
 	if cam != null and cam.has_method("focus_zone"):
@@ -76,7 +79,8 @@ func _init():
 	for i in range(30):
 		await process_frame
 	var img_park = root.get_viewport().get_texture().get_image()
-	img_park.save_png("c:/Users/Ian/Documents/Apps/Idle-1/parking_view.png")
+	if img_park != null:
+		img_park.save_png(base_dir + "/parking_view.png")
 
 	# Focus camera on lounge to capture 1:1 fidelity details of Cocktail Lounge and Reception
 	if cam != null and cam.has_method("focus_zone"):
@@ -84,7 +88,8 @@ func _init():
 	for i in range(35):
 		await process_frame
 	var img_lounge = root.get_viewport().get_texture().get_image()
-	img_lounge.save_png("c:/Users/Ian/Documents/Apps/Idle-1/lounge_view.png")
+	if img_lounge != null:
+		img_lounge.save_png(base_dir + "/lounge_view.png")
 
 	# Focus camera on milkshake bar to capture 1:1 fidelity details of Milkshake & Soda Diner
 	if cam != null:
@@ -96,7 +101,8 @@ func _init():
 		for i in range(30):
 			await process_frame
 		var img_shake = root.get_viewport().get_texture().get_image()
-		img_shake.save_png("c:/Users/Ian/Documents/Apps/Idle-1/milkshake_view.png")
+		if img_shake != null:
+			img_shake.save_png(base_dir + "/milkshake_view.png")
 	# Focus camera on kitchen to capture 1:1 fidelity details of Commercial Kitchen
 	if cam != null:
 		var orig_pos = cam.target_position
@@ -107,7 +113,8 @@ func _init():
 		for i in range(35):
 			await process_frame
 		var img_kitchen = root.get_viewport().get_texture().get_image()
-		img_kitchen.save_png("c:/Users/Ian/Documents/Apps/Idle-1/kitchen_view.png")
+		if img_kitchen != null:
+			img_kitchen.save_png(base_dir + "/kitchen_view.png")
 		cam.target_position = orig_pos
 		cam.position = orig_pos
 		cam.size = orig_size

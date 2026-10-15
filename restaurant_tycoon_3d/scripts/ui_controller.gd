@@ -224,6 +224,21 @@ const HOLD_INITIAL_DELAY: float = 0.35
 var cash_texture: Texture2D = null
 var gold_texture: Texture2D = null
 var diamond_texture: Texture2D = null
+var energy_texture: Texture2D = null
+var _custom_textures: Dictionary = {}
+
+func get_custom_texture(res_path: String) -> ImageTexture:
+	if _custom_textures.has(res_path):
+		return _custom_textures[res_path]
+	var global_path = ProjectSettings.globalize_path(res_path)
+	if FileAccess.file_exists(global_path):
+		var img = Image.load_from_file(global_path)
+		if img != null:
+			var tex = ImageTexture.create_from_image(img)
+			_custom_textures[res_path] = tex
+			return tex
+	return null
+
 var style_multi_active: StyleBoxFlat = null
 var style_multi_inactive: StyleBoxFlat = null
 var shop_tab_style_active: StyleBoxFlat = null
@@ -260,8 +275,58 @@ func _get_audio_manager() -> Node:
 			return st.root.get_node_or_null("AudioManager")
 	return null
 
+func _setup_currency_hud_icons() -> void:
+	var dia_tex = get_custom_texture("res://assets/textures/icon_diamond.png")
+	if dia_tex != null:
+		var gem_icon_lbl = get_node_or_null("HUD/TopBar/GemPanel/HBox/Icon")
+		if gem_icon_lbl is Label and gem_icon_lbl.get_parent() != null:
+			var p = gem_icon_lbl.get_parent()
+			var idx = gem_icon_lbl.get_index()
+			gem_icon_lbl.queue_free()
+			var tr = TextureRect.new()
+			tr.name = "Icon"
+			tr.texture = dia_tex
+			tr.custom_minimum_size = Vector2(18, 18)
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			p.add_child(tr)
+			p.move_child(tr, idx)
+
+	var gold_tex = get_custom_texture("res://assets/textures/icon_gold_coin.png")
+	if gold_tex != null:
+		var gold_icon_lbl = get_node_or_null("HUD/TopBar/GoldCoinPanel/HBox/Icon")
+		if gold_icon_lbl is Label and gold_icon_lbl.get_parent() != null:
+			var p = gold_icon_lbl.get_parent()
+			var idx = gold_icon_lbl.get_index()
+			gold_icon_lbl.queue_free()
+			var tr = TextureRect.new()
+			tr.name = "Icon"
+			tr.texture = gold_tex
+			tr.custom_minimum_size = Vector2(18, 18)
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			p.add_child(tr)
+			p.move_child(tr, idx)
+
+	var energy_tex_res = get_custom_texture("res://assets/textures/icon_energy.png")
+	if energy_tex_res != null:
+		var energy_icon_lbl = get_node_or_null("HUD/TopBar/EnergyPanel/HBox/Icon")
+		if energy_icon_lbl is Label and energy_icon_lbl.get_parent() != null:
+			var p = energy_icon_lbl.get_parent()
+			var idx = energy_icon_lbl.get_index()
+			energy_icon_lbl.queue_free()
+			var tr = TextureRect.new()
+			tr.name = "Icon"
+			tr.texture = energy_tex_res
+			tr.custom_minimum_size = Vector2(18, 18)
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			p.add_child(tr)
+			p.move_child(tr, idx)
+
 func _ready() -> void:
 	_hide_all_modals()
+	_setup_currency_hud_icons()
 	
 	boost_btn.pressed.connect(_on_boost_pressed)
 	if add_gem_btn != null: add_gem_btn.pressed.connect(func(): _open_shop_at_section("currencies"))
@@ -451,7 +516,13 @@ func _ready() -> void:
 		ribbon_cleaning.gui_input.connect(func(event: InputEvent):
 			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 				_play_click_sfx()
-				_toggle_modal(analytics_panel, _refresh_analytics_panel)
+				var gm = get_node_or_null("/root/GameManager")
+				if gm != null and gm.has_method("trigger_rapid_sanitation"):
+					var success = gm.trigger_rapid_sanitation()
+					if not success:
+						_toggle_modal(analytics_panel, _refresh_analytics_panel)
+				else:
+					_toggle_modal(analytics_panel, _refresh_analytics_panel)
 		)
 
 	if shop_btn != null:
@@ -597,6 +668,18 @@ func _ready() -> void:
 			if perks_panel != null and perks_panel.visible:
 				_refresh_perks_panel()
 		)
+		if gm.has_signal("cleanliness_updated"):
+			gm.cleanliness_updated.connect(func(_new_cln):
+				_update_status_ribbons()
+				_update_top_bar(gm.cash, gm.gems, gm.star_rating, gm.restaurant_name, gm.restaurant_level, gm.restaurant_xp, gm.xp_to_next_level)
+			)
+		if gm.has_signal("rapid_sanitation_triggered"):
+			gm.rapid_sanitation_triggered.connect(func(cost_deducted):
+				_update_status_ribbons()
+				_update_top_bar(gm.cash, gm.gems, gm.star_rating, gm.restaurant_name, gm.restaurant_level, gm.restaurant_xp, gm.xp_to_next_level)
+				_show_rapid_sanitation_banner(cost_deducted)
+			)
+		
 		
 		displayed_cash = gm.cash
 		displayed_gold = float(gm.golden_coins)
@@ -2246,8 +2329,76 @@ func _update_status_ribbons() -> void:
 		ribbon_parking_lbl.text = "📈 + %s Parking" % _format_money(p_inc)
 
 	if ribbon_cleaning_lbl != null:
-		var c_exp = fin.get("expenses", {}).get("cleaning_min", 300.0)
-		ribbon_cleaning_lbl.text = "🧹 - %s Cleaning" % _format_money(c_exp)
+		var c_exp = gm.get_cleaning_upkeep_cost() if gm != null and gm.has_method("get_cleaning_upkeep_cost") else fin.get("expenses", {}).get("cleaning_min", 300.0)
+		var cln = gm.cleanliness if gm != null else 100.0
+		if cln < 75.0:
+			ribbon_cleaning_lbl.text = "🧹 - %s Clean (%d%%)" % [_format_money(c_exp), round(cln)]
+			ribbon_cleaning_lbl.add_theme_color_override("font_color", Color(1.0, 0.72, 0.72, 1.0))
+			if ribbon_cleaning != null:
+				ribbon_cleaning.add_theme_stylebox_override("panel", _get_red_ribbon_style())
+		else:
+			ribbon_cleaning_lbl.text = "🧹 - %s Cleaning (%d%%)" % [_format_money(c_exp), round(cln)]
+			ribbon_cleaning_lbl.add_theme_color_override("font_color", Color(0.72, 1.0, 0.75, 1.0))
+			if ribbon_cleaning != null:
+				ribbon_cleaning.add_theme_stylebox_override("panel", _get_green_ribbon_style())
+
+func _show_rapid_sanitation_banner(cost_deducted: float) -> void:
+	if ribbon_cleaning != null:
+		var tw = create_tween()
+		tw.tween_property(ribbon_cleaning, "scale", Vector2(1.12, 1.12), 0.15)
+		tw.tween_property(ribbon_cleaning, "scale", Vector2.ONE, 0.2)
+	
+	var hud_node = get_node_or_null("HUD")
+	if hud_node == null:
+		hud_node = self
+		
+	var toast = PanelContainer.new()
+	toast.name = "SanitationToast"
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.custom_minimum_size = Vector2(400, 56)
+	toast.anchors_preset = Control.PRESET_CENTER_TOP
+	toast.anchor_left = 0.5
+	toast.anchor_top = 0.0
+	toast.anchor_right = 0.5
+	toast.anchor_bottom = 0.0
+	toast.offset_left = -200.0
+	toast.offset_right = 200.0
+	toast.offset_top = 24.0
+	toast.offset_bottom = 80.0
+	toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	toast.pivot_offset = Vector2(200, 28)
+	
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.24, 0.14, 0.95)
+	sb.border_width_left = 2
+	sb.border_width_top = 2
+	sb.border_width_right = 2
+	sb.border_width_bottom = 3
+	sb.border_color = Color(0.35, 0.95, 0.55, 1.0)
+	sb.set_corner_radius_all(12)
+	sb.set_content_margin_all(8)
+	toast.add_theme_stylebox_override("panel", sb)
+	
+	var lbl = Label.new()
+	lbl.text = "✨ RAPID SANITATION COMPLETE (-%s)!\n100%% Spotless • 5.0 Stars ⭐" % _format_money(cost_deducted)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.9, 1.0, 0.92, 1.0))
+	lbl.add_theme_font_size_override("font_size", 13)
+	toast.add_child(lbl)
+	
+	toast.scale = Vector2.ZERO
+	hud_node.add_child(toast)
+	
+	var tw2 = create_tween()
+	tw2.tween_property(toast, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw2.tween_interval(2.2)
+	tw2.tween_property(toast, "scale", Vector2(0.8, 0.8), 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw2.parallel().tween_property(toast, "modulate:a", 0.0, 0.2)
+	tw2.chain().tween_callback(func():
+		if is_instance_valid(toast):
+			toast.queue_free()
+	)
 
 func _update_marketing_ribbon() -> void:
 	_update_status_ribbons()
@@ -3506,6 +3657,33 @@ func _create_shop_card(item_id: String, title_txt: String, desc_txt: String, val
 	hbox.add_theme_constant_override("separation", 14)
 	p.add_child(hbox)
 
+	var icon_tex: Texture2D = null
+	if item_id.begins_with("chest_wooden") or item_id == "wooden_chest":
+		icon_tex = get_custom_texture("res://assets/textures/icon_chest_wood.png")
+	elif item_id.begins_with("chest_silver") or item_id == "silver_chest":
+		icon_tex = get_custom_texture("res://assets/textures/icon_chest_silver.png")
+	elif item_id.begins_with("chest_golden") or item_id.begins_with("chest_epic") or item_id == "golden_chest":
+		icon_tex = get_custom_texture("res://assets/textures/icon_chest_gold.png")
+	elif item_id.begins_with("timeskip") or item_id.begins_with("time_skip"):
+		icon_tex = get_custom_texture("res://assets/textures/icon_time_skip.png")
+	elif item_id.begins_with("energy"):
+		icon_tex = get_custom_texture("res://assets/textures/icon_energy.png")
+	elif item_id.begins_with("gold"):
+		icon_tex = get_custom_texture("res://assets/textures/icon_gold_coin.png")
+	elif item_id.begins_with("buy_gems") or item_id.contains("diamond") or item_id == "perm_2x_income":
+		icon_tex = get_custom_texture("res://assets/textures/icon_diamond.png")
+	elif item_id.begins_with("boost"):
+		icon_tex = get_custom_texture("res://assets/textures/icon_energy.png")
+
+	if icon_tex != null:
+		var tr = TextureRect.new()
+		tr.texture = icon_tex
+		tr.custom_minimum_size = Vector2(44, 44)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		hbox.add_child(tr)
+
 	var vb = VBoxContainer.new()
 	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_theme_constant_override("separation", 2)
@@ -3601,8 +3779,10 @@ func spawn_flying_currency_trail(world_pos: Vector3, amount: float = 0.0, curren
 			if gem_panel != null and gem_panel.is_inside_tree():
 				target_panel = gem_panel
 				target_screen_pos = gem_panel.global_position + gem_panel.size * 0.5
-			if diamond_texture == null and ResourceLoader.exists("res://assets/textures/bubble_diamond.png"):
-				diamond_texture = load("res://assets/textures/bubble_diamond.png")
+			if diamond_texture == null:
+				diamond_texture = get_custom_texture("res://assets/textures/icon_diamond.png")
+				if diamond_texture == null and ResourceLoader.exists("res://assets/textures/bubble_diamond.png"):
+					diamond_texture = load("res://assets/textures/bubble_diamond.png")
 			trail_tex = diamond_texture
 			coin_count = clampi(int(amount), 3, 7) if amount > 0.0 else 5
 		"gold", "gold_coin", "golden_coins":
@@ -3611,8 +3791,10 @@ func spawn_flying_currency_trail(world_pos: Vector3, amount: float = 0.0, curren
 			if gold_panel != null and gold_panel.is_inside_tree():
 				target_panel = gold_panel
 				target_screen_pos = gold_panel.global_position + gold_panel.size * 0.5
-			if gold_texture == null and ResourceLoader.exists("res://assets/textures/bubble_gold_coin.png"):
-				gold_texture = load("res://assets/textures/bubble_gold_coin.png")
+			if gold_texture == null:
+				gold_texture = get_custom_texture("res://assets/textures/icon_gold_coin.png")
+				if gold_texture == null and ResourceLoader.exists("res://assets/textures/bubble_gold_coin.png"):
+					gold_texture = load("res://assets/textures/bubble_gold_coin.png")
 			trail_tex = gold_texture
 			coin_count = clampi(int(amount / 10.0), 3, 7) if amount > 0.0 else 5
 		"energy":
@@ -3621,6 +3803,9 @@ func spawn_flying_currency_trail(world_pos: Vector3, amount: float = 0.0, curren
 			if energy_panel != null and energy_panel.is_inside_tree():
 				target_panel = energy_panel
 				target_screen_pos = energy_panel.global_position + energy_panel.size * 0.5
+			if energy_texture == null:
+				energy_texture = get_custom_texture("res://assets/textures/icon_energy.png")
+			trail_tex = energy_texture
 			coin_count = clampi(int(amount / 5.0), 3, 6) if amount > 0.0 else 4
 		_: # "cash"
 			sound_name = "coin"
@@ -3631,8 +3816,10 @@ func spawn_flying_currency_trail(world_pos: Vector3, amount: float = 0.0, curren
 				target_screen_pos = cash_panel.global_position + cash_panel.size * 0.5
 			elif cash_label != null and cash_label.is_inside_tree():
 				target_screen_pos = cash_label.global_position + cash_label.size * 0.5
-			if cash_texture == null and ResourceLoader.exists("res://assets/textures/bubble_cash_stack.png"):
-				cash_texture = load("res://assets/textures/bubble_cash_stack.png")
+			if cash_texture == null:
+				cash_texture = get_custom_texture("res://assets/textures/bubble_cash_stack.png")
+				if cash_texture == null and ResourceLoader.exists("res://assets/textures/bubble_cash_stack.png"):
+					cash_texture = load("res://assets/textures/bubble_cash_stack.png")
 			trail_tex = cash_texture
 			if amount > 0.0:
 				coin_count = clampi(int(amount / 20.0), 3, 7)
@@ -4046,12 +4233,14 @@ func show_chest_reward_popup(chest_type: String, rewards: Dictionary) -> void:
 			
 		var gold_gain = int(rewards.get("golden_coins", 0))
 		if gold_gain > 0:
-			var gpill = _create_reward_currency_chip("🪙 +%d Gold" % gold_gain, Color(0.24, 0.18, 0.05, 0.95), Color(1.0, 0.85, 0.25, 1.0))
+			var gold_tex = get_custom_texture("res://assets/textures/icon_gold_coin.png")
+			var gpill = _create_reward_currency_chip("+%d Gold" % gold_gain, Color(0.24, 0.18, 0.05, 0.95), Color(1.0, 0.85, 0.25, 1.0), gold_tex)
 			chest_reward_currencies_box.add_child(gpill)
 			
 		var gems_gain = int(rewards.get("diamonds", 0))
 		if gems_gain > 0:
-			var dpill = _create_reward_currency_chip("💎 +%d Gems" % gems_gain, Color(0.18, 0.1, 0.25, 0.95), Color(0.85, 0.45, 1.0, 1.0))
+			var dia_tex = get_custom_texture("res://assets/textures/icon_diamond.png")
+			var dpill = _create_reward_currency_chip("+%d Gems" % gems_gain, Color(0.18, 0.1, 0.25, 0.95), Color(0.85, 0.45, 1.0, 1.0), dia_tex)
 			chest_reward_currencies_box.add_child(dpill)
 
 	# Populate Cards Container
@@ -4070,7 +4259,7 @@ func show_chest_reward_popup(chest_type: String, rewards: Dictionary) -> void:
 	if am != null and am.has_method("play_sfx"):
 		am.play_sfx("coin", 0.05, 1.2)
 
-func _create_reward_currency_chip(text: String, bg_col: Color, text_col: Color) -> PanelContainer:
+func _create_reward_currency_chip(text: String, bg_col: Color, text_col: Color, icon_tex: Texture2D = null) -> PanelContainer:
 	var pc = PanelContainer.new()
 	var sb = StyleBoxFlat.new()
 	sb.bg_color = bg_col
@@ -4086,11 +4275,23 @@ func _create_reward_currency_chip(text: String, bg_col: Color, text_col: Color) 
 	sb.content_margin_bottom = 6.0
 	pc.add_theme_stylebox_override("panel", sb)
 	
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 6)
+	pc.add_child(hbox)
+
+	if icon_tex != null:
+		var tr = TextureRect.new()
+		tr.texture = icon_tex
+		tr.custom_minimum_size = Vector2(18, 18)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		hbox.add_child(tr)
+
 	var lbl = Label.new()
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 13)
 	lbl.add_theme_color_override("font_color", text_col)
-	pc.add_child(lbl)
+	hbox.add_child(lbl)
 	return pc
 
 func _create_reward_card_chip(rcard: Dictionary) -> PanelContainer:
