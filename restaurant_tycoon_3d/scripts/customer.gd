@@ -776,6 +776,8 @@ func on_food_delivered() -> void:
 		var tip: float = round(ordered_dish.get("price", 45.0) * 0.30)
 		if gm != null:
 			gm.add_cash(tip, global_position + Vector3(0, 2.2, 0))
+			if gm.has_method("record_speedy_tip"):
+				gm.record_speedy_tip()
 		var tip_str = gm.format_money(tip) if gm != null and gm.has_method("format_money") else ("$%d" % round(tip))
 		_spawn_floating_text("+" + tip_str + " Speedy Tip! ⚡", Color(0.35, 1.0, 0.5, 1.0))
 		set_bubble_badge("fork_knife")

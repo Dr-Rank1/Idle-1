@@ -65,7 +65,9 @@ func _setup_test_environment() -> void:
 	gm.restaurant_xp = 0.0
 	gm.xp_to_next_level = 1000000.0 # High threshold during test so add_cash does not trigger level-up
 
-	# Reset all collectible cards to clean state
+	# Reset all collectible cards and station levels to clean state
+	gm.station_levels["kitchen_cook"] = 1
+	gm.station_levels["stove"] = 1
 	for cid in gm.collectible_cards.keys():
 		gm.collectible_cards[cid]["level"] = 0
 		gm.collectible_cards[cid]["cards"] = 0

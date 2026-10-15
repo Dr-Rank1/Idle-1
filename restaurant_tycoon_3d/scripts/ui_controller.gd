@@ -176,6 +176,27 @@ var boost_timer_bar: Panel = null
 @onready var chest_reward_cards_box: VBoxContainer = get_node_or_null("ChestRewardModal/VBox/Scroll/CardsContainer")
 @onready var chest_reward_collect_btn: Button = get_node_or_null("ChestRewardModal/VBox/CollectBtn")
 
+@onready var side_spin_btn: Button = get_node_or_null("HUD/RightDock/SideSpinBtn")
+@onready var spin_modal: PanelContainer = get_node_or_null("SpinWheelModal")
+@onready var spin_tab_btn: Button = get_node_or_null("SpinWheelModal/VBox/TabsHBox/TabSpinBtn")
+@onready var daily_tab_btn: Button = get_node_or_null("SpinWheelModal/VBox/TabsHBox/TabDailyBtn")
+@onready var spin_view: VBoxContainer = get_node_or_null("SpinWheelModal/VBox/SpinView")
+@onready var daily_view: VBoxContainer = get_node_or_null("SpinWheelModal/VBox/DailyView")
+@onready var wheel_graphic: Control = get_node_or_null("SpinWheelModal/VBox/SpinView/WheelCenterContainer/WheelGraphic")
+@onready var spin_status_label: Label = get_node_or_null("SpinWheelModal/VBox/SpinView/SpinStatusLabel")
+@onready var spin_action_btn: Button = get_node_or_null("SpinWheelModal/VBox/SpinView/SpinActionBtn")
+@onready var spin_result_label: Label = get_node_or_null("SpinWheelModal/VBox/SpinView/SpinResultLabel")
+@onready var streak_label: Label = get_node_or_null("SpinWheelModal/VBox/DailyView/StreakLabel")
+@onready var daily_cards_container: GridContainer = get_node_or_null("SpinWheelModal/VBox/DailyView/DailyScroll/DailyCardsContainer")
+@onready var claim_daily_btn: Button = get_node_or_null("SpinWheelModal/VBox/DailyView/ClaimDailyBtn")
+@onready var close_spin_btn: Button = get_node_or_null("SpinWheelModal/VBox/CloseSpinBtn")
+@onready var close_spin_banner_btn: Button = get_node_or_null("SpinWheelModal/VBox/HeaderBanner/BannerHBox/CloseSpinBannerBtn")
+
+var quest_banner_style_normal: StyleBoxFlat = null
+var quest_banner_style_completed: StyleBoxFlat = null
+var is_spinning_wheel: bool = false
+var wheel_labels_initialized: bool = false
+
 var current_station_id: String = ""
 var current_multiplier: String = "1"
 var current_shop_category: String = "featured"
@@ -298,7 +319,35 @@ func _ready() -> void:
 			_toggle_modal(cards_panel, _refresh_cards_panel)
 		)
 	
-	# Quest Banner Click
+	# Quest Banner Click & Styles
+	quest_banner_style_normal = StyleBoxFlat.new()
+	quest_banner_style_normal.bg_color = Color(0.08, 0.12, 0.18, 0.92)
+	quest_banner_style_normal.border_width_left = 1
+	quest_banner_style_normal.border_width_top = 1
+	quest_banner_style_normal.border_width_right = 1
+	quest_banner_style_normal.border_width_bottom = 2
+	quest_banner_style_normal.border_color = Color(0.2, 0.45, 0.7, 0.8)
+	quest_banner_style_normal.set_corner_radius_all(12)
+	quest_banner_style_normal.content_margin_left = 10.0
+	quest_banner_style_normal.content_margin_top = 6.0
+	quest_banner_style_normal.content_margin_right = 10.0
+	quest_banner_style_normal.content_margin_bottom = 6.0
+
+	quest_banner_style_completed = StyleBoxFlat.new()
+	quest_banner_style_completed.bg_color = Color(0.08, 0.38, 0.18, 0.96)
+	quest_banner_style_completed.border_width_left = 2
+	quest_banner_style_completed.border_width_top = 2
+	quest_banner_style_completed.border_width_right = 2
+	quest_banner_style_completed.border_width_bottom = 3
+	quest_banner_style_completed.border_color = Color(0.35, 0.95, 0.55, 1.0)
+	quest_banner_style_completed.set_corner_radius_all(12)
+	quest_banner_style_completed.content_margin_left = 10.0
+	quest_banner_style_completed.content_margin_top = 6.0
+	quest_banner_style_completed.content_margin_right = 10.0
+	quest_banner_style_completed.content_margin_bottom = 6.0
+	quest_banner_style_completed.shadow_color = Color(0.1, 0.85, 0.3, 0.35)
+	quest_banner_style_completed.shadow_size = 8
+
 	quest_banner.gui_input.connect(_on_quest_banner_input)
 	quest_claim_btn.pressed.connect(_on_banner_claim_pressed)
 	
@@ -443,6 +492,10 @@ func _ready() -> void:
 		side_cards_btn.pressed.connect(func():
 			_toggle_modal(cards_panel, _refresh_cards_panel)
 		)
+	if side_spin_btn != null:
+		side_spin_btn.pressed.connect(func():
+			_toggle_modal(spin_modal, _refresh_spin_wheel)
+		)
 
 	if close_cards_btn != null:
 		close_cards_btn.pressed.connect(func(): _close_modal(cards_panel))
@@ -451,9 +504,34 @@ func _ready() -> void:
 	if chest_reward_collect_btn != null:
 		chest_reward_collect_btn.pressed.connect(func(): _close_modal(chest_reward_modal))
 
+	if close_spin_btn != null:
+		close_spin_btn.pressed.connect(func(): _close_modal(spin_modal))
+	if close_spin_banner_btn != null:
+		close_spin_banner_btn.pressed.connect(func(): _close_modal(spin_modal))
+	if spin_tab_btn != null:
+		spin_tab_btn.pressed.connect(_on_spin_tab_pressed)
+	if daily_tab_btn != null:
+		daily_tab_btn.pressed.connect(_on_daily_tab_pressed)
+	if spin_action_btn != null:
+		spin_action_btn.pressed.connect(_on_spin_action_pressed)
+	if claim_daily_btn != null:
+		claim_daily_btn.pressed.connect(_on_claim_daily_pressed)
+	if wheel_graphic != null:
+		wheel_graphic.draw.connect(_on_wheel_graphic_draw)
+
 	# Connect GameManager signals
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
+		if gm.has_signal("station_milestone_reached"):
+			gm.station_milestone_reached.connect(_on_station_milestone_reached)
+		if gm.has_signal("objective_updated"):
+			gm.objective_updated.connect(func(_obj): _refresh_quest_banner())
+		if gm.has_signal("objective_claimed"):
+			gm.objective_claimed.connect(func(_rew): _refresh_quest_banner())
+		if gm.has_signal("spin_wheel_completed"):
+			gm.spin_wheel_completed.connect(func(_idx, _prize): _refresh_spin_wheel())
+		if gm.has_signal("daily_login_claimed"):
+			gm.daily_login_claimed.connect(func(_day, _reward): _refresh_daily_login())
 		if gm.has_signal("chest_opened"):
 			gm.chest_opened.connect(_on_chest_opened)
 		if gm.has_signal("cards_updated"):
@@ -729,6 +807,14 @@ func _update_affordability_badges() -> void:
 	# 9. Chests tab badge (if free wooden chest is ready)
 	var can_claim_chest: bool = gm.has_method("can_claim_free_wooden_chest") and gm.can_claim_free_wooden_chest()
 	_set_button_affordability_badge(tab_chests_btn, can_claim_chest)
+
+	# 10. Lucky Spin & 7-Day Login badge (side_spin_btn)
+	var can_claim_spin_or_daily: bool = false
+	if gm.has_method("can_claim_free_spin") and gm.can_claim_free_spin():
+		can_claim_spin_or_daily = true
+	elif gm.has_method("can_claim_daily_login") and gm.can_claim_daily_login():
+		can_claim_spin_or_daily = true
+	_set_button_affordability_badge(side_spin_btn, can_claim_spin_or_daily)
 
 func _focus_camera(zone: String) -> void:
 	var cam = get_viewport().get_camera_3d()
@@ -1079,42 +1165,100 @@ func _on_add_gem_pressed() -> void:
 	if gm != null:
 		gm.add_gems(25)
 
-# ─── Quests & Objectives Banner ─────────────────────────────────────────────
+# ─── Quests & Active Objective Tracker ─────────────────────────────────────
 func _refresh_quest_banner() -> void:
 	var gm = get_node_or_null("/root/GameManager")
-	if gm == null or gm.active_quests.size() == 0:
+	if gm == null or quest_banner == null:
 		return
 	
-	var active_q = null
-	for q in gm.active_quests:
-		if q.get("current", 0) >= q.get("target", 1):
-			active_q = q
-			break
-	if active_q == null:
-		active_q = gm.active_quests[0]
+	quest_banner.visible = true
+	var obj = gm.get_active_objective() if gm.has_method("get_active_objective") else {}
+	if obj.is_empty():
+		return
 		
-	quest_icon.text = active_q.get("icon", "🎯")
-	quest_title.text = active_q.get("title", "Objective")
-	var cur = active_q.get("current", 0)
-	var tar = active_q.get("target", 1)
-	quest_progress_label.text = "%d / %d" % [cur, tar]
+	quest_icon.text = obj.get("icon", "🎯")
+	quest_title.text = obj.get("title", "Objective")
+	var cur = int(obj.get("current", 0))
+	var tar = int(obj.get("target", 1))
+	var is_completed = bool(obj.get("is_completed", false))
+	
 	quest_bar.max_value = tar
 	quest_bar.value = cur
 	
-	if cur >= tar:
+	if is_completed:
+		quest_progress_label.text = "%d / %d  •  COMPLETED!" % [cur, tar]
+		quest_progress_label.add_theme_color_override("font_color", Color(0.85, 1.0, 0.85, 1.0))
 		quest_claim_btn.visible = true
-		quest_claim_btn.text = "CLAIM  +" + _format_money(active_q.get("reward_cash", 100))
+		
+		var r_dia = int(obj.get("reward_diamonds", 0))
+		var r_gold = int(obj.get("reward_golden_coins", 0))
+		var reward_str = ""
+		if r_dia > 0 and r_gold > 0:
+			reward_str = "+%d💎 +%d🪙" % [r_dia, r_gold]
+		elif r_dia > 0:
+			reward_str = "+%d💎" % r_dia
+		else:
+			reward_str = "+%d🪙" % r_gold
+			
+		quest_claim_btn.text = "CLAIM REWARD (%s)" % reward_str
+		
+		# Turn pill green on completion
+		if quest_banner_style_completed != null:
+			quest_banner.add_theme_stylebox_override("panel", quest_banner_style_completed)
 	else:
+		quest_progress_label.text = "%d / %d" % [cur, tar]
+		quest_progress_label.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0, 0.85))
 		quest_claim_btn.visible = false
+		if quest_banner_style_normal != null:
+			quest_banner.add_theme_stylebox_override("panel", quest_banner_style_normal)
 
 func _on_quest_banner_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_toggle_modal(quests_panel, _refresh_quests_panel)
+		_play_click_sfx()
+		var gm = get_node_or_null("/root/GameManager")
+		if gm == null:
+			return
+		var obj = gm.get_active_objective() if gm.has_method("get_active_objective") else {}
+		if obj.get("is_completed", false):
+			_on_banner_claim_pressed()
+		else:
+			# Interactive contextual guidance for the active objective
+			var otype = obj.get("type", "")
+			if otype == "station_level":
+				var sid = obj.get("station_id", "table_1")
+				var lvl = gm.get_station_level(sid)
+				var title = "Dining"
+				if sid.begins_with("kitchen") or sid == "stove":
+					title = "Kitchen"
+				elif sid.begins_with("milkshake"):
+					title = "Milkshake Bar"
+				elif sid.begins_with("parking"):
+					title = "Parking"
+				open_upgrade(sid, title, lvl)
+			elif otype == "spin_wheel":
+				_toggle_modal(spin_modal, _refresh_spin_wheel)
+			elif otype == "open_chest":
+				_toggle_modal(shop_panel, func(): _select_shop_category("chests"))
+			else:
+				_toggle_modal(quests_panel, _refresh_quests_panel)
 
 func _on_banner_claim_pressed() -> void:
+	_play_click_sfx()
 	var gm = get_node_or_null("/root/GameManager")
 	if gm == null:
 		return
+	if gm.has_method("claim_active_objective"):
+		var rew = gm.claim_active_objective()
+		if not rew.is_empty():
+			var r_dia = rew.get("diamonds", 0)
+			var r_gold = rew.get("golden_coins", 0)
+			_spawn_reward_floater("✨ OBJECTIVE CLAIMED! +%d 💎 +%d 🪙" % [r_dia, r_gold])
+			if r_dia > 0:
+				spawn_flying_currency_trail(Vector3.ZERO, r_dia, "diamonds")
+			elif r_gold > 0:
+				spawn_flying_currency_trail(Vector3.ZERO, r_gold, "golden_coins")
+			_refresh_quest_banner()
+			return
 	for q in gm.active_quests:
 		if q.get("current", 0) >= q.get("target", 1):
 			gm.claim_quest(q.get("id"))
@@ -4185,5 +4329,328 @@ func _create_card_roster_tile(card: Dictionary, gm: Node) -> PanelContainer:
 	vb.add_child(btn)
 	
 	return pc
+
+# ─── Station Level Milestone Rewards ─────────────────────────────────────────
+func _on_station_milestone_reached(station_id: String, milestone_lvl: int, bonus_diamonds: int, bonus_golden_coins: int) -> void:
+	var sname = station_id.replace("_", " ").capitalize()
+	_spawn_reward_floater("🎉 %s LEVEL %d MILESTONE! +%d 💎 +%d 🪙" % [sname, milestone_lvl, bonus_diamonds, bonus_golden_coins])
+	if bonus_diamonds > 0:
+		spawn_flying_currency_trail(Vector3.ZERO, bonus_diamonds, "diamonds")
+	if bonus_golden_coins > 0:
+		spawn_flying_currency_trail(Vector3.ZERO, bonus_golden_coins, "golden_coins")
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.0, 1.8)
+	_refresh_quest_banner()
+
+# ─── Lucky Spin Wheel & 7-Day Login Methods ──────────────────────────────────
+func _on_spin_tab_pressed() -> void:
+	_play_click_sfx()
+	if spin_view != null:
+		spin_view.visible = true
+	if daily_view != null:
+		daily_view.visible = false
+	_refresh_spin_wheel()
+
+func _on_daily_tab_pressed() -> void:
+	_play_click_sfx()
+	if spin_view != null:
+		spin_view.visible = false
+	if daily_view != null:
+		daily_view.visible = true
+	_refresh_daily_login()
+
+func _setup_wheel_labels() -> void:
+	if wheel_graphic == null or wheel_labels_initialized:
+		return
+	wheel_labels_initialized = true
+	
+	var gm = get_node_or_null("/root/GameManager")
+	var slices = gm.WHEEL_SLICES if gm != null and "WHEEL_SLICES" in gm else []
+	var center = Vector2(130, 130)
+	var radius = 75.0
+	
+	for i in range(slices.size()):
+		var slice = slices[i]
+		var angle = -PI/2.0 + float(i) * (TAU / 8.0)
+		var lbl = Label.new()
+		lbl.name = "SliceLabel_%d" % i
+		lbl.text = slice.get("label", "")
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_size_override("font_size", 12)
+		lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+		lbl.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+		lbl.add_theme_constant_override("shadow_offset_x", 1)
+		lbl.add_theme_constant_override("shadow_offset_y", 1)
+		lbl.custom_minimum_size = Vector2(70, 24)
+		lbl.size = Vector2(70, 24)
+		lbl.pivot_offset = Vector2(35, 12)
+		lbl.position = center + Vector2(cos(angle), sin(angle)) * radius - Vector2(35, 12)
+		lbl.rotation = angle + PI/2.0
+		wheel_graphic.add_child(lbl)
+
+func _on_wheel_graphic_draw() -> void:
+	if wheel_graphic == null:
+		return
+	var gm = get_node_or_null("/root/GameManager")
+	var slices = gm.WHEEL_SLICES if gm != null and "WHEEL_SLICES" in gm else []
+	if slices.size() == 0:
+		return
+		
+	var center = Vector2(130, 130)
+	var radius = 120.0
+	var slice_count = slices.size()
+	var angle_per_slice = TAU / float(slice_count)
+	
+	# Outer shadow & rim
+	wheel_graphic.draw_circle(center, radius + 8.0, Color(0.04, 0.05, 0.08, 0.9))
+	wheel_graphic.draw_circle(center, radius + 3.0, Color(0.95, 0.78, 0.22, 1.0))
+	
+	for i in range(slice_count):
+		var slice = slices[i]
+		var col = slice.get("color", Color(0.2, 0.5, 0.8))
+		var start_angle = -PI/2.0 + float(i) * angle_per_slice - (angle_per_slice / 2.0)
+		var end_angle = start_angle + angle_per_slice
+		
+		var pts = PackedVector2Array()
+		pts.append(center)
+		var segments = 16
+		for s in range(segments + 1):
+			var a = start_angle + (end_angle - start_angle) * (float(s) / float(segments))
+			pts.append(center + Vector2(cos(a), sin(a)) * radius)
+		wheel_graphic.draw_colored_polygon(pts, col)
+		
+		# Divider line
+		var div_pt = center + Vector2(cos(start_angle), sin(start_angle)) * radius
+		wheel_graphic.draw_line(center, div_pt, Color(1, 1, 1, 0.5), 2.0)
+		
+	# Outer rim dashed / studded accent
+	wheel_graphic.draw_arc(center, radius, 0.0, TAU, 32, Color(0.2, 0.15, 0.05, 0.8), 2.0)
+	
+	# Center golden hub
+	wheel_graphic.draw_circle(center, 30.0, Color(0.12, 0.1, 0.18, 1.0))
+	wheel_graphic.draw_circle(center, 25.0, Color(0.95, 0.82, 0.2, 1.0))
+	wheel_graphic.draw_circle(center, 18.0, Color(0.1, 0.08, 0.12, 1.0))
+
+func _refresh_spin_wheel() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+	_setup_wheel_labels()
+	if wheel_graphic != null:
+		wheel_graphic.queue_redraw()
+		
+	var is_free = gm.can_claim_free_spin() if gm.has_method("can_claim_free_spin") else false
+	var can_spin = gm.can_spin_wheel() if gm.has_method("can_spin_wheel") else false
+	
+	if spin_action_btn != null:
+		if is_spinning_wheel:
+			spin_action_btn.disabled = true
+			spin_action_btn.text = "SPINNING... 🎡"
+		elif is_free:
+			spin_action_btn.disabled = false
+			spin_action_btn.text = "SPIN (FREE) 🎡"
+		else:
+			spin_action_btn.disabled = not can_spin
+			spin_action_btn.text = "SPIN (10 ⚡) 🎡"
+			
+	if spin_status_label != null:
+		if is_free:
+			spin_status_label.text = "✨ 1 Free Daily Spin Available!"
+			spin_status_label.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55))
+		else:
+			var cd = gm.get_free_spin_cooldown_remaining() if gm.has_method("get_free_spin_cooldown_remaining") else 0.0
+			spin_status_label.text = "⚡ Energy: %d / 10  •  Free Spin in %s" % [gm.energy, _format_time_hms(cd)]
+			spin_status_label.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95, 0.85))
+
+func _on_spin_action_pressed() -> void:
+	if is_spinning_wheel:
+		return
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null or not gm.can_spin_wheel():
+		_play_click_sfx()
+		return
+		
+	var res = gm.spin_lucky_wheel()
+	if res.is_empty():
+		return
+		
+	is_spinning_wheel = true
+	_play_click_sfx()
+	if spin_action_btn != null:
+		spin_action_btn.disabled = true
+		spin_action_btn.text = "SPINNING... 🎡"
+	if spin_result_label != null:
+		spin_result_label.visible = false
+		
+	var winning_idx = int(res.get("slice_index", 0))
+	var prize = res.get("prize", {})
+	
+	if wheel_graphic != null:
+		var current_rot = wheel_graphic.rotation_degrees
+		var base_align = 360.0 * 5.0 - float(winning_idx * 45)
+		var target_rot = current_rot + base_align - fmod(current_rot, 360.0)
+		
+		var tw = create_tween().set_parallel(false)
+		tw.tween_property(wheel_graphic, "rotation_degrees", target_rot, 2.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		
+		# Play audio ticks
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			for k in range(8):
+				tw.parallel().tween_callback(func(): am.play_sfx("click", 0.01, 1.0 + float(k) * 0.05)).set_delay(float(k) * 0.25)
+				
+		tw.tween_callback(func():
+			is_spinning_wheel = false
+			if spin_result_label != null:
+				spin_result_label.visible = true
+				spin_result_label.text = "🎉 YOU WON %s!" % prize.get("title", "AWESOME PRIZE").to_upper()
+				
+			if am != null and am.has_method("play_sfx"):
+				am.play_sfx("cash_register", 0.05, 1.2)
+				
+			var ptype = prize.get("type", "")
+			if ptype == "diamonds":
+				spawn_flying_currency_trail(Vector3.ZERO, prize.get("amount", 5), "diamonds")
+			elif ptype == "golden_coins":
+				spawn_flying_currency_trail(Vector3.ZERO, prize.get("amount", 50), "golden_coins")
+				
+			_spawn_reward_floater("+" + prize.get("label", "Prize"))
+			_refresh_spin_wheel()
+			_update_affordability_badges()
+		)
+	else:
+		is_spinning_wheel = false
+		_refresh_spin_wheel()
+
+func _refresh_daily_login() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null or daily_cards_container == null:
+		return
+		
+	for c in daily_cards_container.get_children():
+		c.queue_free()
+		
+	var streak = int(gm.login_streak_days) if "login_streak_days" in gm else 0
+	var can_claim = gm.can_claim_daily_login() if gm.has_method("can_claim_daily_login") else false
+	var rewards = gm.DAILY_LOGIN_REWARDS if "DAILY_LOGIN_REWARDS" in gm else []
+	
+	if streak_label != null:
+		streak_label.text = "🔥 Streak: Day %d / 7 Days" % streak
+		
+	var current_day_ready = (streak % 7) + 1
+	
+	for r in rewards:
+		var d = int(r.get("day", 1))
+		var card = PanelContainer.new()
+		card.custom_minimum_size = Vector2(120, 80)
+		
+		var sb = StyleBoxFlat.new()
+		sb.set_corner_radius_all(10)
+		sb.content_margin_left = 8.0
+		sb.content_margin_right = 8.0
+		sb.content_margin_top = 6.0
+		sb.content_margin_bottom = 6.0
+		
+		var is_claimed = (d <= streak) and not (d == current_day_ready and can_claim)
+		var is_today_ready = (d == current_day_ready) and can_claim
+		
+		if is_claimed:
+			sb.bg_color = Color(0.1, 0.13, 0.18, 0.6)
+			sb.border_width_bottom = 1
+			sb.border_color = Color(0.2, 0.25, 0.35, 0.5)
+		elif is_today_ready:
+			sb.bg_color = Color(0.12, 0.42, 0.22, 0.95)
+			sb.border_width_left = 2
+			sb.border_width_top = 2
+			sb.border_width_right = 2
+			sb.border_width_bottom = 3
+			sb.border_color = Color(0.35, 0.95, 0.55, 1.0)
+			sb.shadow_color = Color(0.1, 0.85, 0.3, 0.3)
+			sb.shadow_size = 6
+		else:
+			sb.bg_color = Color(0.14, 0.17, 0.24, 0.85)
+			sb.border_width_bottom = 2
+			sb.border_color = Color(0.25, 0.3, 0.4, 0.6)
+			
+		card.add_theme_stylebox_override("panel", sb)
+		
+		var vb = VBoxContainer.new()
+		vb.theme_override_constants_set("separation", 2)
+		
+		var d_lbl = Label.new()
+		d_lbl.text = "DAY %d" % d
+		d_lbl.add_theme_font_size_override("font_size", 11)
+		d_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3) if is_today_ready else Color(0.7, 0.8, 0.9, 0.8))
+		d_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vb.add_child(d_lbl)
+		
+		var ic_lbl = Label.new()
+		ic_lbl.text = r.get("icon", "🎁")
+		ic_lbl.add_theme_font_size_override("font_size", 20)
+		ic_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vb.add_child(ic_lbl)
+		
+		var rew_lbl = Label.new()
+		rew_lbl.text = r.get("desc", "")
+		rew_lbl.add_theme_font_size_override("font_size", 10)
+		rew_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1) if not is_claimed else Color(0.5, 0.55, 0.6, 0.7))
+		rew_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vb.add_child(rew_lbl)
+		
+		var st_lbl = Label.new()
+		if is_claimed:
+			st_lbl.text = "✅ Claimed"
+			st_lbl.add_theme_color_override("font_color", Color(0.4, 0.75, 0.5, 0.8))
+		elif is_today_ready:
+			st_lbl.text = "READY! ✨"
+			st_lbl.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55))
+		else:
+			st_lbl.text = "🔒 Locked"
+			st_lbl.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.6))
+		st_lbl.add_theme_font_size_override("font_size", 10)
+		st_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vb.add_child(st_lbl)
+		
+		card.add_child(vb)
+		daily_cards_container.add_child(card)
+		
+	if claim_daily_btn != null:
+		if can_claim:
+			claim_daily_btn.disabled = false
+			claim_daily_btn.text = "CLAIM DAY %d REWARD 🎁" % current_day_ready
+		else:
+			claim_daily_btn.disabled = true
+			var cd = gm.get_daily_login_cooldown_remaining() if gm.has_method("get_daily_login_cooldown_remaining") else 0.0
+			claim_daily_btn.text = "NEXT REWARD IN %s ⏰" % _format_time_hms(cd)
+
+func _on_claim_daily_pressed() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null or not gm.can_claim_daily_login():
+		_play_click_sfx()
+		return
+		
+	var rew = gm.claim_daily_login()
+	if not rew.is_empty():
+		_play_click_sfx()
+		_spawn_reward_floater("🎁 Day %d: %s" % [gm.login_streak_days, rew.get("desc", "")])
+		var rtype = rew.get("type", "")
+		if rtype == "diamonds" or rtype == "grand_jackpot":
+			spawn_flying_currency_trail(Vector3.ZERO, rew.get("amount", rew.get("diamonds", 10)), "diamonds")
+		elif rtype == "golden_coins":
+			spawn_flying_currency_trail(Vector3.ZERO, rew.get("amount", 50), "golden_coins")
+		_refresh_daily_login()
+		_update_affordability_badges()
+
+func _format_time_hms(seconds: float) -> String:
+	var total_sec = int(max(0.0, seconds))
+	var hrs = total_sec / 3600
+	var mins = (total_sec % 3600) / 60
+	var secs = total_sec % 60
+	if hrs > 0:
+		return "%02dh %02dm" % [hrs, mins]
+	return "%02dm %02ds" % [mins, secs]
+
 
 

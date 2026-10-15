@@ -36,6 +36,11 @@ signal overdrive_boost_activated(multiplier: float, duration: float)
 signal chest_opened(chest_type: String, rewards: Dictionary)
 signal card_updated(card_id: String, level: int, count: int)
 signal cards_updated()
+signal station_milestone_reached(station_id: String, milestone_lvl: int, bonus_diamonds: int, bonus_golden_coins: int)
+signal objective_updated(objective: Dictionary)
+signal objective_claimed(rewards: Dictionary)
+signal spin_wheel_completed(slice_index: int, prize: Dictionary)
+signal daily_login_claimed(day: int, reward: Dictionary)
 
 var restaurant_node: Node3D = null
 
@@ -70,6 +75,253 @@ var daily_gift_claimed: bool = false
 var marketing_level: int = 1
 const MARKETING_MAX_LEVEL: int = 25
 var vip_revenue_multiplier_timer: float = 0.0
+
+# ─── Idle Objectives & Quests ───────────────────────────────────────────────
+var active_objective_index: int = 0
+var active_objective_current: int = 0
+
+const OBJECTIVES_ROSTER: Array = [
+	{
+		"id": "upgrade_booth_1_lvl_10",
+		"type": "station_level",
+		"station_id": "table_1",
+		"title": "Upgrade Booth 1 to Level 10",
+		"desc": "Boost Table 1 seating capacity and profits",
+		"icon": "🍽️",
+		"target": 10,
+		"reward_diamonds": 10,
+		"reward_golden_coins": 50
+	},
+	{
+		"id": "serve_25_customers",
+		"type": "serve_customers",
+		"title": "Serve 25 Customers",
+		"desc": "Keep tables turning and guests fed",
+		"icon": "😋",
+		"target": 25,
+		"reward_diamonds": 5,
+		"reward_golden_coins": 75
+	},
+	{
+		"id": "collect_speedy_tips",
+		"type": "speedy_tips",
+		"title": "Collect 3 Speedy Tips",
+		"desc": "Tap floating tip bubbles above happy diners",
+		"icon": "💸",
+		"target": 3,
+		"reward_diamonds": 15,
+		"reward_golden_coins": 60
+	},
+	{
+		"id": "upgrade_kitchen_lvl_10",
+		"type": "station_level",
+		"station_id": "kitchen_cook",
+		"title": "Upgrade Kitchen to Level 10",
+		"desc": "Speed up grill times for hungry patrons",
+		"icon": "🍳",
+		"target": 10,
+		"reward_diamonds": 8,
+		"reward_golden_coins": 100
+	},
+	{
+		"id": "collect_cash_stacks",
+		"type": "collect_cash",
+		"title": "Collect 5 Cash Stacks",
+		"desc": "Swipe or tap cash piles left on tables",
+		"icon": "💵",
+		"target": 5,
+		"reward_diamonds": 10,
+		"reward_golden_coins": 80
+	},
+	{
+		"id": "spin_wheel_once",
+		"type": "spin_wheel",
+		"title": "Spin Lucky Wheel",
+		"desc": "Try your luck on the Spin Wheel",
+		"icon": "🎡",
+		"target": 1,
+		"reward_diamonds": 5,
+		"reward_golden_coins": 120
+	},
+	{
+		"id": "open_chest_once",
+		"type": "open_chest",
+		"title": "Open 1 Gacha Chest",
+		"desc": "Unlock a Chest from the Shop",
+		"icon": "📦",
+		"target": 1,
+		"reward_diamonds": 20,
+		"reward_golden_coins": 100
+	},
+	{
+		"id": "upgrade_bar_lvl_10",
+		"type": "station_level",
+		"station_id": "milkshake_bar",
+		"title": "Upgrade Milkshake Bar to Level 10",
+		"desc": "Whip up sweet shakes for visitors",
+		"icon": "🥤",
+		"target": 10,
+		"reward_diamonds": 12,
+		"reward_golden_coins": 150
+	},
+	{
+		"id": "serve_50_customers",
+		"type": "serve_customers",
+		"title": "Serve 50 Customers",
+		"desc": "Master lunchtime rush hours",
+		"icon": "🍽️",
+		"target": 50,
+		"reward_diamonds": 25,
+		"reward_golden_coins": 150
+	},
+	{
+		"id": "upgrade_booths_lvl_25",
+		"type": "station_level",
+		"station_id": "table_1",
+		"title": "Upgrade Booth 1 to Level 25",
+		"desc": "Reach a major diner milestone",
+		"icon": "⭐",
+		"target": 25,
+		"reward_diamonds": 30,
+		"reward_golden_coins": 200
+	}
+]
+
+# ─── Lucky Spin Wheel & 7-Day Login ─────────────────────────────────────────
+var last_free_spin_timestamp: float = 0.0
+const FREE_SPIN_COOLDOWN: float = 86400.0 # 24 Hours
+var login_streak_days: int = 0
+var last_login_claim_timestamp: float = 0.0
+const LOGIN_CLAIM_COOLDOWN: float = 86400.0 # 24 Hours
+
+const WHEEL_SLICES: Array = [
+	{
+		"index": 0,
+		"type": "diamonds",
+		"amount": 10,
+		"title": "10 Diamonds",
+		"label": "10 💎",
+		"color": Color(0.18, 0.52, 0.95, 1.0)
+	},
+	{
+		"index": 1,
+		"type": "golden_coins",
+		"amount": 50,
+		"title": "50 Golden Coins",
+		"label": "50 🪙",
+		"color": Color(0.95, 0.72, 0.15, 1.0)
+	},
+	{
+		"index": 2,
+		"type": "time_skip",
+		"hours": 1,
+		"title": "1-Hour Time Skip",
+		"label": "1h Skip ⏩",
+		"color": Color(0.2, 0.75, 0.45, 1.0)
+	},
+	{
+		"index": 3,
+		"type": "diamonds",
+		"amount": 25,
+		"title": "25 Diamonds",
+		"label": "25 💎",
+		"color": Color(0.55, 0.25, 0.92, 1.0)
+	},
+	{
+		"index": 4,
+		"type": "chest",
+		"chest_type": "wooden",
+		"title": "Wooden Chest",
+		"label": "Chest 📦",
+		"color": Color(0.85, 0.45, 0.15, 1.0)
+	},
+	{
+		"index": 5,
+		"type": "golden_coins",
+		"amount": 100,
+		"title": "100 Golden Coins",
+		"label": "100 🪙",
+		"color": Color(0.95, 0.60, 0.1, 1.0)
+	},
+	{
+		"index": 6,
+		"type": "boost",
+		"multiplier": 2.0,
+		"duration": 900.0,
+		"title": "x2 Profit Boost (15m)",
+		"label": "x2 Boost ⚡",
+		"color": Color(0.95, 0.25, 0.35, 1.0)
+	},
+	{
+		"index": 7,
+		"type": "diamonds",
+		"amount": 5,
+		"title": "5 Diamonds",
+		"label": "5 💎",
+		"color": Color(0.25, 0.82, 0.88, 1.0)
+	}
+]
+
+const DAILY_LOGIN_REWARDS: Array = [
+	{
+		"day": 1,
+		"title": "Day 1 Welcome",
+		"icon": "🪙",
+		"type": "golden_coins",
+		"amount": 50,
+		"desc": "+50 Golden Coins"
+	},
+	{
+		"day": 2,
+		"title": "Day 2 Sparkle",
+		"icon": "💎",
+		"type": "diamonds",
+		"amount": 10,
+		"desc": "+10 Diamonds"
+	},
+	{
+		"day": 3,
+		"title": "Day 3 Stash",
+		"icon": "🪙",
+		"type": "golden_coins",
+		"amount": 100,
+		"desc": "+100 Golden Coins"
+	},
+	{
+		"day": 4,
+		"title": "Day 4 Fast Forward",
+		"icon": "⏩",
+		"type": "time_skip",
+		"hours": 1,
+		"desc": "1-Hour Time Skip"
+	},
+	{
+		"day": 5,
+		"title": "Day 5 Fortune",
+		"icon": "💎",
+		"type": "diamonds",
+		"amount": 25,
+		"desc": "+25 Diamonds"
+	},
+	{
+		"day": 6,
+		"title": "Day 6 Loot Box",
+		"icon": "📦",
+		"type": "chest",
+		"chest_type": "wooden",
+		"desc": "Wooden Gacha Chest"
+	},
+	{
+		"day": 7,
+		"title": "Day 7 Grand Jackpot",
+		"icon": "👑",
+		"type": "grand_jackpot",
+		"diamonds": 50,
+		"chest_type": "golden",
+		"desc": "+50 💎 & Golden Epic Chest!"
+	}
+]
+
 
 # ─── World Map Restaurants ──────────────────────────────────────────────────
 var active_restaurant_id: String = "idle_diner"
@@ -807,6 +1059,11 @@ func save_game() -> void:
 		"permanent_boosters": permanent_boosters,
 		"collectible_cards": collectible_cards,
 		"wooden_chest_free_timestamp": wooden_chest_free_timestamp,
+		"active_objective_index": active_objective_index,
+		"active_objective_current": active_objective_current,
+		"last_free_spin_timestamp": last_free_spin_timestamp,
+		"login_streak_days": login_streak_days,
+		"last_login_claim_timestamp": last_login_claim_timestamp,
 		"world_restaurants_unlocked": {
 			"idle_diner": world_restaurants["idle_diner"].get("unlocked", true),
 			"idles_chain": world_restaurants["idles_chain"].get("unlocked", false),
@@ -922,6 +1179,17 @@ func load_game() -> void:
 			if collectible_cards.has(cid) and typeof(parsed["collectible_cards"][cid]) == TYPE_DICTIONARY:
 				for prop in parsed["collectible_cards"][cid].keys():
 					collectible_cards[cid][prop] = parsed["collectible_cards"][cid][prop]
+
+	if parsed.has("active_objective_index"):
+		active_objective_index = int(parsed["active_objective_index"])
+	if parsed.has("active_objective_current"):
+		active_objective_current = int(parsed["active_objective_current"])
+	if parsed.has("last_free_spin_timestamp"):
+		last_free_spin_timestamp = float(parsed["last_free_spin_timestamp"])
+	if parsed.has("login_streak_days"):
+		login_streak_days = int(parsed["login_streak_days"])
+	if parsed.has("last_login_claim_timestamp"):
+		last_login_claim_timestamp = float(parsed["last_login_claim_timestamp"])
 
 	currencies_updated.emit(cash, golden_coins, diamonds, energy)
 	cash_changed.emit(cash)
@@ -1410,13 +1678,15 @@ func upgrade_station_multi(station_id: String, mode: String, consecutive_step: i
 		add_xp(info.cost * 0.25)
 		_progress_quest("upgrade_stations", info.levels)
 
-		# Milestone Diamond Rewards (Levels 10, 25, 50)
-		if current_lvl < 10 and new_lvl >= 10:
-			add_diamonds(5)
-		if current_lvl < 25 and new_lvl >= 25:
-			add_diamonds(10)
-		if current_lvl < 50 and new_lvl >= 50:
-			add_diamonds(25)
+		# Station Level Milestone Rewards (Levels 10, 25, 50): +5 Diamonds & +25 Golden Coins
+		var milestone_thresholds = [10, 25, 50]
+		for m in milestone_thresholds:
+			if current_lvl < m and new_lvl >= m:
+				add_diamonds(5)
+				add_golden_coins(25)
+				station_milestone_reached.emit(station_id, m, 5, 25)
+
+		progress_objective("station_level", info.levels, station_id)
 
 		save_game()
 		
@@ -1814,6 +2084,7 @@ func _progress_quest(quest_id: String, amount: int = 1) -> void:
 
 func record_customer_served() -> void:
 	_progress_quest("serve_customers", 1)
+	progress_objective("serve_customers", 1)
 
 func claim_quest(quest_id: String) -> bool:
 	for q in active_quests:
@@ -2358,6 +2629,7 @@ func open_chest(chest_type: String) -> Dictionary:
 	}
 	
 	chest_opened.emit(ctype, rewards)
+	progress_objective("open_chest", 1)
 	save_game()
 	
 	var am = get_node_or_null("/root/AudioManager")
@@ -2379,3 +2651,191 @@ func _pick_chest_rarity(weights: Dictionary) -> String:
 		if roll <= accum:
 			return r
 	return "common"
+
+# ─── Idle Objectives System ──────────────────────────────────────────────────
+func get_active_objective() -> Dictionary:
+	var total_objs = OBJECTIVES_ROSTER.size()
+	if total_objs == 0:
+		return {}
+	var base_idx = active_objective_index % total_objs
+	var cycle = int(active_objective_index / total_objs)
+	var template = OBJECTIVES_ROSTER[base_idx].duplicate(true)
+	
+	# Scale targets and rewards for subsequent loops
+	var mult = 1.0 + float(cycle) * 0.5
+	var target = template.get("target", 1)
+	if template.get("type") == "station_level":
+		target = min(100, target + cycle * 10)
+		var sid = template.get("station_id", "table_1")
+		template["current"] = min(target, get_station_level(sid))
+	else:
+		target = int(round(float(target) * mult))
+		template["current"] = min(target, active_objective_current)
+		
+	template["target"] = target
+	template["reward_diamonds"] = int(round(float(template.get("reward_diamonds", 5)) * mult))
+	template["reward_golden_coins"] = int(round(float(template.get("reward_golden_coins", 25)) * mult))
+	template["is_completed"] = template["current"] >= target
+	return template
+
+func progress_objective(type: String, amount: int = 1, station_id: String = "") -> void:
+	var obj = get_active_objective()
+	if obj.is_empty() or obj.get("is_completed", false):
+		return
+	var obj_type = obj.get("type", "")
+	if obj_type != type:
+		return
+		
+	if obj_type == "station_level":
+		var target_sid = obj.get("station_id", "")
+		var is_match = (station_id == target_sid) \
+			or (station_id in ["stove", "kitchen_cook"] and target_sid in ["stove", "kitchen_cook"]) \
+			or (station_id in ["parking", "parking_lot"] and target_sid in ["parking", "parking_lot"])
+		if not is_match:
+			return
+	else:
+		active_objective_current += amount
+	
+	var updated_obj = get_active_objective()
+	objective_updated.emit(updated_obj)
+
+func claim_active_objective() -> Dictionary:
+	var obj = get_active_objective()
+	if obj.is_empty() or not obj.get("is_completed", false):
+		return {}
+	
+	var r_dia = obj.get("reward_diamonds", 0)
+	var r_gold = obj.get("reward_golden_coins", 0)
+	if r_dia > 0:
+		add_diamonds(r_dia)
+	if r_gold > 0:
+		add_golden_coins(r_gold)
+		
+	var claimed_rewards = {
+		"diamonds": r_dia,
+		"golden_coins": r_gold,
+		"title": obj.get("title", "")
+	}
+	
+	active_objective_index += 1
+	active_objective_current = 0
+	save_game()
+	
+	var next_obj = get_active_objective()
+	objective_claimed.emit(claimed_rewards)
+	objective_updated.emit(next_obj)
+	
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("cash_register", 0.05, 1.2)
+		
+	return claimed_rewards
+
+func record_speedy_tip() -> void:
+	progress_objective("speedy_tips", 1)
+
+func record_table_cash_collected() -> void:
+	progress_objective("collect_cash", 1)
+
+# ─── Lucky Spin Wheel ───────────────────────────────────────────────────────
+func can_claim_free_spin() -> bool:
+	if last_free_spin_timestamp <= 0.0:
+		return true
+	var now = Time.get_unix_time_from_system()
+	return (now - last_free_spin_timestamp) >= FREE_SPIN_COOLDOWN
+
+func get_free_spin_cooldown_remaining() -> float:
+	if last_free_spin_timestamp <= 0.0:
+		return 0.0
+	var now = Time.get_unix_time_from_system()
+	var elapsed = now - last_free_spin_timestamp
+	return max(0.0, FREE_SPIN_COOLDOWN - elapsed)
+
+func can_spin_wheel() -> bool:
+	if can_claim_free_spin():
+		return true
+	return energy >= 10
+
+func spin_lucky_wheel() -> Dictionary:
+	if not can_spin_wheel():
+		return {}
+	
+	var is_free = can_claim_free_spin()
+	if is_free:
+		last_free_spin_timestamp = Time.get_unix_time_from_system()
+	else:
+		if not spend_energy(10):
+			return {}
+			
+	var slice_index = randi() % WHEEL_SLICES.size()
+	var prize = WHEEL_SLICES[slice_index].duplicate(true)
+	
+	var ptype = prize.get("type", "")
+	if ptype == "diamonds":
+		add_diamonds(prize.get("amount", 5))
+	elif ptype == "golden_coins":
+		add_golden_coins(prize.get("amount", 50))
+	elif ptype == "time_skip":
+		var hrs = prize.get("hours", 1)
+		execute_time_skip(hrs, 0, 0)
+	elif ptype == "chest":
+		var ctype = prize.get("chest_type", "wooden")
+		open_chest(ctype)
+	elif ptype == "boost":
+		var mult = prize.get("multiplier", 2.0)
+		var dur = prize.get("duration", 900.0)
+		apply_overdrive_boost(mult, dur)
+		
+	progress_objective("spin_wheel", 1)
+	save_game()
+	spin_wheel_completed.emit(slice_index, prize)
+	return {
+		"slice_index": slice_index,
+		"prize": prize,
+		"was_free": is_free
+	}
+
+# ─── 7-Day Daily Login ──────────────────────────────────────────────────────
+func can_claim_daily_login() -> bool:
+	if last_login_claim_timestamp <= 0.0:
+		return true
+	var now = Time.get_unix_time_from_system()
+	return (now - last_login_claim_timestamp) >= LOGIN_CLAIM_COOLDOWN
+
+func get_daily_login_cooldown_remaining() -> float:
+	if last_login_claim_timestamp <= 0.0:
+		return 0.0
+	var now = Time.get_unix_time_from_system()
+	var elapsed = now - last_login_claim_timestamp
+	return max(0.0, LOGIN_CLAIM_COOLDOWN - elapsed)
+
+func claim_daily_login() -> Dictionary:
+	if not can_claim_daily_login():
+		return {}
+	
+	login_streak_days = (login_streak_days % 7) + 1
+	last_login_claim_timestamp = Time.get_unix_time_from_system()
+	
+	var reward = DAILY_LOGIN_REWARDS[login_streak_days - 1].duplicate(true)
+	var rtype = reward.get("type", "")
+	if rtype == "golden_coins":
+		add_golden_coins(reward.get("amount", 50))
+	elif rtype == "diamonds":
+		add_diamonds(reward.get("amount", 10))
+	elif rtype == "time_skip":
+		execute_time_skip(reward.get("hours", 1), 0, 0)
+	elif rtype == "chest":
+		open_chest(reward.get("chest_type", "wooden"))
+	elif rtype == "grand_jackpot":
+		add_diamonds(reward.get("diamonds", 50))
+		open_chest(reward.get("chest_type", "golden"))
+		
+	save_game()
+	daily_login_claimed.emit(login_streak_days, reward)
+	
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("cash_register", 0.05, 1.2)
+		
+	return reward
+

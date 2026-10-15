@@ -2614,6 +2614,8 @@ func register_cash_collection(pos: Vector3, base_amount: float) -> void:
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
 		gm.add_cash(final_amount, pos)
+		if gm.has_method("record_table_cash_collected"):
+			gm.record_table_cash_collected()
 			
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("play_sfx"):
