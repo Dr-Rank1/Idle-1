@@ -5,7 +5,8 @@ enum State {
 	WALKING_TO_KITCHEN,
 	WALKING_TO_TABLE,
 	SERVING,
-	RETURNING
+	RETURNING,
+	ON_BREAK
 }
 
 @export var staff_id: String = "waiter_1"
@@ -19,6 +20,9 @@ var walk_cycle: float = 0.0
 var waypoints: Array = []
 var target_table: Node3D = null
 var is_cleaning_job: bool = false
+var speed_buff_timer: float = 0.0
+var is_break_sofa: bool = false
+var break_spot: Vector3 = Vector3.ZERO
 
 @onready var mesh_root: Node3D = $MeshRoot
 @onready var serving_tray: Node3D = $ServingTray
@@ -56,11 +60,12 @@ func _find_anim_player(node: Node) -> AnimationPlayer:
 
 func _update_speed() -> void:
 	var gm = get_node_or_null("/root/GameManager")
+	var mult: float = 1.0
 	if gm != null and gm.has_method("get_staff_speed_multiplier"):
-		var mult = gm.get_staff_speed_multiplier(staff_id)
-		move_speed = base_speed * mult
-	else:
-		move_speed = base_speed
+		mult = gm.get_staff_speed_multiplier(staff_id)
+	if speed_buff_timer > 0.0:
+		mult *= 1.30
+	move_speed = base_speed * mult
 
 func _on_staff_updated(id: String) -> void:
 	if id == staff_id:
@@ -234,7 +239,45 @@ func clean_dirty_table(table: Node3D) -> void:
 	waypoints = _get_waypoints_to_clean_table(position, table)
 	_play_anim("walk")
 
+func _get_waypoints_to_breakroom(from_pos: Vector3, target_spot: Vector3) -> Array:
+	var pts: Array = []
+	var cur_aisle_x = _get_aisle_x(from_pos.x)
+	pts.append(Vector3(cur_aisle_x, 0.0, from_pos.z))
+	pts.append(Vector3(cur_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+	pts.append(Vector3(10.5, 0.0, NORTH_CROSS_AISLE_Z))
+	pts.append(Vector3(11.5, 0.0, -1.5))
+	pts.append(target_spot)
+	return pts
+
+func _get_waypoints_from_breakroom_to_home(_from_pos: Vector3) -> Array:
+	var pts: Array = []
+	var home_aisle_x = _get_aisle_x(home_pos.x)
+	pts.append(Vector3(11.5, 0.0, -1.5))
+	pts.append(Vector3(10.5, 0.0, NORTH_CROSS_AISLE_Z))
+	pts.append(Vector3(home_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+	pts.append(home_pos)
+	return pts
+
+func take_breakroom_rest(spot: Vector3, is_sofa: bool) -> void:
+	if current_state != State.IDLE:
+		return
+	is_cleaning_job = false
+	current_state = State.ON_BREAK
+	is_break_sofa = is_sofa
+	break_spot = spot
+	serving_tray.visible = false
+	waypoints = _get_waypoints_to_breakroom(position, break_spot)
+	_play_anim("walk")
+	if status_bubble != null:
+		status_bubble.text = "☕ Sofa Rest" if is_sofa else "☕ Coffee Break"
+		status_bubble.visible = true
+
 func _physics_process(delta: float) -> void:
+	if speed_buff_timer > 0.0:
+		speed_buff_timer -= delta
+		if speed_buff_timer <= 0.0:
+			_update_speed()
+
 	if waypoints.size() > 0:
 		var target: Vector3 = waypoints[0]
 		var to_target: Vector3 = target - position
@@ -333,3 +376,24 @@ func _on_all_waypoints_reached() -> void:
 			current_state = State.IDLE
 			_play_anim("idle")
 			rotation.y = 0.0
+
+		State.ON_BREAK:
+			if status_bubble != null:
+				status_bubble.text = "☕ Relaxing..." if is_break_sofa else "☕ Fresh Coffee..."
+			_play_anim("sit" if is_break_sofa else "idle")
+			if is_break_sofa:
+				rotation.y = 0.0
+			await get_tree().create_timer(4.5).timeout
+			speed_buff_timer = 40.0
+			_update_speed()
+			if status_bubble != null:
+				status_bubble.text = "☕ Refreshed! +30% Speed"
+				var tw = create_tween()
+				tw.tween_interval(2.2)
+				tw.tween_callback(func():
+					if is_instance_valid(status_bubble) and current_state != State.ON_BREAK:
+						status_bubble.visible = false
+				)
+			current_state = State.RETURNING
+			waypoints = _get_waypoints_from_breakroom_to_home(position)
+			_play_anim("walk")

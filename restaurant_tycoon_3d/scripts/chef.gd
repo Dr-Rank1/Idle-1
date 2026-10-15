@@ -52,7 +52,21 @@ func _process(delta: float) -> void:
 	
 	# Animated cooking progress arc over chef's head (matching res1_38s.jpg)
 	if cooking_ring != null:
-		var speed = 0.28 + (chef_index % 3) * 0.05
+		var gm = get_node_or_null("/root/GameManager")
+		var cook_mult: float = 1.0
+		var staff_key: String = "chef_stove"
+		if is_prep_chef:
+			staff_key = "chef_prep"
+		elif chef_index == 1:
+			staff_key = "chef_sous"
+		elif chef_index == 3:
+			staff_key = "chef_pastry"
+		if gm != null:
+			if gm.has_method("get_staff_cooking_multiplier"):
+				cook_mult = gm.get_staff_cooking_multiplier(staff_key)
+			if gm.get("is_manager_inspection_active") == true:
+				cook_mult *= 1.25
+		var speed = (0.28 + (chef_index % 3) * 0.05) * cook_mult
 		var offset = float(chef_index) * 0.27 + (0.15 if is_prep_chef else 0.0)
 		var cook_progress = fmod(time_passed * speed + offset, 1.0)
 		var mat = cooking_ring.material_override

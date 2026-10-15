@@ -44,6 +44,22 @@ var barista_radial_mesh: MeshInstance3D = null
 var bartender_shaker_prop: Node3D = null
 var milkshake_badge_label: Label3D = null
 
+var floor_manager: Node3D = null
+var manager_tour_timer: float = 35.0
+var manager_is_touring: bool = false
+var manager_tour_waypoints: Array = []
+var manager_aura_light: OmniLight3D = null
+var manager_status_label: Label3D = null
+
+var janitor_character: Node3D = null
+var janitor_patrol_timer: float = 12.0
+var janitor_waypoints: Array = []
+var janitor_status_label: Label3D = null
+var janitor_on_break: bool = false
+var janitor_speed: float = 3.2
+
+var breakroom_routine_timer: float = 28.0
+
 func _ready() -> void:
 	waiter_scene = load("res://scenes/waiter.tscn")
 	if floating_cash_scene == null:
@@ -1483,7 +1499,7 @@ func _check_spawn_hired_staff() -> void:
 		add_child(w2)
 		waiters.append(w2)
 		
-	# Check Waiter 3
+	# Check Waiter 3 (Lucas - VIP Concierge)
 	if gm.is_staff_hired("waiter_3") and not _has_waiter("waiter_3"):
 		var w3 = waiter_scene.instantiate()
 		w3.name = "Waiter3"
@@ -1493,6 +1509,16 @@ func _check_spawn_hired_staff() -> void:
 		add_child(w3)
 		waiters.append(w3)
 
+	# Check Waiter 4 (Elena - Banquet Server)
+	if gm.is_staff_hired("waiter_4") and not _has_waiter("waiter_4"):
+		var w4 = waiter_scene.instantiate()
+		w4.name = "Waiter4"
+		w4.staff_id = "waiter_4"
+		w4.staff_name = "Elena"
+		w4.position = Vector3(8.6, 0.0, 0.5)
+		add_child(w4)
+		waiters.append(w4)
+
 	# Check Sous Chef Antoine
 	if gm.is_staff_hired("chef_sous") and not _has_sous_chef():
 		var chef_scn = load("res://scenes/chef.tscn")
@@ -1501,7 +1527,27 @@ func _check_spawn_hired_staff() -> void:
 			sc.name = "ChefSous"
 			sc.position = Vector3(5.5, 0.0, -9.0)
 			sc.rotation_degrees.y = 180.0
+			sc.set("chef_index", 1)
 			kitchen_container.add_child(sc)
+
+	# Check Pastry Chef Marcel
+	if gm.is_staff_hired("chef_pastry") and not _has_pastry_chef():
+		var chef_scn = load("res://scenes/chef.tscn")
+		if chef_scn != null and kitchen_container != null:
+			var pc = chef_scn.instantiate()
+			pc.name = "ChefPastry"
+			pc.position = Vector3(8.5, 0.0, -8.65)
+			pc.rotation_degrees.y = 180.0
+			pc.set("chef_index", 3)
+			kitchen_container.add_child(pc)
+
+	# Check Floor Manager Arthur
+	if gm.is_staff_hired("manager") and not _has_floor_manager():
+		_spawn_floor_manager()
+
+	# Check Janitor Otis
+	if gm.is_staff_hired("janitor") and not _has_janitor():
+		_spawn_janitor()
 
 func _has_waiter(sid: String) -> bool:
 	for w in waiters:
@@ -1513,6 +1559,322 @@ func _has_sous_chef() -> bool:
 	if kitchen_container == null:
 		return false
 	return kitchen_container.find_child("ChefSous", true, false) != null
+
+func _has_pastry_chef() -> bool:
+	if kitchen_container == null:
+		return false
+	return kitchen_container.find_child("ChefPastry", true, false) != null
+
+func _has_floor_manager() -> bool:
+	return floor_manager != null and is_instance_valid(floor_manager)
+
+func _has_janitor() -> bool:
+	return janitor_character != null and is_instance_valid(janitor_character)
+
+func _spawn_floor_manager() -> void:
+	if _has_floor_manager():
+		return
+	var char_scn = load("res://assets/models/characters/character-male-d.glb")
+	if char_scn == null:
+		return
+	var mgr = char_scn.instantiate()
+	mgr.name = "FloorManager"
+	mgr.position = Vector3(14.5, 0.0, -8.05)
+	mgr.rotation_degrees = Vector3(0, 0, 0)
+	mgr.scale = Vector3(1.15, 1.15, 1.15)
+	
+	var lbl = Label3D.new()
+	lbl.name = "ManagerStatus"
+	lbl.text = "💼 Arthur (GM)"
+	lbl.font_size = 18
+	lbl.pixel_size = 0.004
+	lbl.position = Vector3(0, 1.85, 0)
+	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lbl.modulate = Color(1.0, 0.85, 0.3, 1.0)
+	mgr.add_child(lbl)
+	manager_status_label = lbl
+	
+	var light = OmniLight3D.new()
+	light.name = "InspectionAuraLight"
+	light.light_color = Color(1.0, 0.84, 0.25, 1.0)
+	light.light_energy = 0.0
+	light.omni_range = 3.5
+	light.position = Vector3(0, 1.2, 0)
+	mgr.add_child(light)
+	manager_aura_light = light
+	
+	var anim = _find_anim_player_in(mgr)
+	if anim != null and anim.has_animation("sit"):
+		anim.play("sit")
+	elif anim != null and anim.has_animation("idle"):
+		anim.play("idle")
+		
+	add_child(mgr)
+	floor_manager = mgr
+
+func _spawn_janitor() -> void:
+	if _has_janitor():
+		return
+	var char_scn = load("res://assets/models/characters/character-male-b.glb")
+	if char_scn == null:
+		return
+	var jan = char_scn.instantiate()
+	jan.name = "JanitorOtis"
+	jan.position = Vector3(10.2, 0.0, 0.5)
+	jan.rotation_degrees = Vector3(0, 180, 0)
+	jan.scale = Vector3(1.15, 1.15, 1.15)
+	
+	var lbl = Label3D.new()
+	lbl.name = "JanitorStatus"
+	lbl.text = "🧹 Otis (Custodian)"
+	lbl.font_size = 18
+	lbl.pixel_size = 0.004
+	lbl.position = Vector3(0, 1.85, 0)
+	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lbl.modulate = Color(0.4, 0.8, 1.0, 1.0)
+	jan.add_child(lbl)
+	janitor_status_label = lbl
+	
+	var broom = CSGCylinder3D.new()
+	broom.name = "BroomProp"
+	broom.radius = 0.02
+	broom.height = 1.1
+	broom.position = Vector3(0.25, 0.55, 0.2)
+	broom.rotation_degrees = Vector3(15, 0, -10)
+	var b_mat = StandardMaterial3D.new()
+	b_mat.albedo_color = Color(0.72, 0.52, 0.28, 1.0)
+	broom.material = b_mat
+	jan.add_child(broom)
+	
+	add_child(jan)
+	janitor_character = jan
+
+func _start_manager_inspection_tour() -> void:
+	if floor_manager == null or manager_is_touring:
+		return
+	manager_is_touring = true
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null:
+		gm.set_manager_inspection_active(true)
+		
+	if manager_status_label != null:
+		manager_status_label.text = "📋 Floor Inspection Active (+25% Boost!)"
+		manager_status_label.modulate = Color(0.2, 1.0, 0.5, 1.0)
+		
+	if manager_aura_light != null:
+		var tw = create_tween()
+		tw.tween_property(manager_aura_light, "light_energy", 1.8, 0.5)
+		
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("chime", 0.0, 1.0)
+		
+	manager_tour_waypoints = [
+		Vector3(14.5, 0.0, -6.5),
+		Vector3(12.0, 0.0, -6.5),
+		Vector3(10.5, 0.0, -5.5),
+		Vector3(7.5, 0.0, -5.5),
+		Vector3(6.5, 0.0, -3.2),
+		Vector3(6.9, 0.0, -1.0),
+		Vector3(6.9, 0.0, 2.0),
+		Vector3(3.3, 0.0, 2.0),
+		Vector3(3.3, 0.0, -1.0),
+		Vector3(10.5, 0.0, -1.0),
+		Vector3(12.0, 0.0, -6.5),
+		Vector3(14.5, 0.0, -6.5),
+		Vector3(14.5, 0.0, -8.05)
+	]
+	
+	var anim = _find_anim_player_in(floor_manager)
+	if anim != null and anim.has_animation("walk"):
+		var a = anim.get_animation("walk")
+		if a != null: a.loop_mode = Animation.LOOP_LINEAR
+		anim.play("walk")
+
+func _process_floor_manager(delta: float) -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null or not gm.is_staff_hired("manager"):
+		return
+	if floor_manager == null:
+		_spawn_floor_manager()
+		return
+		
+	if not manager_is_touring:
+		manager_tour_timer -= delta
+		if manager_tour_timer <= 0.0:
+			_start_manager_inspection_tour()
+	else:
+		if manager_tour_waypoints.size() > 0:
+			var target = manager_tour_waypoints[0]
+			var to_tgt = target - floor_manager.position
+			to_tgt.y = 0.0
+			var dist = to_tgt.length()
+			if dist > 0.25:
+				var dir = to_tgt.normalized()
+				var mgr_spd = 2.8 * gm.get_staff_speed_multiplier("manager")
+				floor_manager.position += dir * mgr_spd * delta
+				var yaw = atan2(dir.x, dir.z)
+				floor_manager.rotation.y = lerp_angle(floor_manager.rotation.y, yaw, 10.0 * delta)
+			else:
+				manager_tour_waypoints.remove_at(0)
+				if manager_tour_waypoints.size() == 0:
+					manager_is_touring = false
+					floor_manager.position = Vector3(14.5, 0.0, -8.05)
+					floor_manager.rotation.y = 0.0
+					gm.set_manager_inspection_active(false)
+					if manager_status_label != null:
+						manager_status_label.text = "💼 Arthur (GM)"
+						manager_status_label.modulate = Color(1.0, 0.85, 0.3, 1.0)
+					if manager_aura_light != null:
+						var tw = create_tween()
+						tw.tween_property(manager_aura_light, "light_energy", 0.0, 0.5)
+					var anim = _find_anim_player_in(floor_manager)
+					if anim != null and anim.has_animation("sit"):
+						anim.play("sit")
+					elif anim != null and anim.has_animation("idle"):
+						anim.play("idle")
+					manager_tour_timer = randf_range(45.0, 65.0)
+
+func _process_janitor(delta: float) -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null or not gm.is_staff_hired("janitor"):
+		return
+	if janitor_character == null:
+		_spawn_janitor()
+		return
+		
+	if janitor_on_break:
+		return
+		
+	if janitor_waypoints.size() > 0:
+		var target = janitor_waypoints[0]
+		var to_tgt = target - janitor_character.position
+		to_tgt.y = 0.0
+		var dist = to_tgt.length()
+		if dist > 0.25:
+			var dir = to_tgt.normalized()
+			var spd = janitor_speed * gm.get_staff_speed_multiplier("janitor")
+			janitor_character.position += dir * spd * delta
+			var yaw = atan2(dir.x, dir.z)
+			janitor_character.rotation.y = lerp_angle(janitor_character.rotation.y, yaw, 10.0 * delta)
+		else:
+			janitor_waypoints.remove_at(0)
+			if janitor_waypoints.size() == 0:
+				var anim = _find_anim_player_in(janitor_character)
+				if anim != null and anim.has_animation("idle"):
+					anim.play("idle")
+	else:
+		janitor_patrol_timer -= delta
+		if janitor_patrol_timer <= 0.0:
+			janitor_patrol_timer = randf_range(12.0, 20.0)
+			var dirty_tbl: Node3D = null
+			for tbl in tables_container.get_children():
+				if tbl.get("is_dirty") == true:
+					dirty_tbl = tbl
+					break
+			if dirty_tbl != null:
+				if janitor_status_label != null:
+					janitor_status_label.text = "🧹 Sanitizing Table..."
+				janitor_waypoints = [
+					Vector3(dirty_tbl.global_position.x + 0.8, 0.0, dirty_tbl.global_position.z)
+				]
+				var anim = _find_anim_player_in(janitor_character)
+				if anim != null and anim.has_animation("walk"):
+					var a = anim.get_animation("walk")
+					if a != null: a.loop_mode = Animation.LOOP_LINEAR
+					anim.play("walk")
+				get_tree().create_timer(3.5).timeout.connect(func():
+					if is_instance_valid(dirty_tbl) and dirty_tbl.has_method("clean_table"):
+						dirty_tbl.clean_table()
+						if janitor_status_label != null:
+							janitor_status_label.text = "🧹 Table Cleaned! ⭐"
+				)
+			else:
+				var patrol_spots = [
+					Vector3(3.3, 0.0, 2.5),
+					Vector3(6.9, 0.0, 1.5),
+					Vector3(10.2, 0.0, 0.5),
+					Vector3(6.9, 0.0, -1.0)
+				]
+				var next_spot = patrol_spots.pick_random()
+				janitor_waypoints = [next_spot]
+				var anim = _find_anim_player_in(janitor_character)
+				if anim != null and anim.has_animation("walk"):
+					var a = anim.get_animation("walk")
+					if a != null: a.loop_mode = Animation.LOOP_LINEAR
+					anim.play("walk")
+				if janitor_status_label != null:
+					janitor_status_label.text = "🧹 Sweeping Aisles"
+
+func _process_breakroom_routine(delta: float) -> void:
+	breakroom_routine_timer -= delta
+	if breakroom_routine_timer <= 0.0:
+		breakroom_routine_timer = randf_range(48.0, 72.0)
+		_dispatch_breakroom_routine()
+
+func _dispatch_breakroom_routine() -> void:
+	var idle_waiters: Array[Node3D] = []
+	for w in waiters:
+		if is_instance_valid(w) and w.get("current_state") == 0:
+			idle_waiters.append(w)
+			
+	if idle_waiters.size() > 0:
+		var chosen_w = idle_waiters.pick_random()
+		var use_sofa = randf() > 0.45
+		var spot = Vector3(14.6, 0.0, -2.2) if use_sofa else Vector3(12.6, 0.0, -2.8)
+		if chosen_w.has_method("take_breakroom_rest"):
+			chosen_w.take_breakroom_rest(spot, use_sofa)
+		return
+		
+	if is_instance_valid(janitor_character) and not janitor_on_break:
+		_send_janitor_to_breakroom()
+
+func _send_janitor_to_breakroom() -> void:
+	if not is_instance_valid(janitor_character) or janitor_on_break:
+		return
+	janitor_on_break = true
+	var use_armchair = randf() > 0.5
+	var target_spot = Vector3(13.2, 0.0, -1.5) if use_armchair else Vector3(11.8, 0.0, -2.7)
+	if janitor_status_label != null:
+		janitor_status_label.text = "☕ Coffee Break..." if not use_armchair else "☕ Sofa Rest..."
+	janitor_waypoints = [
+		Vector3(10.5, 0.0, -1.0),
+		Vector3(11.5, 0.0, -1.5),
+		target_spot
+	]
+	var anim = _find_anim_player_in(janitor_character)
+	if anim != null and anim.has_animation("walk"):
+		var a = anim.get_animation("walk")
+		if a != null: a.loop_mode = Animation.LOOP_LINEAR
+		anim.play("walk")
+		
+	get_tree().create_timer(6.5).timeout.connect(func():
+		if is_instance_valid(janitor_character):
+			if janitor_status_label != null:
+				janitor_status_label.text = "☕ Refreshed! +30% Speed"
+			janitor_waypoints = [
+				Vector3(11.5, 0.0, -1.5),
+				Vector3(10.5, 0.0, -1.0),
+				Vector3(10.2, 0.0, 0.5)
+			]
+			var a2 = _find_anim_player_in(janitor_character)
+			if a2 != null and a2.has_animation("walk"):
+				a2.play("walk")
+			get_tree().create_timer(3.5).timeout.connect(func():
+				janitor_on_break = false
+				if janitor_status_label != null:
+					janitor_status_label.text = "🧹 Otis (Custodian)"
+			)
+	)
+
+func _find_anim_player_in(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node
+	for child in node.get_children():
+		var found = _find_anim_player_in(child)
+		if found != null:
+			return found
+	return null
 
 func _on_staff_updated(staff_id: String) -> void:
 	_check_spawn_hired_staff()
@@ -1538,6 +1900,9 @@ func _process(delta: float) -> void:
 	_dispatch_waiter_tasks()
 	_process_lounge_bartender(delta)
 	_process_diner_barista(delta)
+	_process_floor_manager(delta)
+	_process_janitor(delta)
+	_process_breakroom_routine(delta)
 
 func _setup_active_service_sectors() -> void:
 	lounge_seats.clear()

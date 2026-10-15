@@ -11,6 +11,7 @@ signal spawn_floating_cash(amount: float, world_pos: Vector3)
 signal boost_toggled(active: bool)
 signal menu_updated()
 signal staff_updated(staff_id: String)
+signal manager_inspection_changed(active: bool)
 signal table_unlocked(table_id: String)
 signal critic_review_awarded(stars: float, is_positive: bool)
 signal quests_updated()
@@ -36,6 +37,7 @@ var star_rating: float = 4.8
 var restaurant_name: String = "Idle Diner"
 var is_boosted: bool = false
 var boost_timer: float = 0.0
+var is_manager_inspection_active: bool = false
 var daily_gift_claimed: bool = false
 
 # ─── World Map Restaurants ──────────────────────────────────────────────────
@@ -253,55 +255,131 @@ var staff_roster: Dictionary = {
 		"id": "waiter_1",
 		"name": "Marco (Head Waiter)",
 		"role": "waiter",
+		"category": "floor",
 		"hired": true,
 		"hire_cost": 0.0,
 		"level": 1,
-		"desc": "Faithful frontline server. Upgrading boosts sprint speed!"
+		"desc": "Frontline banquet server. Upgrading boosts floor run speed and carrying capacity."
 	},
 	"waiter_2": {
 		"id": "waiter_2",
 		"name": "Sophia (Speed Runner)",
 		"role": "waiter",
-		"hired": false,
+		"category": "floor",
+		"hired": true,
 		"hire_cost": 250.0,
 		"level": 1,
-		"desc": "Doubles floor service capacity for quicker table turns!"
+		"desc": "High-speed runner doubling dining room throughput and table turn speed."
 	},
 	"waiter_3": {
 		"id": "waiter_3",
 		"name": "Lucas (VIP Concierge)",
 		"role": "waiter",
+		"category": "floor",
 		"hired": false,
-		"hire_cost": 600.0,
+		"hire_cost": 500.0,
 		"level": 1,
-		"desc": "Triples floor service capacity & ensures zero customer walkouts!"
+		"desc": "Dedicated concierge expediting multi-dish orders for VIP critics and window booths."
+	},
+	"waiter_4": {
+		"id": "waiter_4",
+		"name": "Elena (Banquet Server)",
+		"role": "waiter",
+		"category": "floor",
+		"hired": false,
+		"hire_cost": 850.0,
+		"level": 1,
+		"desc": "Master server carrying up to 3 plates per run for rapid multi-table turnover."
 	},
 	"chef_stove": {
 		"id": "chef_stove",
 		"name": "Gordon (Master Range)",
 		"role": "chef",
+		"category": "kitchen",
 		"hired": true,
 		"hire_cost": 0.0,
 		"level": 1,
-		"desc": "Culinary virtuoso managing hot stove sautés & flame broiling."
+		"desc": "Culinary virtuoso managing hot stove sautés & flame broiling at Stove 1."
 	},
 	"chef_prep": {
 		"id": "chef_prep",
 		"name": "Pierre (Prep Artisan)",
 		"role": "chef",
+		"category": "kitchen",
 		"hired": true,
 		"hire_cost": 0.0,
 		"level": 1,
-		"desc": "Rapid knife skills plating starters and table sides."
+		"desc": "Knife master at the central prep table cutting fresh vegetables & starters."
 	},
 	"chef_sous": {
 		"id": "chef_sous",
 		"name": "Antoine (Sous Chef)",
 		"role": "chef",
+		"category": "kitchen",
 		"hired": false,
 		"hire_cost": 350.0,
 		"level": 1,
-		"desc": "Expedites all kitchen station prep by +40%!"
+		"desc": "Expedites hot pass dishes and coordinates kitchen line output by +40%."
+	},
+	"chef_pastry": {
+		"id": "chef_pastry",
+		"name": "Marcel (Pastry & Bakery)",
+		"role": "chef",
+		"category": "kitchen",
+		"hired": false,
+		"hire_cost": 550.0,
+		"level": 1,
+		"desc": "Bakes artisanal breads and desserts, boosting meal earnings by +25%."
+	},
+	"hostess": {
+		"id": "hostess",
+		"name": "Chloe (Reception Hostess)",
+		"role": "hostess",
+		"category": "service",
+		"hired": true,
+		"hire_cost": 0.0,
+		"level": 1,
+		"desc": "Welcomes arriving patrons at the podium, boosting guest patience by +35%."
+	},
+	"bartender": {
+		"id": "bartender",
+		"name": "Leo (Lounge Mixologist)",
+		"role": "bartender",
+		"category": "service",
+		"hired": true,
+		"hire_cost": 200.0,
+		"level": 1,
+		"desc": "Crafts shaken cocktails & pours vintage wines at the mahogany bar counter."
+	},
+	"barista": {
+		"id": "barista",
+		"name": "Penny (Diner Barista)",
+		"role": "barista",
+		"category": "service",
+		"hired": true,
+		"hire_cost": 250.0,
+		"level": 1,
+		"desc": "Blends malted shakes and dishes ice cream sundaes at the 50s Diner fountain."
+	},
+	"janitor": {
+		"id": "janitor",
+		"name": "Otis (Head Custodian)",
+		"role": "janitor",
+		"category": "facility",
+		"hired": true,
+		"hire_cost": 300.0,
+		"level": 1,
+		"desc": "Sweeps dining aisles, wipes down tables, and keeps the restaurant spotless."
+	},
+	"manager": {
+		"id": "manager",
+		"name": "Arthur (General Manager)",
+		"role": "manager",
+		"category": "management",
+		"hired": false,
+		"hire_cost": 750.0,
+		"level": 1,
+		"desc": "Stationed in executive office. Triggers inspection tours that boost all stations +25%!"
 	}
 }
 
@@ -708,7 +786,10 @@ func get_upgrade_cost(station_id: String) -> float:
 func get_station_income(station_id: String) -> float:
 	var lvl: int = get_station_level(station_id)
 	var cfg = get_station_config(station_id)
-	return round(cfg.base_rev * pow(cfg.rev_mult, lvl - 1))
+	var rev: float = round(cfg.base_rev * pow(cfg.rev_mult, lvl - 1))
+	if has_method("get_manager_efficiency_multiplier"):
+		rev *= get_manager_efficiency_multiplier()
+	return round(rev)
 
 func get_upgrade_multi_info(station_id: String, mode: String) -> Dictionary:
 	var current_lvl: int = get_station_level(station_id)
@@ -1012,11 +1093,48 @@ func get_staff_upgrade_cost(staff_id: String) -> float:
 	var base_cost = 95.0
 	if staff_id.begins_with("chef"):
 		base_cost = 130.0
+	elif staff_id == "manager":
+		base_cost = 260.0
+	elif staff_id in ["waiter_3", "waiter_4"]:
+		base_cost = 150.0
+	elif staff_id in ["bartender", "barista"]:
+		base_cost = 120.0
+	elif staff_id == "janitor":
+		base_cost = 100.0
 	return round(base_cost * pow(1.25, lvl - 1))
 
 func get_staff_speed_multiplier(staff_id: String) -> float:
 	var lvl = get_staff_level(staff_id)
 	return 1.0 + (lvl - 1) * 0.15
+
+func get_staff_cooking_multiplier(staff_id: String) -> float:
+	var lvl = get_staff_level(staff_id)
+	return 1.0 + (lvl - 1) * 0.20
+
+func get_staff_serving_multiplier(staff_id: String) -> float:
+	var lvl = get_staff_level(staff_id)
+	return 1.0 + (lvl - 1) * 0.18
+
+func get_staff_capacity(staff_id: String) -> int:
+	var lvl = get_staff_level(staff_id)
+	var cap = 1 + int(floor(float(lvl - 1) / 3.0))
+	if staff_id == "waiter_4":
+		cap += 1
+	return clamp(cap, 1, 4)
+
+func get_manager_efficiency_multiplier() -> float:
+	if not is_staff_hired("manager"):
+		return 1.0
+	var lvl = get_staff_level("manager")
+	var mult = 1.0 + (lvl - 1) * 0.08
+	if is_manager_inspection_active:
+		mult += 0.25
+	return mult
+
+func set_manager_inspection_active(active: bool) -> void:
+	if is_manager_inspection_active != active:
+		is_manager_inspection_active = active
+		manager_inspection_changed.emit(active)
 
 func hire_staff(staff_id: String) -> bool:
 	if not staff_roster.has(staff_id):

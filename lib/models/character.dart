@@ -42,6 +42,18 @@ class Character {
   // VIP flag
   bool isVip = false;
 
+  // Staff progression & management
+  int level = 1;
+  double speedMultiplier = 1.0;
+  double cookingMultiplier = 1.0;
+  double servingMultiplier = 1.0;
+  int carryCapacity = 1;
+  double fatigue = 0.0; // 0.0 (fresh) to 1.0 (exhausted)
+  bool isOnBreak = false;
+  double breakroomTimer = 0.0;
+  bool hasSpeedBuff = false;
+  double speedBuffTimer = 0.0;
+
   Character({
     required this.id,
     required this.type,
@@ -49,6 +61,13 @@ class Character {
     required this.gy,
     this.state = CharacterState.arriving,
     this.patience = 30.0,
+    this.level = 1,
+    this.speedMultiplier = 1.0,
+    this.cookingMultiplier = 1.0,
+    this.servingMultiplier = 1.0,
+    this.carryCapacity = 1,
+    this.fatigue = 0.0,
+    this.isOnBreak = false,
   }) : targetGx = gx,
        targetGy = gy;
 

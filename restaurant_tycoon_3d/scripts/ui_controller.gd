@@ -1098,14 +1098,69 @@ func _on_staff_updated(_sid: String) -> void:
 		_refresh_staff_panel()
 
 func _refresh_staff_panel() -> void:
+	if staff_vbox == null:
+		return
 	for c in staff_vbox.get_children():
 		c.queue_free()
 	var gm = get_node_or_null("/root/GameManager")
 	if gm == null:
 		return
-	for sid in ["waiter_1", "waiter_2", "waiter_3", "chef_stove", "chef_prep", "chef_sous"]:
-		if gm.staff_roster.has(sid):
-			staff_vbox.add_child(_create_staff_card(gm.staff_roster[sid], gm))
+
+	var sections = [
+		{
+			"title": "🍳 KITCHEN CHEFS (4 SLOTS)",
+			"sub": "Master cooking, knife prep, expedited pass orders, and bakery",
+			"ids": ["chef_stove", "chef_prep", "chef_sous", "chef_pastry"]
+		},
+		{
+			"title": "🛎️ DINING FLOOR WAITERS (4 SLOTS)",
+			"sub": "Frontline table service, multi-dish delivery, and table turn speed",
+			"ids": ["waiter_1", "waiter_2", "waiter_3", "waiter_4"]
+		},
+		{
+			"title": "🍸 LOUNGE & SODA FOUNTAIN (2 SLOTS)",
+			"sub": "Cocktail mixology and 50s diner sundaes, sodas & frappes",
+			"ids": ["bartender", "barista"]
+		},
+		{
+			"title": "📋 FACILITIES & MANAGEMENT (3 SLOTS)",
+			"sub": "Lobby guest greeting, restaurant hygiene, and floor inspection tours",
+			"ids": ["hostess", "janitor", "manager"]
+		}
+	]
+
+	for sec in sections:
+		staff_vbox.add_child(_create_staff_section_header(sec["title"], sec["sub"]))
+		for sid in sec["ids"]:
+			if gm.staff_roster.has(sid):
+				staff_vbox.add_child(_create_staff_card(gm.staff_roster[sid], gm))
+
+func _create_staff_section_header(title_text: String, sub_text: String) -> PanelContainer:
+	var p = PanelContainer.new()
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.14, 0.18, 0.26, 0.95)
+	sb.border_width_left = 3
+	sb.border_color = Color(0.96, 0.72, 0.18, 1.0)
+	sb.set_corner_radius_all(6)
+	sb.set_content_margin_all(8)
+	p.add_theme_stylebox_override("panel", sb)
+
+	var vb = VBoxContainer.new()
+	p.add_child(vb)
+
+	var t_lbl = Label.new()
+	t_lbl.text = title_text
+	t_lbl.add_theme_font_size_override("font_size", 14)
+	t_lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.65, 1.0))
+	vb.add_child(t_lbl)
+
+	var s_lbl = Label.new()
+	s_lbl.text = sub_text
+	s_lbl.add_theme_font_size_override("font_size", 11)
+	s_lbl.add_theme_color_override("font_color", Color(0.75, 0.82, 0.92, 0.8))
+	vb.add_child(s_lbl)
+
+	return p
 
 func _create_staff_card(st: Dictionary, gm: Node) -> PanelContainer:
 	var p = PanelContainer.new()
@@ -1116,7 +1171,16 @@ func _create_staff_card(st: Dictionary, gm: Node) -> PanelContainer:
 	p.add_child(hbox)
 	
 	var icon = Label.new()
-	icon.text = "👔" if st.get("role") == "waiter" else "👨‍🍳"
+	var role = st.get("role", "waiter")
+	match role:
+		"chef": icon.text = "👨‍🍳"
+		"waiter": icon.text = "👔"
+		"hostess": icon.text = "💁‍♀️"
+		"bartender": icon.text = "🍸"
+		"barista": icon.text = "🥤"
+		"janitor": icon.text = "🧹"
+		"manager": icon.text = "💼"
+		_: icon.text = "👔"
 	icon.add_theme_font_size_override("font_size", 30)
 	hbox.add_child(icon)
 	
@@ -1132,15 +1196,38 @@ func _create_staff_card(st: Dictionary, gm: Node) -> PanelContainer:
 	
 	var is_hired = st.get("hired", false)
 	var lvl = st.get("level", 1)
-	var spd = gm.get_staff_speed_multiplier(st["id"])
+	var sid = st["id"]
+	var spd = gm.get_staff_speed_multiplier(sid)
 	
 	var sub_lbl = Label.new()
 	if is_hired:
-		sub_lbl.text = "Level %d • Speed: +%d%%" % [lvl, round((spd - 1.0) * 100)]
+		match role:
+			"waiter":
+				var cap = gm.get_staff_capacity(sid)
+				sub_lbl.text = "Level %d • Speed: +%d%% • Carry: %d Plates" % [lvl, round((spd - 1.0) * 100), cap]
+			"chef":
+				var cook_spd = gm.get_staff_cooking_multiplier(sid)
+				sub_lbl.text = "Level %d • Cook Speed: +%d%% • Speed: +%d%%" % [lvl, round((cook_spd - 1.0) * 100), round((spd - 1.0) * 100)]
+			"hostess":
+				sub_lbl.text = "Level %d • Patience Buff: +35%% • Speed: +%d%%" % [lvl, round((spd - 1.0) * 100)]
+			"bartender":
+				var mix_spd = gm.get_staff_serving_multiplier(sid)
+				sub_lbl.text = "Level %d • Mix Speed: +%d%% • Lounge Tips: +%d%%" % [lvl, round((mix_spd - 1.0) * 100), round((mix_spd - 1.0) * 80)]
+			"barista":
+				var soda_spd = gm.get_staff_serving_multiplier(sid)
+				sub_lbl.text = "Level %d • Prep Speed: +%d%% • Sundae Tips: +%d%%" % [lvl, round((soda_spd - 1.0) * 100), round((soda_spd - 1.0) * 80)]
+			"janitor":
+				sub_lbl.text = "Level %d • Sweeping Speed: +%d%% • Hygiene: +100%%" % [lvl, round((spd - 1.0) * 100)]
+			"manager":
+				var eff = gm.get_manager_efficiency_multiplier()
+				var insp_text = " [ACTIVE INSPECTION!]" if gm.is_manager_inspection_active else ""
+				sub_lbl.text = "Level %d • Office Tour Boost: +%d%%%s" % [lvl, round((eff - 1.0) * 100), insp_text]
+			_:
+				sub_lbl.text = "Level %d • Speed: +%d%%" % [lvl, round((spd - 1.0) * 100)]
 		sub_lbl.add_theme_color_override("font_color", Color(0.4, 0.9, 1.0, 1))
 	else:
-		sub_lbl.text = "Available for Hire • Expand Capacity"
-		sub_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8, 0.8))
+		sub_lbl.text = "Available for Hire • Click to Recruit"
+		sub_lbl.add_theme_color_override("font_color", Color(0.95, 0.75, 0.2, 0.9))
 	sub_lbl.add_theme_font_size_override("font_size", 12)
 	vb.add_child(sub_lbl)
 	
@@ -1153,12 +1240,12 @@ func _create_staff_card(st: Dictionary, gm: Node) -> PanelContainer:
 	
 	var btn = Button.new()
 	if is_hired:
-		var cost = gm.get_staff_upgrade_cost(st["id"])
+		var cost = gm.get_staff_upgrade_cost(sid)
 		btn.text = "UPGRADE\n($%d)" % round(cost)
 		btn.disabled = gm.cash < cost
 		btn.pressed.connect(func():
 			_play_click_sfx()
-			gm.upgrade_staff(st["id"])
+			gm.upgrade_staff(sid)
 		)
 		btn.add_theme_stylebox_override("normal", _get_green_btn_style())
 	else:
@@ -1167,7 +1254,7 @@ func _create_staff_card(st: Dictionary, gm: Node) -> PanelContainer:
 		btn.disabled = gm.cash < cost
 		btn.pressed.connect(func():
 			_play_click_sfx()
-			gm.hire_staff(st["id"])
+			gm.hire_staff(sid)
 		)
 		btn.add_theme_stylebox_override("normal", _get_gold_btn_style())
 	hbox.add_child(btn)

@@ -7,6 +7,10 @@ enum ZoneType {
   diningRoom,
   hotelRoom,
   pool,
+  lounge,
+  milkshakeDiner,
+  breakroom,
+  managerOffice,
 }
 
 /// What a character is doing right now.
@@ -33,6 +37,9 @@ enum CharacterState {
   cleaning,
   walkingToKitchen,
   carryingFood,
+  onBreak,
+  visitingLockers,
+  inspectingFloor,
 }
 
 /// Type of character.
@@ -42,6 +49,11 @@ enum CharacterType {
   chef,
   waiter,
   maid,
+  hostess,
+  bartender,
+  barista,
+  janitor,
+  manager,
 }
 
 /// Rarity for manager cards.
