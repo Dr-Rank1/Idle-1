@@ -11,6 +11,8 @@ enum ZoneType {
   milkshakeDiner,
   breakroom,
   managerOffice,
+  restroom,
+  parking,
 }
 
 /// What a character is doing right now.

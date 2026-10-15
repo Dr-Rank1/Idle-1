@@ -189,6 +189,10 @@ const STATION_CONFIGS: Dictionary = {
 	"milkshake_blender": {"base_cost": 180.0, "cost_mult": 1.16, "base_rev": 30.0, "rev_mult": 1.11, "max_level": 50},
 	"jukebox": {"base_cost": 150.0, "cost_mult": 1.15, "base_rev": 20.0, "rev_mult": 1.10, "max_level": 50},
 	"host_desk": {"base_cost": 100.0, "cost_mult": 1.15, "base_rev": 15.0, "rev_mult": 1.10, "max_level": 50},
+	"cocktail_lounge": {"base_cost": 350.0, "cost_mult": 1.18, "base_rev": 60.0, "rev_mult": 1.12, "max_level": 50},
+	"cocktail_bar": {"base_cost": 350.0, "cost_mult": 1.18, "base_rev": 60.0, "rev_mult": 1.12, "max_level": 50},
+	"restroom": {"base_cost": 200.0, "cost_mult": 1.16, "base_rev": 20.0, "rev_mult": 1.10, "max_level": 50},
+	"manager_office": {"base_cost": 500.0, "cost_mult": 1.20, "base_rev": 75.0, "rev_mult": 1.12, "max_level": 50},
 }
 
 # ─── Station Levels ────────────────────────────────────────────────────────
@@ -213,6 +217,10 @@ var station_levels: Dictionary = {
 	"jukebox": 1,
 	"parking_lot": 1,
 	"parking": 1,
+	"cocktail_lounge": 1,
+	"cocktail_bar": 1,
+	"restroom": 1,
+	"manager_office": 1,
 }
 
 var max_level: int = 50
@@ -1163,6 +1171,27 @@ func get_station_tier_title(station_id: String, lvl: int) -> String:
 			return "★ TIER 2 • ILLUMINATED VINYL JUKEBOX"
 		else:
 			return "🎵 TIER 1 • RETRO 1950s JUKEBOX"
+	elif station_id.begins_with("cocktail"):
+		if lvl >= 10:
+			return "👑 TIER 3 • LUXURY MAHOGANY COCKTAIL LOUNGE"
+		elif lvl >= 5:
+			return "★ TIER 2 • ARTISAN SPEAKEASY BAR"
+		else:
+			return "🍸 TIER 1 • CLASSIC COCKTAIL BAR"
+	elif station_id == "restroom":
+		if lvl >= 10:
+			return "👑 TIER 3 • SPARKLING MARBLE SUITE"
+		elif lvl >= 5:
+			return "★ TIER 2 • SANITIZED CERAMIC RESTROOM"
+		else:
+			return "🧼 TIER 1 • STANDARD RESTROOM"
+	elif station_id == "manager_office":
+		if lvl >= 10:
+			return "👑 TIER 3 • EXECUTIVE CORNER OFFICE"
+		elif lvl >= 5:
+			return "★ TIER 2 • MAHOGANY MANAGEMENT OFFICE"
+		else:
+			return "💼 TIER 1 • OPERATIONS OFFICE"
 	return "STATION TIER 1"
 
 func get_next_tier_desc(station_id: String, lvl: int) -> String:
@@ -1201,6 +1230,27 @@ func get_next_tier_desc(station_id: String, lvl: int) -> String:
 			return "Next: Lv. 10 unlocks +30% Tip Multiplier & Golden Glow"
 		else:
 			return "MAX TIER UNLOCKED • Legendary Soundtrack Prestige!"
+	elif station_id.begins_with("cocktail"):
+		if lvl < 5:
+			return "Next: Lv. 5 unlocks Vintage Wine Racks & Crystal Stemware"
+		elif lvl < 10:
+			return "Next: Lv. 10 unlocks Top-Shelf Liquors (+50% rev)"
+		else:
+			return "MAX TIER UNLOCKED • Peak Lounge Prestige!"
+	elif station_id == "restroom":
+		if lvl < 5:
+			return "Next: Lv. 5 unlocks Automatic Sanitizers & Hand Dryers"
+		elif lvl < 10:
+			return "Next: Lv. 10 unlocks Marble Counters & Scent Diffusers"
+		else:
+			return "MAX TIER UNLOCKED • Spotless 5-Star Hygiene!"
+	elif station_id == "manager_office":
+		if lvl < 5:
+			return "Next: Lv. 5 unlocks Executive Analytics Desk & Filing Suite"
+		elif lvl < 10:
+			return "Next: Lv. 10 unlocks Floor Inspection Drone & Coffee Station"
+		else:
+			return "MAX TIER UNLOCKED • Executive GM Master Suite!"
 	return ""
 
 # ─── Menu Methods ───────────────────────────────────────────────────────────

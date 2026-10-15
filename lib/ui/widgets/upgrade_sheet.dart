@@ -209,9 +209,9 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
                         fontSize: 12,
                       ),
                     ),
-                    const Text(
-                      '💎 20,141',
-                      style: TextStyle(
+                    Text(
+                      '💎 ${NumberFormat('#,###').format(gs.gems)}',
+                      style: const TextStyle(
                         color: Color(0xFF80D8FF),
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
@@ -223,15 +223,23 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
 
               const SizedBox(height: 10),
 
-              // White Card for Selected Item
+              // Orange-to-Golden-Yellow Gradient Card for Selected Item
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFFDE7), Color(0xFFFFF8E1), Color(0xFFFFF3E0)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isMaxed ? const Color(0xFFFFA000) : const Color(0xFFFFCC80),
+                    width: 1.5,
+                  ),
                   boxShadow: const [
                     BoxShadow(
-                      color: Colors.black26,
+                      color: Color(0x33FFA000),
                       blurRadius: 8,
                       offset: Offset(0, 3),
                     ),
@@ -270,15 +278,18 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
                         const Spacer(),
                         if (isMaxed)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF57F17),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFFD54F), Color(0xFFFFA000)],
+                              ),
                               borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFFFFE082)),
                             ),
                             child: const Text(
                               '⭐ MAX LEVEL',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: Color(0xFF3E2723),
                                 fontWeight: FontWeight.w900,
                                 fontSize: 11,
                               ),
@@ -323,14 +334,20 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '💵 +${_fmt.format(station.income)} / cust   ⚡ +15',
-                                style: const TextStyle(
-                                  color: Color(0xFF2E7D32),
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 12,
-                                ),
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 4,
+                                runSpacing: 4,
+                                children: [
+                                  _StatusRibbonMini(
+                                    text: '📈 +${_fmt.format(station.income)}/cust',
+                                    isPositive: true,
+                                  ),
+                                  _StatusRibbonMini(
+                                    text: '⚡ +${(station.level * 2).clamp(5, 50)}',
+                                    isPositive: true,
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -439,15 +456,27 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
   String _getZoneTitle(ZoneType zone) {
     switch (zone) {
       case ZoneType.kitchen:
-        return '🍳 Kitchen';
+        return '🍳 Master Kitchen';
       case ZoneType.diningRoom:
-        return '🪑 Dining';
+        return '🪑 Dining Room';
       case ZoneType.reception:
-        return '🛎️ Lobby';
+        return '🛎️ Reception Lobby';
+      case ZoneType.lounge:
+        return '🍸 Cocktail Lounge';
+      case ZoneType.milkshakeDiner:
+        return '🥤 50s Milkshake Diner';
+      case ZoneType.parking:
+        return '🚗 Valet Parking Lot';
+      case ZoneType.restroom:
+        return '🧼 Restroom Hygiene';
+      case ZoneType.managerOffice:
+        return '💼 Manager\'s Office';
+      case ZoneType.breakroom:
+        return '☕ Staff Breakroom';
       case ZoneType.hotelRoom:
-        return '🚗 Parking';
+        return '🛏️ Guest Rooms';
       default:
-        return '🥤 Milkshake Bar';
+        return '⭐ Resort Sector';
     }
   }
 
@@ -456,6 +485,7 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
       case ZoneType.reception:
         return '🌙 Closes: 11:00 PM';
       case ZoneType.hotelRoom:
+      case ZoneType.parking:
         return '☀️ 24 Hours Open';
       default:
         return '🌙 Closes: 11:00 PM';
@@ -483,11 +513,40 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
         _SubItem('🪑', 'Booth 3', 'Booth Table 3', 'Quiet booth suite along the window.'),
         _SubItem('🪑', 'Booth 4', 'Booth Table 4', 'Central dining hall booth.'),
         _SubItem('🪑', 'Booth 5', 'Booth Table 5', 'Spacious corner booth for groups.'),
+        _SubItem('🪑', 'Terrace 10', 'Sunset Cabana 10', 'Outdoor cabana table under umbrella.'),
+        _SubItem('🪑', 'Terrace 11', 'Sunset Cabana 11', 'Scenic garden terrace booth.'),
+        _SubItem('🪑', 'Terrace 12', 'Sunset Cabana 12', 'VIP ocean view dining cabana.'),
         _SubItem('🍽️', 'Tableware', 'Cutlery Set', 'Polished diner silverware and napkins.'),
-        _SubItem('🧂', 'Sauces', 'Condiments', 'Classic diner ketchup and mustard bottles.'),
         _SubItem('🎵', 'Jukebox', 'Retro Jukebox', 'Rock and roll hits on vinyl.'),
-        _SubItem('🌿', 'Planters', 'Hedge Decors', 'Lush greenery partitions.'),
-        _SubItem('📺', 'TV', 'Sports Display', 'High-definition diner sports broadcast.'),
+      ];
+    } else if (zone == ZoneType.lounge) {
+      return const [
+        _SubItem('🍸', 'Bar Counter', 'Mahogany Counter', 'Deep cherry mahogany polished bar.'),
+        _SubItem('🍷', 'Wine Cellar', 'Vintage Rack', 'Temperature-controlled sommelier storage.'),
+        _SubItem('🧊', 'Ice Machine', 'Crystal Cubes', 'Purified ice makers for craft cocktails.'),
+        _SubItem('🛋️', 'Lounge Stools', 'Leather Stools', 'Padded mahogany counter stools.'),
+        _SubItem('🎵', 'Soundtrack', 'Jazz Audio', 'Smooth vinyl background acoustics.'),
+      ];
+    } else if (zone == ZoneType.restroom) {
+      return const [
+        _SubItem('🧼', 'Sanitizer', 'Touchless Wash', 'Hospital-grade automated sanitizers.'),
+        _SubItem('🪞', 'Mirrors', 'Vanity Mirrors', 'Illuminated vanity ledges.'),
+        _SubItem('🌸', 'Diffusers', 'Aroma Diffusers', 'Fresh eucalyptus & lavender scents.'),
+        _SubItem('🧹', 'Polish', 'Tile Scrubbers', 'High-shine sanitary floor polishers.'),
+      ];
+    } else if (zone == ZoneType.managerOffice) {
+      return const [
+        _SubItem('💼', 'Executive Desk', 'GM Suite', 'Mahogany executive desk with brass trim.'),
+        _SubItem('📊', 'Analytics', 'Live Dashboard', 'Real-time sales & expense projections.'),
+        _SubItem('☕', 'Espresso', 'Barista Machine', 'Fueling 24/7 managerial inspections.'),
+        _SubItem('📋', 'Audit Board', 'Inspection Drone', 'Automated floor sweep cameras (+25% boost).'),
+      ];
+    } else if (zone == ZoneType.parking) {
+      return const [
+        _SubItem('🚗', 'Valet Stall', 'Parking Bay', 'Reserved valet arrival parking slots.'),
+        _SubItem('🚁', 'Helipad', 'VIP Helipad', 'South-West helipad landing zone for investors.'),
+        _SubItem('🛑', 'Security', 'Boom Gates', 'Automated entry sensors expediting flow.'),
+        _SubItem('💡', 'Neon Sign', 'Roadside Neon', 'High-lumen diner sign drawing traffic.'),
       ];
     } else {
       return const [
@@ -532,18 +591,31 @@ class _UpgradeActionBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isMaxed) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFF78909C),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFD54F), Color(0xFFFFA000)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFFFECB3), width: 1.5),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x66FFA000),
+              blurRadius: 8,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: const Text(
-          'MAX LEVEL',
+          '⭐ MAX LEVEL',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.white,
+            color: Color(0xFF3E2723),
             fontWeight: FontWeight.w900,
             fontSize: 11,
+            letterSpacing: 0.5,
           ),
         ),
       );
@@ -597,6 +669,35 @@ class _UpgradeActionBtn extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusRibbonMini extends StatelessWidget {
+  final String text;
+  final bool isPositive;
+
+  const _StatusRibbonMini({required this.text, required this.isPositive});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isPositive ? const Color(0xFF145224) : const Color(0xFF611414);
+    final border = isPositive ? const Color(0xFF00E676) : const Color(0xFFFF5252);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(5),
+        border: Border(left: BorderSide(color: border, width: 2.5)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: isPositive ? const Color(0xFFB9F6CA) : const Color(0xFFFFCDD2),
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );

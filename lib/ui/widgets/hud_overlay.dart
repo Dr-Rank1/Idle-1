@@ -65,7 +65,10 @@ class _HudOverlayState extends State<HudOverlay> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Full-width dark grey progress bar across the very top edge with 5 silver stars
-                  _TopMilestoneStarBar(progress: 0.65),
+                  _TopMilestoneStarBar(
+                    progress: (gs.starRating / 5.0).clamp(0.0, 1.0),
+                    starRating: gs.starRating,
+                  ),
 
                   const SizedBox(height: 6),
 
@@ -77,7 +80,7 @@ class _HudOverlayState extends State<HudOverlay> {
                       child: Row(
                         children: [
                           // Manager avatar in purple border with level badge
-                          _ManagerAvatarBadge(level: 12),
+                          _ManagerAvatarBadge(level: gs.restaurantLevel),
                           const SizedBox(width: 8),
 
                           // Green cash total + /s rate
@@ -89,7 +92,7 @@ class _HudOverlayState extends State<HudOverlay> {
                           const SizedBox(width: 8),
 
                           // Gem counter
-                          _GemPill(gems: 20141),
+                          _GemPill(gems: gs.gems),
                           const SizedBox(width: 8),
 
                           // Digital clock
@@ -268,8 +271,12 @@ class _HudOverlayState extends State<HudOverlay> {
 // ── Top Milestone Star Bar ────────────────────────────────────────────────────
 class _TopMilestoneStarBar extends StatelessWidget {
   final double progress;
+  final num starRating;
 
-  const _TopMilestoneStarBar({required this.progress});
+  const _TopMilestoneStarBar({
+    required this.progress,
+    this.starRating = 1,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -292,21 +299,21 @@ class _TopMilestoneStarBar extends StatelessWidget {
               height: 8,
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFF3DA3E8),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF29B6F6), Color(0xFF0288D1)],
+                ),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
           ),
-          // 5 silver milestone stars
+          // 5 silver/gold milestone stars
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: const [
-              _StarItem(label: '★ Star 1'),
-              _StarItem(label: '★ Star 2'),
-              _StarItem(label: '★ Star 3'),
-              _StarItem(label: '★ Star 4'),
-              _StarItem(label: '★ Grand Diner'),
-            ],
+            children: List.generate(5, (index) {
+              final active = (index + 1) <= starRating;
+              final label = index == 4 ? '★ Grand Diner' : '★ Star ${index + 1}';
+              return _StarItem(label: label, isActive: active);
+            }),
           ),
         ],
       ),
@@ -316,18 +323,19 @@ class _TopMilestoneStarBar extends StatelessWidget {
 
 class _StarItem extends StatelessWidget {
   final String label;
+  final bool isActive;
 
-  const _StarItem({required this.label});
+  const _StarItem({required this.label, this.isActive = false});
 
   @override
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: const TextStyle(
-        color: Color(0xFFD6DBE5),
+      style: TextStyle(
+        color: isActive ? const Color(0xFFFFD54F) : const Color(0xFFD6DBE5),
         fontWeight: FontWeight.w700,
         fontSize: 10,
-        shadows: [
+        shadows: const [
           Shadow(color: Colors.black87, blurRadius: 3),
         ],
       ),
@@ -741,12 +749,12 @@ class _FloatingBoostPill extends StatelessWidget {
   }
 }
 
-/// Offline earnings dialog — shown on resume after save.
-class OfflineEarningsDialog extends StatelessWidget {
+/// Welcome Back Modal (offline earnings) matching Godot's WelcomeBackModal
+class WelcomeBackModal extends StatelessWidget {
   final double earnings;
   final void Function(double multiplier) onClaim;
 
-  const OfflineEarningsDialog({
+  const WelcomeBackModal({
     super.key,
     required this.earnings,
     required this.onClaim,
@@ -756,107 +764,206 @@ class OfflineEarningsDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Container(
-        padding: const EdgeInsets.all(24),
+        constraints: const BoxConstraints(maxWidth: 440),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A237E),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-          boxShadow: [
+          color: const Color(0xFF181C28),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFF5B025), width: 2.5),
+          boxShadow: const [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 32,
+              color: Colors.black87,
+              blurRadius: 28,
+              offset: Offset(0, 8),
             ),
           ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('🌙', style: TextStyle(fontSize: 48)),
-            const SizedBox(height: 12),
-            const Text(
-              'Welcome Back!',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Your staff kept cooking while you were away\n(capped at 8h, 85% offline rate):',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
-                fontSize: 13,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
+            // Orange-to-Golden-Yellow Gradient Header
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: const Color(0xFF4CAF50).withValues(alpha: 0.5),
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFE65100), Color(0xFFFFA000), Color(0xFFFFD54F)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(17)),
               ),
-              child: Text(
-                _fmt.format(earnings),
-                style: const TextStyle(
-                  color: Color(0xFF69F0AE),
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                ),
+              child: Column(
+                children: const [
+                  Text(
+                    '✨ WELCOME BACK, CHEF! ✨',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                      shadows: [
+                        Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 1)),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Your diner staff kept cooking while you were away!',
+                    style: TextStyle(
+                      color: Color(0xFFFFF8E1),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => onClaim(1.0),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      elevation: 6,
+
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Red / Green status income & expense pills
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: const [
+                      _StatusRibbon(text: '📈 + 85% Offline Earnings', isPositive: true),
+                      _StatusRibbon(text: '🕒 Max 8h Capped', isPositive: true),
+                      _StatusRibbon(text: '📉 - 0 Idle Penalties', isPositive: false),
+                    ],
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  // Big Currency Vault Card with emerald formatting
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F1E16),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF00E676), width: 1.5),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x3300E676),
+                          blurRadius: 10,
+                        ),
+                      ],
                     ),
-                    child: const Text(
-                      'COLLECT (1X)',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                      ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'TOTAL OFFLINE EARNINGS',
+                          style: TextStyle(
+                            color: Color(0xFFA7F3D0),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '+${_fmt.format(earnings)}',
+                          style: const TextStyle(
+                            color: Color(0xFF00E676),
+                            fontSize: 34,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => onClaim(2.0),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFA000),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+
+                  const SizedBox(height: 20),
+
+                  // Action Buttons: Collect (1X) & 2X Promo Boost
+                  Row(
+                    children: [
+                      // Collect 1X
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => onClaim(1.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFF4CAF50), width: 1.5),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x661B5E20),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'COLLECT (1X)',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                      elevation: 6,
-                    ),
-                    child: const Text(
-                      '⚡ 2X PROMO BOOST!',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 12,
+                      const SizedBox(width: 12),
+                      // 2X Promo Boost
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => onClaim(2.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFFA000), Color(0xFFFF6F00)],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFFFD54F), width: 1.5),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x66FF6F00),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Text(
+                                '⚡ 2X PROMO BOOST!',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -864,6 +971,9 @@ class OfflineEarningsDialog extends StatelessWidget {
     );
   }
 }
+
+/// Backwards compatibility alias
+typedef OfflineEarningsDialog = WelcomeBackModal;
 
 /// Stats overlay panel.
 class StatsPanel extends StatelessWidget {

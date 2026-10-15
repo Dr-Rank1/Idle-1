@@ -11,12 +11,34 @@ import '../utils/iso_math.dart';
 /// Central game state — all simulation data lives here.
 /// Extends ChangeNotifier so the UI rebuilds on every tick.
 class GameState extends ChangeNotifier {
-  // ─── Economy ─────────────────────────────────────────────────────────────
+  // ─── Economy & Tycoon State (100% Synchronized with Godot GameManager) ──
   double cash = 500.0;
+  int gems = 130;
   double totalEarned = 0.0;
   int reputation = 1;          // prestige multiplier level
   int prestigeStars = 0;       // permanent prestige stars earned
-  String hotelName = 'Sunny Palms Resort';
+  double starRating = 5.0;
+  String hotelName = 'Idle Diner';
+  String restaurantName = 'Idle Diner';
+  int restaurantLevel = 1;
+  double restaurantXp = 0.0;
+  int marketingLevel = 1;
+  int unlockedStalls = 2;
+  bool terraceUnlocked = true;
+  Map<String, bool> unlockedTables = {
+    'table_1': true,
+    'table_2': true,
+    'table_3': true,
+    'table_4': true,
+    'table_5': true,
+    'table_6': true,
+    'table_7': true,
+    'table_8': true,
+    'table_9': true,
+    'table_10': true,
+    'table_11': true,
+    'table_12': true,
+  };
 
   double get prestigeMultiplier => 1.0 + (prestigeStars * 0.25);
   double get totalRevenueMultiplier => revenueMultiplier * prestigeMultiplier;
@@ -146,10 +168,14 @@ class GameState extends ChangeNotifier {
       // ── 50s Milkshake & Soda Bar (Base Cost $250, Cost Mult 1.17, Base Rev $45, Rev Mult 1.12, Max 50) ──
       Station(
         id: 'milkshake_bar',
-        zone: ZoneType.reception,
+        zone: ZoneType.milkshakeDiner,
         name: 'Soda Fountain Bar',
         gx: 6, gy: 3,
         maxLevel: 50,
+        baseCost: 250.0,
+        costMultiplier: 1.17,
+        baseRevenue: 45.0,
+        revenueMultiplier: 1.12,
         baseCostFn: (l) => (250 * pow(1.17, l - 1)).roundToDouble(),
         baseIncomeFn: (l) => (45 * pow(1.12, l - 1)).roundToDouble(),
         baseSpeedFn: (l) => max(1.2, 4.5 - l * 0.06),
@@ -159,16 +185,77 @@ class GameState extends ChangeNotifier {
       // ── Exterior Parking Lot (Base Cost $180, Cost Mult 1.19, +15% Spawn Rate, Mult 1.08, Max Level 25) ──
       Station(
         id: 'parking_lot',
-        zone: ZoneType.reception,
+        zone: ZoneType.parking,
         name: 'Parking Lot',
         gx: 1, gy: 14,
         widthTiles: 3,
         heightTiles: 2,
         maxLevel: 25,
+        baseCost: 180.0,
+        costMultiplier: 1.19,
+        baseRevenue: 25.0,
+        revenueMultiplier: 1.08,
         baseCostFn: (l) => (180 * pow(1.19, l - 1)).roundToDouble(),
         baseIncomeFn: (l) => (25 * pow(1.08, l - 1)).roundToDouble(),
         baseSpeedFn: (l) => max(2.0, 6.0 - (l - 1) * 0.15),
         queuePoint: const Offset(1.0, 13.0),
+      ),
+
+      // ── Cocktail Lounge Bar (Base Cost $350, Cost Mult 1.18, Base Rev $60, Rev Mult 1.12, Max 50) ──
+      Station(
+        id: 'cocktail_lounge',
+        zone: ZoneType.lounge,
+        name: 'Cocktail Lounge Bar',
+        gx: 3, gy: 8,
+        widthTiles: 2,
+        heightTiles: 1,
+        maxLevel: 50,
+        baseCost: 350.0,
+        costMultiplier: 1.18,
+        baseRevenue: 60.0,
+        revenueMultiplier: 1.12,
+        baseCostFn: (l) => (350 * pow(1.18, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (60 * pow(1.12, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(1.5, 4.8 - l * 0.06),
+        queuePoint: const Offset(2.5, 8.5),
+      ),
+
+      // ── Restroom Hygiene (Base Cost $200, Cost Mult 1.16, Base Rev $20, Rev Mult 1.10, Max 50) ──
+      Station(
+        id: 'restroom',
+        zone: ZoneType.restroom,
+        name: 'Restroom Hygiene',
+        gx: 1, gy: 6,
+        widthTiles: 2,
+        heightTiles: 2,
+        maxLevel: 50,
+        baseCost: 200.0,
+        costMultiplier: 1.16,
+        baseRevenue: 20.0,
+        revenueMultiplier: 1.10,
+        baseCostFn: (l) => (200 * pow(1.16, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (20 * pow(1.10, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(2.0, 6.0 - l * 0.08),
+        queuePoint: const Offset(2.0, 5.5),
+      ),
+
+      // ── Executive Manager's Office (Base Cost $500, Cost Mult 1.20, Base Rev $75, Rev Mult 1.12, Max 50) ──
+      Station(
+        id: 'manager_office',
+        zone: ZoneType.managerOffice,
+        name: "Manager's Office",
+        gx: 13, gy: 2,
+        widthTiles: 2,
+        heightTiles: 2,
+        maxLevel: 50,
+        baseCost: 500.0,
+        costMultiplier: 1.20,
+        baseRevenue: 75.0,
+        revenueMultiplier: 1.12,
+        baseCostFn: (l) => (500 * pow(1.20, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (75 * pow(1.12, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(2.5, 7.0 - l * 0.1),
+        queuePoint: const Offset(12.5, 2.5),
       ),
 
       // ── Tables 1–3 (Base Cost $45, Cost Mult 1.15, Base Rev $12, Rev Mult 1.10, Max 50) ──

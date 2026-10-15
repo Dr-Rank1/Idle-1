@@ -100,8 +100,9 @@ class _ManagerCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            manager.rarityColor.withValues(alpha: 0.15),
-            manager.rarityColor.withValues(alpha: 0.05),
+            const Color(0xFFFFA000).withValues(alpha: 0.12),
+            manager.rarityColor.withValues(alpha: 0.14),
+            const Color(0xFFFFD54F).withValues(alpha: 0.06),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -109,7 +110,7 @@ class _ManagerCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: manager.isUnlocked
-              ? manager.rarityColor.withValues(alpha: 0.6)
+              ? const Color(0xFFFFA000).withValues(alpha: 0.7)
               : Colors.white.withValues(alpha: 0.08),
           width: manager.isUnlocked ? 1.5 : 1,
         ),
@@ -201,8 +202,24 @@ class _ManagerCard extends StatelessWidget {
             if (manager.isUnlocked)
               Column(
                 children: [
-                  const Icon(Icons.check_circle,
-                      color: Color(0xFF4CAF50), size: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFFD54F), Color(0xFFFFA000)],
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFFFE082)),
+                    ),
+                    child: const Text(
+                      '⭐ MAX LEVEL',
+                      style: TextStyle(
+                        color: Color(0xFF3E2723),
+                        fontSize: 8,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   if (!manager.isAssigned)
                     GestureDetector(

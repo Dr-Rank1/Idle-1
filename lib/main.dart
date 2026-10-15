@@ -23,11 +23,11 @@ class HotelTycoonApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => GameState(),
       child: MaterialApp(
-        title: 'Sunny Palms Resort Tycoon',
+        title: 'Restaurant Tycoon 3D',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF1565C0),
+            seedColor: const Color(0xFFFF8F00),
             brightness: Brightness.dark,
           ),
           useMaterial3: true,

@@ -1,7 +1,8 @@
+import 'dart:math';
 import 'dart:ui';
 import 'enums.dart';
 
-/// A functional station in the resort (reception desk, stove, table, hotel room).
+/// A functional station in the restaurant resort (table, kitchen stove, bar, parking).
 class Station {
   final String id;
   final ZoneType zone;
@@ -17,6 +18,14 @@ class Station {
   int level;
   int maxLevel;
 
+  // Exact exponential multipliers synchronized with Godot GameManager
+  // Formula: Cost = BaseCost * CostMultiplier^(L - 1)
+  // Formula: Revenue = BaseRevenue * RevenueMultiplier^(L - 1)
+  final double baseCost;
+  final double costMultiplier;
+  final double baseRevenue;
+  final double revenueMultiplier;
+
   // Is a guest or staff occupying this station right now?
   String? occupiedByCharacterId;
   bool get isOccupied => occupiedByCharacterId != null;
@@ -31,7 +40,7 @@ class Station {
   double speedMultiplier = 1.0;
 
   // Computed from level + multipliers
-  double get upgradeCost => baseCostFn(level);
+  double get upgradeCost => level >= maxLevel ? 0.0 : baseCostFn(level);
   double get income => baseIncomeFn(level) * incomeMultiplier;
   double get actionDuration => baseSpeedFn(level) / speedMultiplier;
 
@@ -39,7 +48,7 @@ class Station {
   bool foodReady = false;
   double cookTimer = 0.0;
 
-  // For hotel rooms: dirty after checkout?
+  // For hotel rooms / restrooms: dirty after checkout?
   bool isDirty = false;
   double cleanTimer = 0.0;
 
@@ -62,9 +71,18 @@ class Station {
     this.heightTiles = 1,
     this.level = 1,
     this.maxLevel = 50,
-    required this.baseCostFn,
-    required this.baseIncomeFn,
-    required this.baseSpeedFn,
+    this.baseCost = 50.0,
+    this.costMultiplier = 1.15,
+    this.baseRevenue = 15.0,
+    this.revenueMultiplier = 1.10,
+    double Function(int level)? baseCostFn,
+    double Function(int level)? baseIncomeFn,
+    double Function(int level)? baseSpeedFn,
     Offset? queuePoint,
-  }) : queuePoint = queuePoint ?? Offset(gx - 1, gy + 0.5);
+  })  : baseCostFn = baseCostFn ??
+            ((l) => (baseCost * pow(costMultiplier, l - 1)).roundToDouble()),
+        baseIncomeFn = baseIncomeFn ??
+            ((l) => (baseRevenue * pow(revenueMultiplier, l - 1)).roundToDouble()),
+        baseSpeedFn = baseSpeedFn ?? ((l) => max(1.0, 5.0 - l * 0.05)),
+        queuePoint = queuePoint ?? Offset(gx - 1, gy + 0.5);
 }
