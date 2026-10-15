@@ -27,6 +27,23 @@ const WAITING_SPOTS: Array[Vector3] = [
 	Vector3(-1.5, 0.0, 9.4)
 ]
 
+# Active Service Sectors: Cocktail Lounge & 50s Milkshake Diner
+var lounge_seats: Array[Dictionary] = []
+var diner_seats: Array[Dictionary] = []
+var pending_lounge_orders: Array[Dictionary] = []
+var pending_diner_orders: Array[Dictionary] = []
+
+var lounge_bartender: Node3D = null
+var diner_barista: Node3D = null
+
+enum StaffState { IDLE, PREPARING, SERVING }
+var bartender_state: StaffState = StaffState.IDLE
+var barista_state: StaffState = StaffState.IDLE
+
+var barista_radial_mesh: MeshInstance3D = null
+var bartender_shaker_prop: Node3D = null
+var milkshake_badge_label: Label3D = null
+
 func _ready() -> void:
 	waiter_scene = load("res://scenes/waiter.tscn")
 	if floating_cash_scene == null:
@@ -39,6 +56,7 @@ func _ready() -> void:
 	if gm != null:
 		gm.spawn_floating_cash.connect(_on_spawn_floating_cash)
 		gm.staff_updated.connect(_on_staff_updated)
+		gm.station_upgraded.connect(_on_station_upgraded)
 		_check_spawn_hired_staff()
 	
 	for table in tables_container.get_children():
@@ -46,7 +64,7 @@ func _ready() -> void:
 			table.table_clicked.connect(_on_table_clicked)
 			
 	# Remove any legacy static queue guests so dynamic queuing is unobstructed
-	for node_name in ["HostQueueGuest1", "HostQueueGuest2", "HostQueueGuest3"]:
+	for node_name in ["HostQueueGuest1", "HostQueueGuest2", "HostQueueGuest3", "WaitingGuest", "WaitingGuest1A", "WaitingGuest1B"]:
 		var static_guest = find_child(node_name, true, false)
 		if static_guest:
 			static_guest.queue_free()
@@ -57,6 +75,8 @@ func _ready() -> void:
 				st.station_clicked.connect(_on_table_clicked)
 				
 	_setup_custom_textures()
+	_setup_active_service_sectors()
+
 
 func _setup_custom_textures() -> void:
 	print(">>> _setup_custom_textures RUNNING!")
@@ -215,7 +235,9 @@ func _setup_custom_textures() -> void:
 	if runner_img != null:
 		runner_img.rotate_90(CLOCKWISE)
 		var runner_tex = ImageTexture.create_from_image(runner_img)
-		var h_runner = find_child("HostDeskRedRunner", true, false)
+		var h_runner = get_node_or_null("ReceptionRoom/RedCarpetRunner")
+		if h_runner == null:
+			h_runner = find_child("HostDeskRedRunner", true, false)
 		if h_runner != null and h_runner is MeshInstance3D:
 			var mat_run = StandardMaterial3D.new()
 			mat_run.albedo_texture = runner_tex
@@ -423,6 +445,7 @@ func _setup_lounge_fidelity() -> void:
 		var barman_scn = load("res://assets/models/characters/character-male-d.glb")
 		if barman_scn != null:
 			var barman = barman_scn.instantiate()
+			barman.name = "LoungeBartender"
 			barman.position = Vector3(-8.2, 0.0, -2.75)
 			barman.rotation_degrees = Vector3(0, 0, 0)
 			barman.scale = Vector3(1.15, 1.15, 1.15)
@@ -430,6 +453,21 @@ func _setup_lounge_fidelity() -> void:
 			barman.set_script(decor_script)
 			barman.set("anim_name", "idle")
 			bar_root.add_child(barman)
+			lounge_bartender = barman
+			
+			# Cocktail shaker prop on mahogany counter
+			var shaker_mesh = CSGCylinder3D.new()
+			shaker_mesh.name = "CocktailShaker"
+			shaker_mesh.radius = 0.05
+			shaker_mesh.height = 0.20
+			shaker_mesh.position = Vector3(-8.2, 0.95, -2.2)
+			var s_mat = StandardMaterial3D.new()
+			s_mat.albedo_color = Color(0.92, 0.94, 0.96, 1.0)
+			s_mat.metallic = 0.95
+			s_mat.roughness = 0.15
+			shaker_mesh.material = s_mat
+			bar_root.add_child(shaker_mesh)
+			bartender_shaker_prop = shaker_mesh
 
 	# Re-style the 4 round lounge tables & chairs with dark mahogany wood and padded cushions (matching crop_lounge_08s.jpg)
 	var wood_tbl_mat = StandardMaterial3D.new()
@@ -599,6 +637,7 @@ func _setup_milkshake_fidelity() -> void:
 	var staff_scn = load("res://assets/models/characters/character-male-d.glb")
 	if staff_scn != null:
 		var staff = staff_scn.instantiate()
+		staff.name = "DinerBarista"
 		staff.position = Vector3(-2.85, 0.0, 0.0)
 		staff.rotation_degrees = Vector3(0, 90, 0)
 		staff.scale = Vector3(1.15, 1.15, 1.15)
@@ -606,22 +645,59 @@ func _setup_milkshake_fidelity() -> void:
 		staff.set_script(decor_script)
 		staff.set("anim_name", "idle")
 		f_root.add_child(staff)
+		diner_barista = staff
 
-	# Seated customer at the bar (on Stool 2)
-	var bar_guest_scn = load("res://assets/models/characters/character-female-b.glb")
-	if bar_guest_scn != null:
-		var bguest = bar_guest_scn.instantiate()
-		bguest.position = Vector3(-1.35, 0.42, -1.25)
-		bguest.rotation_degrees = Vector3(0, -90, 0)
-		bguest.scale = Vector3(0.95, 0.95, 0.95)
-		var decor_script = load("res://scripts/decor_character.gd")
-		bguest.set_script(decor_script)
-		bguest.set("anim_name", "sit")
-		f_root.add_child(bguest)
+	# Interactive click area for Milkshake Bar station upgrades
+	var click_body = StaticBody3D.new()
+	click_body.name = "MilkshakeClickArea"
+	click_body.position = Vector3(-2.2, 0.6, 0.0)
+	var col_shape = CollisionShape3D.new()
+	var box = BoxShape3D.new()
+	box.size = Vector3(1.8, 1.5, 5.6)
+	col_shape.shape = box
+	click_body.add_child(col_shape)
+	f_root.add_child(click_body)
+	click_body.input_event.connect(_on_milkshake_bar_clicked)
+
+	# 3D Floating Badge over Milkshake Diner Counter
+	var badge_node = Node3D.new()
+	badge_node.name = "MilkshakeBadgeRoot"
+	badge_node.position = Vector3(-2.2, 2.15, 0.0)
+	f_root.add_child(badge_node)
+	
+	var badge_lbl = Label3D.new()
+	badge_lbl.name = "MilkshakeBadgeLabel"
+	badge_lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	badge_lbl.font_size = 26
+	badge_lbl.modulate = Color(0.44, 0.95, 0.85, 1.0)
+	badge_lbl.outline_modulate = Color(0.05, 0.15, 0.15, 1.0)
+	badge_lbl.outline_size = 6
+	var gm_ref = get_node_or_null("/root/GameManager")
+	var m_lvl = gm_ref.get_station_level("milkshake_bar") if gm_ref != null else 1
+	badge_lbl.text = "🍦 50s SODA FOUNTAIN • Lv. %d" % m_lvl
+	badge_node.add_child(badge_lbl)
+	milkshake_badge_label = badge_lbl
+
+	# Radial Timer progress ring above blenders
+	barista_radial_mesh = MeshInstance3D.new()
+	barista_radial_mesh.name = "BaristaRadialTimer"
+	var qm = QuadMesh.new()
+	qm.size = Vector2(0.65, 0.65)
+	barista_radial_mesh.mesh = qm
+	var s_mat = ShaderMaterial.new()
+	s_mat.shader = load("res://shaders/radial_timer.gdshader")
+	s_mat.set_shader_parameter("progress", 0.0)
+	s_mat.set_shader_parameter("bg_color", Color(0.12, 0.15, 0.20, 0.75))
+	s_mat.set_shader_parameter("fill_color", Color(0.35, 0.95, 0.85, 1.0))
+	barista_radial_mesh.material_override = s_mat
+	barista_radial_mesh.position = Vector3(-2.2, 1.65, -1.6)
+	barista_radial_mesh.visible = false
+	f_root.add_child(barista_radial_mesh)
 
 	# 2 Chrome Milkshake Blenders on Counter
 	for bz in [-1.9, -1.3]:
 		var blender = Node3D.new()
+		blender.name = "Blender_%s" % str(bz)
 		blender.position = Vector3(-2.2, 0.98, bz)
 		f_root.add_child(blender)
 
@@ -1460,20 +1536,152 @@ func _process(delta: float) -> void:
 		
 	_check_seat_waiting_customers()
 	_dispatch_waiter_tasks()
+	_process_lounge_bartender(delta)
+	_process_diner_barista(delta)
+
+func _setup_active_service_sectors() -> void:
+	lounge_seats.clear()
+	diner_seats.clear()
+	pending_lounge_orders.clear()
+	pending_diner_orders.clear()
+
+	# Remove legacy static patrons so all seats are dynamically occupied
+	for static_name in ["WaitingGuest", "WaitingGuest1A", "WaitingGuest1B"]:
+		var static_g = find_child(static_name, true, false)
+		if static_g != null:
+			static_g.queue_free()
+
+	# 1. Cocktail Lounge Seats (6 mahogany bar stools + 4 round mahogany tables)
+	for i in range(6):
+		var sx = -9.2 + i * 0.8
+		lounge_seats.append({
+			"id": "lounge_stool_%d" % i,
+			"type": "stool",
+			"seat_pos": Vector3(sx, 0.45, -1.25),
+			"seat_rot_y": PI,
+			"counter_pos": Vector3(sx, 0.88, -2.15),
+			"is_occupied": false,
+			"customer": null,
+			"dish_instance": null,
+			"table_node": null
+		})
+
+	var rec_room = find_child("ReceptionRoom", true, false)
+	var lounge_tbl_coords = [
+		{"name": "WaitingTable1", "pos": Vector3(-6.2, 0.0, 0.6), "seat": Vector3(-6.2, 0.45, 1.25), "c_pos": Vector3(-6.2, 0.78, 0.6)},
+		{"name": "WaitingTable2", "pos": Vector3(-9.2, 0.0, 1.8), "seat": Vector3(-9.2, 0.45, 2.45), "c_pos": Vector3(-9.2, 0.78, 1.8)},
+		{"name": "WaitingTable3", "pos": Vector3(-5.6, 0.0, 3.4), "seat": Vector3(-5.6, 0.45, 4.05), "c_pos": Vector3(-5.6, 0.78, 3.4)},
+		{"name": "WaitingTable4", "pos": Vector3(-8.6, 0.0, 4.8), "seat": Vector3(-8.6, 0.45, 5.45), "c_pos": Vector3(-8.6, 0.78, 4.8)}
+	]
+	for t_info in lounge_tbl_coords:
+		var tbl_node = rec_room.find_child(t_info["name"], true, false) if rec_room != null else null
+		lounge_seats.append({
+			"id": "lounge_" + t_info["name"],
+			"type": "table",
+			"seat_pos": t_info["seat"],
+			"seat_rot_y": PI,
+			"counter_pos": t_info["c_pos"],
+			"is_occupied": false,
+			"customer": null,
+			"dish_instance": null,
+			"table_node": tbl_node
+		})
+
+	# 2. 50s Milkshake & Soda Diner Seats (6 soda stools + 4 diner tables)
+	var stool_z_list = [-2.1, -1.25, -0.4, 0.45, 1.3, 2.15]
+	for i in range(stool_z_list.size()):
+		var sz = stool_z_list[i]
+		diner_seats.append({
+			"id": "diner_stool_%d" % i,
+			"type": "stool",
+			"seat_pos": Vector3(-8.85, 0.42, -7.0 + sz),
+			"seat_rot_y": -PI * 0.5,
+			"counter_pos": Vector3(-9.7, 0.95, -7.0 + sz),
+			"is_occupied": false,
+			"customer": null,
+			"dish_instance": null,
+			"table_node": null
+		})
+
+	var diner_tbl_coords = [
+		{"name": "DinerTable1", "pos": Vector3(-7.0, 0.0, -8.9), "seat": Vector3(-7.0, 0.42, -8.22), "c_pos": Vector3(-7.0, 0.76, -8.9)},
+		{"name": "DinerTable2", "pos": Vector3(-4.9, 0.0, -8.9), "seat": Vector3(-4.9, 0.42, -8.22), "c_pos": Vector3(-4.9, 0.76, -8.9)},
+		{"name": "DinerTable3", "pos": Vector3(-7.0, 0.0, -6.2), "seat": Vector3(-7.0, 0.42, -5.52), "c_pos": Vector3(-7.0, 0.76, -6.2)},
+		{"name": "DinerTable4", "pos": Vector3(-4.9, 0.0, -6.2), "seat": Vector3(-4.9, 0.42, -5.52), "c_pos": Vector3(-4.9, 0.76, -6.2)}
+	]
+	var shake_bar = find_child("MilkshakeBar", true, false)
+	for dt_info in diner_tbl_coords:
+		var tbl_node = shake_bar.find_child(dt_info["name"], true, false) if shake_bar != null else null
+		diner_seats.append({
+			"id": "diner_" + dt_info["name"],
+			"type": "table",
+			"seat_pos": dt_info["seat"],
+			"seat_rot_y": PI,
+			"counter_pos": dt_info["c_pos"],
+			"is_occupied": false,
+			"customer": null,
+			"dish_instance": null,
+			"table_node": tbl_node
+		})
+
+func _get_available_lounge_seats() -> Array[Dictionary]:
+	var avail: Array[Dictionary] = []
+	for s in lounge_seats:
+		if not s["is_occupied"]:
+			avail.append(s)
+	return avail
+
+func _get_available_diner_seats() -> Array[Dictionary]:
+	var avail: Array[Dictionary] = []
+	for s in diner_seats:
+		if not s["is_occupied"]:
+			avail.append(s)
+	return avail
+
+func _seat_customer_in_lounge(cust: Node3D, seat: Dictionary) -> void:
+	seat["is_occupied"] = true
+	seat["customer"] = cust
+	cust.lounge_drink_finished.connect(_on_lounge_drink_finished)
+	cust.order_placed.connect(_on_customer_order_placed)
+	cust.assign_lounge_seat(seat["seat_pos"], seat["seat_rot_y"], seat["id"], seat.get("table_node"))
+
+func _seat_customer_in_diner(cust: Node3D, seat: Dictionary) -> void:
+	seat["is_occupied"] = true
+	seat["customer"] = cust
+	cust.diner_treat_finished.connect(_on_diner_treat_finished)
+	cust.order_placed.connect(_on_customer_order_placed)
+	cust.assign_milkshake_seat(seat["seat_pos"], seat["seat_rot_y"], seat["id"], seat.get("table_node"))
 
 func _check_seat_waiting_customers() -> void:
 	waiting_customers = waiting_customers.filter(func(c): return is_instance_valid(c) and c.current_state == c.State.WAITING_IN_LOBBY)
 	if waiting_customers.size() == 0:
 		return
-	var available = _get_available_tables()
-	if available.size() == 0:
+		
+	var avail_tables = _get_available_tables()
+	var avail_lounge = _get_available_lounge_seats()
+	var avail_diner = _get_available_diner_seats()
+	
+	if avail_tables.size() == 0 and avail_lounge.size() == 0 and avail_diner.size() == 0:
 		return
+		
 	var cust = waiting_customers.pop_front()
-	var free_table: Node3D = available.pick_random()
-	cust.assign_table_from_lobby(free_table)
 	var hostess = find_child("Hostess", true, false)
 	if hostess != null and hostess.has_method("greet_customer"):
 		hostess.greet_customer()
+		
+	var roll = randf()
+	if avail_tables.size() > 0 and (avail_lounge.size() == 0 and avail_diner.size() == 0 or roll < 0.5):
+		var free_table: Node3D = avail_tables.pick_random()
+		cust.assign_table_from_lobby(free_table)
+	elif avail_lounge.size() > 0 and (avail_diner.size() == 0 or roll < 0.75):
+		var free_seat = avail_lounge.pick_random()
+		_seat_customer_in_lounge(cust, free_seat)
+	elif avail_diner.size() > 0:
+		var free_seat = avail_diner.pick_random()
+		_seat_customer_in_diner(cust, free_seat)
+	elif avail_tables.size() > 0:
+		var free_table: Node3D = avail_tables.pick_random()
+		cust.assign_table_from_lobby(free_table)
 
 func _get_tables_targeted_by_waiters() -> Array[Node3D]:
 	var targeted: Array[Node3D] = []
@@ -1525,12 +1733,49 @@ func _get_available_tables() -> Array[Node3D]:
 	return available
 
 func _try_spawn_customer() -> void:
-	var available = _get_available_tables()
-	if available.size() > 0:
-		var free_table: Node3D = available.pick_random()
-		_spawn_customer_flow(free_table, false)
+	var avail_tables = _get_available_tables()
+	var avail_lounge = _get_available_lounge_seats()
+	var avail_diner = _get_available_diner_seats()
+	var total_avail = avail_tables.size() + avail_lounge.size() + avail_diner.size()
+
+	if total_avail > 0:
+		var roll = randf()
+		# 50% dining tables, 25% cocktail lounge, 25% milkshake diner
+		if roll < 0.25 and avail_lounge.size() > 0:
+			var free_seat = avail_lounge.pick_random()
+			_spawn_customer_flow_lounge(free_seat)
+		elif roll < 0.50 and avail_diner.size() > 0:
+			var free_seat = avail_diner.pick_random()
+			_spawn_customer_flow_diner(free_seat)
+		elif avail_tables.size() > 0:
+			var free_table: Node3D = avail_tables.pick_random()
+			_spawn_customer_flow(free_table, false)
+		elif avail_lounge.size() > 0:
+			var free_seat = avail_lounge.pick_random()
+			_spawn_customer_flow_lounge(free_seat)
+		elif avail_diner.size() > 0:
+			var free_seat = avail_diner.pick_random()
+			_spawn_customer_flow_diner(free_seat)
 	elif waiting_customers.size() < MAX_WAITING_CUSTOMERS and customer_scene != null:
 		_spawn_waiting_customer_flow()
+
+func _spawn_customer_flow_lounge(seat: Dictionary) -> void:
+	if customer_scene == null: return
+	var cust = customer_scene.instantiate()
+	customers_container.add_child(cust)
+	var spawn_pos: Vector3 = Vector3(-5.5, 0.0, 9.5)
+	if spawn_marker != null: spawn_pos = spawn_marker.global_position
+	cust.global_position = spawn_pos
+	_seat_customer_in_lounge(cust, seat)
+
+func _spawn_customer_flow_diner(seat: Dictionary) -> void:
+	if customer_scene == null: return
+	var cust = customer_scene.instantiate()
+	customers_container.add_child(cust)
+	var spawn_pos: Vector3 = Vector3(-5.5, 0.0, 9.5)
+	if spawn_marker != null: spawn_pos = spawn_marker.global_position
+	cust.global_position = spawn_pos
+	_seat_customer_in_diner(cust, seat)
 
 func _spawn_waiting_customer_flow() -> void:
 	var cust = customer_scene.instantiate()
@@ -1587,12 +1832,292 @@ func _spawn_customer_flow(table: Node3D, is_critic: bool = false) -> void:
 	cust.order_placed.connect(_on_customer_order_placed)
 
 func _on_customer_order_placed(table: Node3D, cust: Node3D) -> void:
-	if is_instance_valid(table) and is_instance_valid(cust) and table.is_occupied:
+	if not is_instance_valid(cust):
+		return
+	if cust.get("sector_type") == "lounge":
+		for s in lounge_seats:
+			if s["id"] == cust.get("seat_identifier") or s["customer"] == cust:
+				var order_entry = {"customer": cust, "seat": s}
+				if not pending_lounge_orders.has(order_entry):
+					pending_lounge_orders.append(order_entry)
+				break
+		return
+	elif cust.get("sector_type") == "milkshake":
+		for s in diner_seats:
+			if s["id"] == cust.get("seat_identifier") or s["customer"] == cust:
+				var order_entry = {"customer": cust, "seat": s}
+				if not pending_diner_orders.has(order_entry):
+					pending_diner_orders.append(order_entry)
+				break
+		return
+
+	if is_instance_valid(table) and table.is_occupied:
 		_queue_order(table)
 
 func _queue_order(table: Node3D) -> void:
 	if not pending_orders.has(table):
 		pending_orders.append(table)
+
+func _process_lounge_bartender(_delta: float) -> void:
+	if bartender_state != StaffState.IDLE or pending_lounge_orders.size() == 0:
+		return
+	var order = pending_lounge_orders.pop_front()
+	if not is_instance_valid(order.get("customer")) or order["customer"].current_state != order["customer"].State.SEATED_ORDERING:
+		return
+	_run_bartender_service(order)
+
+func _run_bartender_service(order: Dictionary) -> void:
+	bartender_state = StaffState.PREPARING
+	var cust = order["customer"]
+	var seat = order["seat"]
+	
+	if lounge_bartender == null:
+		var bar_root = find_child("FidelityLoungeBar", true, false)
+		if bar_root != null:
+			lounge_bartender = bar_root.get_node_or_null("LoungeBartender")
+	
+	var b_node = lounge_bartender
+	if b_node != null:
+		var target_x = clamp(seat["counter_pos"].x, -8.8, -5.0)
+		var target_pos = Vector3(target_x, 0.0, -2.75)
+		var ap: AnimationPlayer = _find_char_anim_player(b_node)
+		if ap != null and ap.has_animation("walk"):
+			ap.play("walk")
+			
+		var tw_walk = create_tween()
+		tw_walk.tween_property(b_node, "position", target_pos, 0.45)
+		await tw_walk.finished
+		
+		if ap != null and ap.has_animation("interact-right"):
+			ap.play("interact-right")
+			
+		if bartender_shaker_prop != null:
+			var tw_shaker = create_tween()
+			tw_shaker.tween_property(bartender_shaker_prop, "position:y", 1.15, 0.25)
+			tw_shaker.tween_property(bartender_shaker_prop, "position:y", 0.95, 0.25)
+			tw_shaker.tween_property(bartender_shaker_prop, "position:y", 1.15, 0.25)
+			tw_shaker.tween_property(bartender_shaker_prop, "position:y", 0.95, 0.25)
+	
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("bell", 0.03, 1.2)
+		
+	await get_tree().create_timer(1.6).timeout
+	if not is_instance_valid(cust) or cust.current_state != cust.State.SEATED_ORDERING:
+		bartender_state = StaffState.IDLE
+		if b_node != null:
+			var ap = _find_char_anim_player(b_node)
+			if ap != null: ap.play("idle")
+		return
+		
+	# Serve wine goblet / cocktail glass on counter/table
+	var wine_scn = load("res://assets/models/food/glass-wine.glb")
+	if wine_scn != null:
+		var goblet = wine_scn.instantiate()
+		goblet.position = seat["counter_pos"]
+		goblet.scale = Vector3(0.4, 0.4, 0.4)
+		add_child(goblet)
+		seat["dish_instance"] = goblet
+		
+	# Floating cash stack along bar counter edge
+	var gm = get_node_or_null("/root/GameManager")
+	var price: float = cust.ordered_dish.get("price", 42.0)
+	var price_mult: float = gm.get_dish_price_multiplier() if gm != null and gm.has_method("get_dish_price_multiplier") else 1.0
+	var total_revenue: float = price * price_mult
+	if gm != null:
+		gm.add_cash(total_revenue)
+	_spawn_counter_cash_stack(Vector3(seat["counter_pos"].x, 1.15, -2.15), total_revenue)
+	
+	var drink_id = cust.ordered_dish.get("id", "wine_merlot")
+	cust.on_lounge_drink_served(drink_id)
+	
+	if b_node != null:
+		var ap = _find_char_anim_player(b_node)
+		if ap != null and ap.has_animation("idle"):
+			ap.play("idle")
+	bartender_state = StaffState.IDLE
+
+func _process_diner_barista(_delta: float) -> void:
+	if barista_state != StaffState.IDLE or pending_diner_orders.size() == 0:
+		return
+	var order = pending_diner_orders.pop_front()
+	if not is_instance_valid(order.get("customer")) or order["customer"].current_state != order["customer"].State.SEATED_ORDERING:
+		return
+	_run_barista_service(order)
+
+func _run_barista_service(order: Dictionary) -> void:
+	barista_state = StaffState.PREPARING
+	var cust = order["customer"]
+	var seat = order["seat"]
+	
+	if diner_barista == null:
+		var shake_bar = find_child("MilkshakeBar", true, false)
+		if shake_bar != null:
+			diner_barista = shake_bar.find_child("DinerBarista", true, false)
+			
+	var b_node = diner_barista
+	
+	# Move to blenders
+	if b_node != null:
+		var ap: AnimationPlayer = _find_char_anim_player(b_node)
+		if ap != null and ap.has_animation("walk"):
+			ap.play("walk")
+		var tw_walk = create_tween()
+		tw_walk.tween_property(b_node, "position", Vector3(-2.85, 0.0, -1.6), 0.35)
+		await tw_walk.finished
+		if ap != null and ap.has_animation("interact-right"):
+			ap.play("interact-right")
+			
+	# Radial Timer ring operation over chrome blenders
+	var gm = get_node_or_null("/root/GameManager")
+	var lvl = gm.get_station_level("milkshake_bar") if gm != null else 1
+	var prep_time = max(1.0, 2.8 - (lvl - 1) * 0.04)
+	
+	if barista_radial_mesh != null and barista_radial_mesh.material_override is ShaderMaterial:
+		barista_radial_mesh.visible = true
+		var sm: ShaderMaterial = barista_radial_mesh.material_override
+		sm.set_shader_parameter("progress", 0.0)
+		var tw_ring = create_tween()
+		tw_ring.tween_property(sm, "shader_parameter/progress", 1.0, prep_time)
+		await tw_ring.finished
+		barista_radial_mesh.visible = false
+	else:
+		await get_tree().create_timer(prep_time).timeout
+		
+	if not is_instance_valid(cust) or cust.current_state != cust.State.SEATED_ORDERING:
+		barista_state = StaffState.IDLE
+		if b_node != null:
+			var ap = _find_char_anim_player(b_node)
+			if ap != null: ap.play("idle")
+		return
+		
+	# Move to customer counter position
+	if b_node != null:
+		var ap = _find_char_anim_player(b_node)
+		if ap != null and ap.has_animation("walk"):
+			ap.play("walk")
+		var local_target_z = clamp(seat["seat_pos"].z - (-7.0), -2.4, 2.4)
+		var tw_serve = create_tween()
+		tw_serve.tween_property(b_node, "position", Vector3(-2.85, 0.0, local_target_z), 0.35)
+		await tw_serve.finished
+		if ap != null and ap.has_animation("interact-right"):
+			ap.play("interact-right")
+			
+	# Serve sundae or frappe model
+	var dish_id = cust.ordered_dish.get("id", "sundae")
+	var dessert_scn = null
+	if dish_id == "sundae":
+		dessert_scn = load("res://assets/models/food/sundae.glb")
+	else:
+		dessert_scn = load("res://assets/models/food/frappe.glb")
+	if dessert_scn != null:
+		var dessert_node = dessert_scn.instantiate()
+		dessert_node.position = seat["counter_pos"]
+		dessert_node.scale = Vector3(0.42, 0.42, 0.42)
+		add_child(dessert_node)
+		seat["dish_instance"] = dessert_node
+		
+	# Calculate revenue linked to milkshake_bar upgrades:
+	var station_inc: float = gm.get_station_income("milkshake_bar") if gm != null else 45.0
+	var treat_price: float = cust.ordered_dish.get("price", 48.0)
+	var total_revenue: float = station_inc + treat_price
+	if gm != null:
+		gm.add_cash(total_revenue)
+	_spawn_counter_cash_stack(Vector3(-9.7, 1.15, seat["counter_pos"].z), total_revenue)
+	
+	cust.on_milkshake_served(dish_id)
+	
+	if b_node != null:
+		var ap = _find_char_anim_player(b_node)
+		if ap != null and ap.has_animation("idle"):
+			ap.play("idle")
+	barista_state = StaffState.IDLE
+
+func _find_char_anim_player(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node
+	for child in node.get_children():
+		var found = _find_char_anim_player(child)
+		if found != null:
+			return found
+	return null
+
+func _on_lounge_drink_finished(_cust: Node3D, seat_id: String) -> void:
+	for s in lounge_seats:
+		if s["id"] == seat_id:
+			s["is_occupied"] = false
+			s["customer"] = null
+			if s["dish_instance"] != null and is_instance_valid(s["dish_instance"]):
+				var d = s["dish_instance"]
+				var tw = create_tween()
+				tw.tween_property(d, "scale", Vector3.ZERO, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+				tw.tween_callback(d.queue_free)
+				s["dish_instance"] = null
+			break
+	_check_seat_waiting_customers()
+
+func _on_diner_treat_finished(_cust: Node3D, seat_id: String) -> void:
+	for s in diner_seats:
+		if s["id"] == seat_id:
+			s["is_occupied"] = false
+			s["customer"] = null
+			if s["dish_instance"] != null and is_instance_valid(s["dish_instance"]):
+				var d = s["dish_instance"]
+				var tw = create_tween()
+				tw.tween_property(d, "scale", Vector3.ZERO, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+				tw.tween_callback(d.queue_free)
+				s["dish_instance"] = null
+			break
+	_check_seat_waiting_customers()
+
+func _spawn_counter_cash_stack(pos: Vector3, amount: float) -> void:
+	var stack_root = Node3D.new()
+	stack_root.position = pos
+	add_child(stack_root)
+	
+	var sprite = Sprite3D.new()
+	var tex = load("res://assets/textures/bubble_cash_stack.png")
+	if tex != null:
+		sprite.texture = tex
+	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sprite.scale = Vector3(0.01, 0.01, 0.01)
+	stack_root.add_child(sprite)
+	
+	var lbl = Label3D.new()
+	lbl.text = "+$%d" % round(amount)
+	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lbl.font_size = 28
+	lbl.modulate = Color(0.35, 1.0, 0.55, 1.0)
+	lbl.outline_modulate = Color(0.05, 0.15, 0.05, 1.0)
+	lbl.outline_size = 6
+	lbl.position = Vector3(0, 0.35, 0)
+	stack_root.add_child(lbl)
+	
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("coin", 0.04, 1.0)
+		
+	var tw = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(sprite, "scale", Vector3(0.5, 0.5, 0.5), 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(stack_root, "position:y", pos.y + 0.45, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_property(sprite, "modulate:a", 0.0, 0.4)
+	tw.set_parallel(true)
+	tw.tween_property(lbl, "modulate:a", 0.0, 0.4)
+	tw.chain().tween_callback(stack_root.queue_free)
+
+func _on_milkshake_bar_clicked(_cam: Node, event: InputEvent, _pos: Vector3, _normal: Vector3, _idx: int) -> void:
+	if (event is InputEventMouseButton and (event.button_index == MOUSE_BUTTON_LEFT or event.button_index == 1) and event.pressed) or (event is InputEventScreenTouch and event.pressed):
+		var gm = get_node_or_null("/root/GameManager")
+		var lvl = gm.get_station_level("milkshake_bar") if gm != null else 1
+		open_upgrade_ui.emit("milkshake_bar", "50s Milkshake & Soda Diner", lvl)
+
+func _on_station_upgraded(station_id: String, new_level: int) -> void:
+	if station_id == "milkshake_bar" and milkshake_badge_label != null:
+		milkshake_badge_label.text = "🍦 50s SODA FOUNTAIN • Lv. %d" % new_level
+		var tw = create_tween()
+		tw.tween_property(milkshake_badge_label, "scale", Vector3(1.25, 1.25, 1.25), 0.15)
+		tw.tween_property(milkshake_badge_label, "scale", Vector3.ONE, 0.2)
 
 func _on_table_clicked(station_id: String, station_name: String, level: int) -> void:
 	open_upgrade_ui.emit(station_id, station_name, level)
@@ -1607,18 +2132,18 @@ func spawn_customer_from_car(car_exit_pos: Vector3) -> Node3D:
 	if customer_scene == null:
 		return null
 		
-	var available = _get_available_tables()
-	var free_table: Node3D = null
-	if available.size() > 0:
-		free_table = available.pick_random()
-	elif waiting_customers.size() >= MAX_WAITING_CUSTOMERS:
+	var avail_tables = _get_available_tables()
+	var avail_lounge = _get_available_lounge_seats()
+	var avail_diner = _get_available_diner_seats()
+	var total_avail = avail_tables.size() + avail_lounge.size() + avail_diner.size()
+	
+	if total_avail == 0 and waiting_customers.size() >= MAX_WAITING_CUSTOMERS:
 		return null
 		
 	var cust = customer_scene.instantiate()
 	customers_container.add_child(cust)
 	cust.global_position = car_exit_pos
 	
-	# Pedestrian pathway: car exit -> zebra crosswalk -> sidewalk -> front garden lawn -> sliding glass doors
 	var crosswalk_road_pt = Vector3(car_exit_pos.x, 0.0, 16.5)
 	var crosswalk_start = Vector3(-1.5, 0.0, 16.5)
 	var crosswalk_end = Vector3(-1.5, 0.0, 13.8)
@@ -1631,19 +2156,62 @@ func spawn_customer_from_car(car_exit_pos: Vector3) -> Node3D:
 		cust.DOOR_POS
 	]
 	
-	if free_table != null:
-		if free_table.has_method("occupy"):
-			free_table.occupy(cust)
-		else:
-			free_table.is_occupied = true
-		cust.assigned_table_id = free_table.table_id
-		cust.table_ref = free_table
-		cust.current_state = cust.State.WALKING_TO_HOST
-		approach_pts.append(cust.HOST_POS)
-		cust.set_waypoints(approach_pts)
-		cust.order_placed.connect(_on_customer_order_placed)
+	if total_avail > 0:
+		var roll = randf()
+		if roll < 0.25 and avail_lounge.size() > 0:
+			var free_seat = avail_lounge.pick_random()
+			free_seat["is_occupied"] = true
+			free_seat["customer"] = cust
+			cust.lounge_drink_finished.connect(_on_lounge_drink_finished)
+			cust.order_placed.connect(_on_customer_order_placed)
+			cust.sector_type = "lounge"
+			cust.seat_target_pos = free_seat["seat_pos"]
+			cust.seat_target_rot_y = free_seat["seat_rot_y"]
+			cust.seat_identifier = free_seat["id"]
+			cust.assigned_table_id = free_seat["id"]
+			cust.ordered_dish = cust.LOUNGE_DRINKS.pick_random()
+			cust.current_state = cust.State.WALKING_TO_HOST
+			approach_pts.append(cust.HOST_POS)
+			approach_pts.append(Vector3(-5.5, 0.0, 2.5))
+			approach_pts.append(free_seat["seat_pos"])
+			cust.set_waypoints(approach_pts)
+		elif roll < 0.50 and avail_diner.size() > 0:
+			var free_seat = avail_diner.pick_random()
+			free_seat["is_occupied"] = true
+			free_seat["customer"] = cust
+			cust.diner_treat_finished.connect(_on_diner_treat_finished)
+			cust.order_placed.connect(_on_customer_order_placed)
+			cust.sector_type = "milkshake"
+			cust.seat_target_pos = free_seat["seat_pos"]
+			cust.seat_target_rot_y = free_seat["seat_rot_y"]
+			cust.seat_identifier = free_seat["id"]
+			cust.assigned_table_id = free_seat["id"]
+			cust.ordered_dish = cust.DINER_TREATS.pick_random()
+			cust.current_state = cust.State.WALKING_TO_HOST
+			approach_pts.append(cust.HOST_POS)
+			approach_pts.append(Vector3(-4.5, 0.0, -0.5))
+			approach_pts.append(Vector3(-4.5, 0.0, -4.5))
+			approach_pts.append(free_seat["seat_pos"])
+			cust.set_waypoints(approach_pts)
+		elif avail_tables.size() > 0:
+			var free_table: Node3D = avail_tables.pick_random()
+			if free_table.has_method("occupy"):
+				free_table.occupy(cust)
+			else:
+				free_table.is_occupied = true
+			cust.assigned_table_id = free_table.table_id
+			cust.table_ref = free_table
+			cust.current_state = cust.State.WALKING_TO_HOST
+			approach_pts.append(cust.HOST_POS)
+			cust.set_waypoints(approach_pts)
+			cust.order_placed.connect(_on_customer_order_placed)
+		elif avail_lounge.size() > 0:
+			var free_seat = avail_lounge.pick_random()
+			_seat_customer_in_lounge(cust, free_seat)
+		elif avail_diner.size() > 0:
+			var free_seat = avail_diner.pick_random()
+			_seat_customer_in_diner(cust, free_seat)
 	else:
-		# Queue up in the lobby waiting area
 		var spot_idx = waiting_customers.size()
 		var spot = WAITING_SPOTS[spot_idx] if spot_idx < WAITING_SPOTS.size() else Vector3(-1.5, 0.0, 7.0 + spot_idx * 1.2)
 		waiting_customers.append(cust)

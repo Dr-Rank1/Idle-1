@@ -81,8 +81,10 @@ func _get_aisle_x(x_val: float) -> float:
 		return 11.2
 	elif x_val > 6.0:
 		return 6.9
-	else:
+	elif x_val > 0.0:
 		return 3.3
+	else:
+		return -4.5
 
 func _get_table_aisle_and_approach(table: Node3D) -> Dictionary:
 	var tx = table.global_position.x
@@ -90,7 +92,11 @@ func _get_table_aisle_and_approach(table: Node3D) -> Dictionary:
 	var aisle_x: float = 3.3
 	var approach_x: float = 2.6
 	
-	if tx <= 3.0:
+	if tx < -3.0:
+		# West sectors: Cocktail Lounge & 50s Milkshake Diner
+		aisle_x = -4.5
+		approach_x = tx + (0.75 if tx < -4.5 else -0.75)
+	elif tx <= 3.0:
 		# Col 1 (Tables 1, 2, 3 at X = 1.2): aisle on the right
 		aisle_x = 3.3
 		approach_x = 2.6
@@ -115,12 +121,19 @@ func _get_table_aisle_and_approach(table: Node3D) -> Dictionary:
 func _get_waypoints_to_pass(from_pos: Vector3) -> Array:
 	var pts: Array = []
 	var cur_aisle_x = _get_aisle_x(from_pos.x)
-	if abs(from_pos.x - cur_aisle_x) > 0.35:
-		pts.append(Vector3(cur_aisle_x, 0.0, from_pos.z))
-	if from_pos.z > NORTH_CROSS_AISLE_Z + 0.2:
-		pts.append(Vector3(cur_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
-	if abs(cur_aisle_x - 6.5) > 0.35:
+	if cur_aisle_x < -3.0:
+		pts.append(Vector3(-4.5, 0.0, from_pos.z))
+		pts.append(Vector3(-4.5, 0.0, -0.5))
+		pts.append(Vector3(-3.2, 0.0, -0.5))
+		pts.append(Vector3(3.3, 0.0, NORTH_CROSS_AISLE_Z))
 		pts.append(Vector3(6.5, 0.0, NORTH_CROSS_AISLE_Z))
+	else:
+		if abs(from_pos.x - cur_aisle_x) > 0.35:
+			pts.append(Vector3(cur_aisle_x, 0.0, from_pos.z))
+		if from_pos.z > NORTH_CROSS_AISLE_Z + 0.2:
+			pts.append(Vector3(cur_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+		if abs(cur_aisle_x - 6.5) > 0.35:
+			pts.append(Vector3(6.5, 0.0, NORTH_CROSS_AISLE_Z))
 	pts.append(KITCHEN_PASS_POS)
 	return pts
 
@@ -131,9 +144,15 @@ func _get_waypoints_from_pass_to_table(table: Node3D) -> Array:
 	var approach: Vector3 = info["approach_pos"]
 	
 	pts.append(Vector3(6.5, 0.0, NORTH_CROSS_AISLE_Z))
-	if abs(dest_aisle_x - 6.5) > 0.35:
-		pts.append(Vector3(dest_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
-	pts.append(Vector3(dest_aisle_x, 0.0, approach.z))
+	if dest_aisle_x < -3.0:
+		pts.append(Vector3(3.3, 0.0, NORTH_CROSS_AISLE_Z))
+		pts.append(Vector3(-3.2, 0.0, -0.5))
+		pts.append(Vector3(-4.5, 0.0, -0.5))
+		pts.append(Vector3(-4.5, 0.0, approach.z))
+	else:
+		if abs(dest_aisle_x - 6.5) > 0.35:
+			pts.append(Vector3(dest_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+		pts.append(Vector3(dest_aisle_x, 0.0, approach.z))
 	pts.append(approach)
 	return pts
 
@@ -148,13 +167,29 @@ func _get_waypoints_to_clean_table(from_pos: Vector3, table: Node3D) -> Array:
 		pts.append(Vector3(cur_aisle_x, 0.0, approach.z))
 		pts.append(approach)
 	else:
-		if abs(from_pos.x - cur_aisle_x) > 0.35:
+		if cur_aisle_x < -3.0 and dest_aisle_x >= -3.0:
+			pts.append(Vector3(-4.5, 0.0, from_pos.z))
+			pts.append(Vector3(-4.5, 0.0, -0.5))
+			pts.append(Vector3(-3.2, 0.0, -0.5))
+			pts.append(Vector3(dest_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+			pts.append(Vector3(dest_aisle_x, 0.0, approach.z))
+			pts.append(approach)
+		elif cur_aisle_x >= -3.0 and dest_aisle_x < -3.0:
 			pts.append(Vector3(cur_aisle_x, 0.0, from_pos.z))
-		if from_pos.z > NORTH_CROSS_AISLE_Z + 0.2:
 			pts.append(Vector3(cur_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
-		pts.append(Vector3(dest_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
-		pts.append(Vector3(dest_aisle_x, 0.0, approach.z))
-		pts.append(approach)
+			pts.append(Vector3(3.3, 0.0, NORTH_CROSS_AISLE_Z))
+			pts.append(Vector3(-3.2, 0.0, -0.5))
+			pts.append(Vector3(-4.5, 0.0, -0.5))
+			pts.append(Vector3(-4.5, 0.0, approach.z))
+			pts.append(approach)
+		else:
+			if abs(from_pos.x - cur_aisle_x) > 0.35:
+				pts.append(Vector3(cur_aisle_x, 0.0, from_pos.z))
+			if from_pos.z > NORTH_CROSS_AISLE_Z + 0.2:
+				pts.append(Vector3(cur_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+			pts.append(Vector3(dest_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+			pts.append(Vector3(dest_aisle_x, 0.0, approach.z))
+			pts.append(approach)
 	return pts
 
 func _get_waypoints_to_home(from_pos: Vector3) -> Array:
@@ -166,10 +201,17 @@ func _get_waypoints_to_home(from_pos: Vector3) -> Array:
 		pts.append(Vector3(home_aisle_x, 0.0, from_pos.z))
 		pts.append(home_pos)
 	else:
-		pts.append(Vector3(cur_aisle_x, 0.0, from_pos.z))
-		pts.append(Vector3(cur_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
-		pts.append(Vector3(home_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
-		pts.append(home_pos)
+		if cur_aisle_x < -3.0 and home_aisle_x >= -3.0:
+			pts.append(Vector3(-4.5, 0.0, from_pos.z))
+			pts.append(Vector3(-4.5, 0.0, -0.5))
+			pts.append(Vector3(-3.2, 0.0, -0.5))
+			pts.append(Vector3(home_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+			pts.append(home_pos)
+		else:
+			pts.append(Vector3(cur_aisle_x, 0.0, from_pos.z))
+			pts.append(Vector3(cur_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+			pts.append(Vector3(home_aisle_x, 0.0, NORTH_CROSS_AISLE_Z))
+			pts.append(home_pos)
 	return pts
 
 func serve_order(table: Node3D) -> void:

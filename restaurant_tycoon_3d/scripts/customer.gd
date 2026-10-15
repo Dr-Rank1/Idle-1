@@ -3,6 +3,8 @@ extends CharacterBody3D
 signal order_placed(table_node: Node3D, customer_node: Node3D)
 signal lobby_wait_timeout(customer_node: Node3D)
 signal entered_restaurant(customer_node: Node3D)
+signal lounge_drink_finished(customer_node: Node3D, seat_id: String)
+signal diner_treat_finished(customer_node: Node3D, seat_id: String)
 
 enum State {
 	SPAWNING,
@@ -18,11 +20,30 @@ enum State {
 
 var current_state: State = State.SPAWNING
 var assigned_table_id: String = ""
+var sector_type: String = "dining" # "dining", "lounge", "milkshake"
+var seat_target_pos: Vector3 = Vector3.ZERO
+var seat_target_rot_y: float = 0.0
+var seat_identifier: String = ""
+var seat_node_ref: Node = null
 var move_speed: float = 3.4
 var state_timer: float = 0.0
 var walk_cycle: float = 0.0
 var time_passed: float = 0.0
 var initial_bubble_y: float = 1.35
+
+const LOUNGE_DRINKS: Array[Dictionary] = [
+	{"id": "wine_merlot", "name": "Vintage Merlot", "icon": "🍷", "price": 42.0},
+	{"id": "cocktail_martini", "name": "Classic Martini", "icon": "🍸", "price": 48.0},
+	{"id": "cocktail_spritz", "name": "Aperol Spritz", "icon": "🍹", "price": 45.0},
+	{"id": "sparkling_wine", "name": "Chilled Prosecco", "icon": "🥂", "price": 52.0}
+]
+
+const DINER_TREATS: Array[Dictionary] = [
+	{"id": "sundae", "name": "Classic Banana Split", "icon": "🍨", "price": 48.0},
+	{"id": "frappe", "name": "Caramel Iced Frappe", "icon": "🥤", "price": 44.0},
+	{"id": "milkshake_vanilla", "name": "Malted Shake", "icon": "🥛", "price": 46.0},
+	{"id": "soda_fountain", "name": "Cherry Cola Float", "icon": "🍒", "price": 38.0}
+]
 
 var waypoints: Array = []
 
@@ -350,7 +371,14 @@ func _handle_customer_walkout() -> void:
 		
 	global_position.y = 0.0
 	_play_anim("walk")
-	set_waypoints(_get_waypoints_from_table(position))
+	if sector_type == "lounge":
+		lounge_drink_finished.emit(self, seat_identifier)
+		set_waypoints(_get_waypoints_from_lounge(position))
+	elif sector_type == "milkshake":
+		diner_treat_finished.emit(self, seat_identifier)
+		set_waypoints(_get_waypoints_from_diner(position))
+	else:
+		set_waypoints(_get_waypoints_from_table(position))
 
 func _spawn_floating_text(txt: String, col: Color) -> void:
 	var label = Label3D.new()
@@ -390,6 +418,40 @@ func _on_all_waypoints_reached() -> void:
 			
 		State.WALKING_TO_TABLE:
 			current_state = State.SEATED_ORDERING
+			
+			if sector_type == "lounge":
+				global_position = seat_target_pos
+				rotation.y = seat_target_rot_y
+				velocity = Vector3.ZERO
+				if mesh_root != null:
+					mesh_root.position = Vector3.ZERO
+					mesh_root.rotation = Vector3.ZERO
+				_play_anim("sit")
+				var icon = ordered_dish.get("icon", "🍸")
+				set_bubble_text(icon)
+				is_waiting_for_food = true
+				if patience_root != null:
+					patience_root.visible = true
+					_update_patience_bar()
+				order_placed.emit(seat_node_ref, self)
+				return
+				
+			elif sector_type == "milkshake":
+				global_position = seat_target_pos
+				rotation.y = seat_target_rot_y
+				velocity = Vector3.ZERO
+				if mesh_root != null:
+					mesh_root.position = Vector3.ZERO
+					mesh_root.rotation = Vector3.ZERO
+				_play_anim("sit")
+				var icon = ordered_dish.get("icon", "🍨")
+				set_bubble_text(icon)
+				is_waiting_for_food = true
+				if patience_root != null:
+					patience_root.visible = true
+					_update_patience_bar()
+				order_placed.emit(seat_node_ref, self)
+				return
 			
 			var gm = get_node_or_null("/root/GameManager")
 			if is_vip_critic and gm != null:
@@ -600,3 +662,136 @@ func on_food_delivered() -> void:
 	if table_ref != null and table_ref.has_method("serve_food"):
 		var d_id = ordered_dish.get("id", "burger")
 		table_ref.serve_food(d_id)
+
+func assign_lounge_seat(seat_pos: Vector3, seat_rot_y: float, seat_id: String, node_ref: Node = null) -> void:
+	sector_type = "lounge"
+	seat_target_pos = seat_pos
+	seat_target_rot_y = seat_rot_y
+	seat_identifier = seat_id
+	seat_node_ref = node_ref
+	assigned_table_id = seat_id
+	ordered_dish = LOUNGE_DRINKS.pick_random()
+	current_state = State.WALKING_TO_TABLE
+	set_bubble_text("💭")
+	
+	var approach: Array = [
+		DOOR_POS,
+		HOST_POS,
+		Vector3(-5.5, 0.0, 2.5),
+		Vector3(seat_pos.x, 0.0, seat_pos.z + (0.5 if seat_pos.z < 0.0 else -0.5)),
+		seat_pos
+	]
+	set_waypoints(approach)
+
+func assign_milkshake_seat(seat_pos: Vector3, seat_rot_y: float, seat_id: String, node_ref: Node = null) -> void:
+	sector_type = "milkshake"
+	seat_target_pos = seat_pos
+	seat_target_rot_y = seat_rot_y
+	seat_identifier = seat_id
+	seat_node_ref = node_ref
+	assigned_table_id = seat_id
+	ordered_dish = DINER_TREATS.pick_random()
+	current_state = State.WALKING_TO_TABLE
+	set_bubble_text("💭")
+	
+	var approach: Array = [
+		DOOR_POS,
+		HOST_POS,
+		Vector3(-4.5, 0.0, -0.5),
+		Vector3(-4.5, 0.0, -4.5),
+		Vector3(seat_pos.x, 0.0, seat_pos.z + (0.5 if seat_pos.z < -7.0 else -0.5)),
+		seat_pos
+	]
+	set_waypoints(approach)
+
+func _get_waypoints_from_lounge(curr_pos: Vector3) -> Array:
+	return [
+		Vector3(-4.5, 0.0, curr_pos.z),
+		Vector3(-4.5, 0.0, 4.5),
+		HOST_POS,
+		DOOR_POS,
+		EXIT_POS
+	]
+
+func _get_waypoints_from_diner(curr_pos: Vector3) -> Array:
+	return [
+		Vector3(-4.5, 0.0, curr_pos.z),
+		Vector3(-4.5, 0.0, -1.0),
+		HOST_POS,
+		DOOR_POS,
+		EXIT_POS
+	]
+
+func on_lounge_drink_served(drink_id: String = "wine_merlot") -> void:
+	if current_state != State.SEATED_ORDERING:
+		return
+	is_waiting_for_food = false
+	if patience_root != null:
+		patience_root.visible = false
+	current_state = State.EATING
+	_play_anim("sit")
+	var icon = ordered_dish.get("icon", "🍸")
+	set_bubble_text("😋 " + icon)
+	
+	await get_tree().create_timer(2.8).timeout
+	if not is_instance_valid(self):
+		return
+		
+	current_state = State.CHEERING
+	_play_anim("emote-yes")
+	
+	var gm = get_node_or_null("/root/GameManager")
+	var price: float = ordered_dish.get("price", 42.0)
+	var price_mult: float = gm.get_dish_price_multiplier() if gm != null and gm.has_method("get_dish_price_multiplier") else 1.0
+	var total_revenue: float = price * price_mult
+	set_bubble_text("💵 +$%d" % round(total_revenue))
+	
+	lounge_drink_finished.emit(self, seat_identifier)
+	
+	await get_tree().create_timer(1.0).timeout
+	if not is_instance_valid(self):
+		return
+	current_state = State.WALKING_TO_EXIT
+	set_bubble_text("")
+	if status_bubble != null:
+		status_bubble.visible = false
+	global_position.y = 0.0
+	_play_anim("walk")
+	set_waypoints(_get_waypoints_from_lounge(position))
+
+func on_milkshake_served(treat_id: String = "sundae") -> void:
+	if current_state != State.SEATED_ORDERING:
+		return
+	is_waiting_for_food = false
+	if patience_root != null:
+		patience_root.visible = false
+	current_state = State.EATING
+	_play_anim("sit")
+	var icon = ordered_dish.get("icon", "🍨")
+	set_bubble_text("😋 " + icon)
+	
+	await get_tree().create_timer(2.8).timeout
+	if not is_instance_valid(self):
+		return
+		
+	current_state = State.CHEERING
+	_play_anim("emote-yes")
+	
+	var gm = get_node_or_null("/root/GameManager")
+	var station_bonus: float = gm.get_station_income("milkshake_bar") if gm != null else 45.0
+	var treat_price: float = ordered_dish.get("price", 48.0)
+	var total_revenue: float = station_bonus + treat_price
+	set_bubble_text("💵 +$%d" % round(total_revenue))
+	
+	diner_treat_finished.emit(self, seat_identifier)
+	
+	await get_tree().create_timer(1.0).timeout
+	if not is_instance_valid(self):
+		return
+	current_state = State.WALKING_TO_EXIT
+	set_bubble_text("")
+	if status_bubble != null:
+		status_bubble.visible = false
+	global_position.y = 0.0
+	_play_anim("walk")
+	set_waypoints(_get_waypoints_from_diner(position))

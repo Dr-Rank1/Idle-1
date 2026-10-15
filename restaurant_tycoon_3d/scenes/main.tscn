@@ -1413,7 +1413,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 0.02, 3.5)
 mesh = SubResource("PlaneMesh_reception_floor")
 
-[node name="HostDeskRedRunner" type="MeshInstance3D" parent="Restaurant/ReceptionRoom"]
+[node name="RedCarpetRunner" type="MeshInstance3D" parent="Restaurant/ReceptionRoom"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0.022, 8.1)
 mesh = SubResource("BoxMesh_host_runner")
 
@@ -1924,6 +1924,15 @@ mesh = SubResource("PlaneMesh_terrace_floor")
 
 [node name="RetroJukebox" parent="Restaurant/DiningHall" instance=ExtResource("85_jukebox")]
 transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, -3.4, 0, 5.8)
+
+[node name="GrandBar" type="Node3D" parent="Restaurant/DiningHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0, -3.4)
+
+[node name="WaiterStation" type="Node3D" parent="Restaurant/DiningHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0, -2.0)
+
+[node name="VIPWindowLounge" type="Node3D" parent="Restaurant/DiningHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.25, 0, 5.0)
 
 [node name="MilkshakeBar" type="Node3D" parent="Restaurant"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 0, -7.0)
