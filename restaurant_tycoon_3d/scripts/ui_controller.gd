@@ -103,15 +103,31 @@ extends CanvasLayer
 @onready var close_world_map_btn: Button = get_node_or_null("WorldMapPanel/VBox/TopHBox/CloseWorldMapBtn")
 
 @onready var floating_boost_btn: Button = get_node_or_null("HUD/FloatingBoostBanner")
+@onready var ribbon_marketing: PanelContainer = get_node_or_null("HUD/StatusRibbons/RibbonMarketing")
+@onready var ribbon_marketing_lbl: Label = get_node_or_null("HUD/StatusRibbons/RibbonMarketing/Label")
+@onready var ribbon_parking: PanelContainer = get_node_or_null("HUD/StatusRibbons/RibbonParking")
+@onready var ribbon_parking_lbl: Label = get_node_or_null("HUD/StatusRibbons/RibbonParking/Label")
+@onready var ribbon_cleaning: PanelContainer = get_node_or_null("HUD/StatusRibbons/RibbonCleaning")
+@onready var ribbon_cleaning_lbl: Label = get_node_or_null("HUD/StatusRibbons/RibbonCleaning/Label")
+var boost_timer_bar: Panel = null
 @onready var shop_btn: Button = get_node_or_null("HUD/ShopBtn")
 @onready var shop_panel: PanelContainer = get_node_or_null("ShopPanel")
 @onready var shop_vbox: VBoxContainer = get_node_or_null("ShopPanel/VBox/Scroll/ItemsVBox")
 @onready var close_shop_btn: Button = get_node_or_null("ShopPanel/VBox/TopHBox/CloseShopBtn")
 
+@onready var analytics_panel: PanelContainer = get_node_or_null("AnalyticsPanel")
+@onready var analytics_vbox: VBoxContainer = get_node_or_null("AnalyticsPanel/VBox/Scroll/VBox")
+@onready var close_analytics_btn: Button = get_node_or_null("AnalyticsPanel/VBox/CloseBtn")
+
+@onready var perks_panel: PanelContainer = get_node_or_null("PerksPanel")
+@onready var perks_vbox: VBoxContainer = get_node_or_null("PerksPanel/VBox/Scroll/VBox")
+@onready var close_perks_btn: Button = get_node_or_null("PerksPanel/VBox/CloseBtn")
+
 var current_station_id: String = ""
 var current_multiplier: String = "1"
 var displayed_cash: float = 650.0
 var sim_time_minutes: float = 8.0 * 60.0 + 34.0
+var analytics_refresh_timer: float = 0.0
 
 func _ready() -> void:
 	_hide_all_modals()
@@ -198,9 +214,52 @@ func _ready() -> void:
 	if close_quests_btn != null: close_quests_btn.pressed.connect(func(): _close_modal(quests_panel))
 	if close_world_map_btn != null: close_world_map_btn.pressed.connect(func(): _close_modal(world_map_panel))
 	if close_shop_btn != null: close_shop_btn.pressed.connect(func(): _close_modal(shop_panel))
+	if close_analytics_btn != null: close_analytics_btn.pressed.connect(func(): _close_modal(analytics_panel))
+	if close_perks_btn != null: close_perks_btn.pressed.connect(func(): _close_modal(perks_panel))
 
 	if floating_boost_btn != null:
 		floating_boost_btn.pressed.connect(_on_boost_pressed)
+		if boost_timer_bar == null:
+			boost_timer_bar = Panel.new()
+			boost_timer_bar.name = "GoldenTimerBar"
+			boost_timer_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			boost_timer_bar.anchor_left = 0.0
+			boost_timer_bar.anchor_top = 0.88
+			boost_timer_bar.anchor_right = 1.0
+			boost_timer_bar.anchor_bottom = 1.0
+			boost_timer_bar.offset_left = 6.0
+			boost_timer_bar.offset_right = -6.0
+			boost_timer_bar.offset_top = -3.0
+			boost_timer_bar.offset_bottom = -2.0
+			
+			var sb = StyleBoxFlat.new()
+			sb.bg_color = Color(1.0, 0.84, 0.2, 0.95)
+			sb.set_corner_radius_all(4)
+			boost_timer_bar.add_theme_stylebox_override("panel", sb)
+			floating_boost_btn.add_child(boost_timer_bar)
+			boost_timer_bar.visible = false
+
+	if ribbon_marketing != null:
+		ribbon_marketing.gui_input.connect(func(event: InputEvent):
+			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+				_play_click_sfx()
+				_toggle_modal(analytics_panel, _refresh_analytics_panel)
+		)
+
+	if ribbon_parking != null:
+		ribbon_parking.gui_input.connect(func(event: InputEvent):
+			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+				_play_click_sfx()
+				_toggle_modal(analytics_panel, _refresh_analytics_panel)
+		)
+
+	if ribbon_cleaning != null:
+		ribbon_cleaning.gui_input.connect(func(event: InputEvent):
+			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+				_play_click_sfx()
+				_toggle_modal(analytics_panel, _refresh_analytics_panel)
+		)
+
 	if shop_btn != null:
 		shop_btn.pressed.connect(func():
 			_toggle_modal(shop_panel, _refresh_shop_panel)
@@ -225,13 +284,11 @@ func _ready() -> void:
 		)
 	if side_lightbulb_btn != null:
 		side_lightbulb_btn.pressed.connect(func():
-			_toggle_modal(quests_panel, _refresh_quests_panel)
+			_toggle_modal(perks_panel, _refresh_perks_panel)
 		)
 	if side_stats_btn != null:
 		side_stats_btn.pressed.connect(func():
-			_play_click_sfx()
-			if status_ribbons != null:
-				status_ribbons.visible = not status_ribbons.visible
+			_toggle_modal(analytics_panel, _refresh_analytics_panel)
 		)
 	if side_staff_btn != null:
 		side_staff_btn.pressed.connect(func():
@@ -253,14 +310,38 @@ func _ready() -> void:
 		gm.campaign_updated.connect(_on_campaign_updated)
 		gm.offline_earnings_available.connect(_on_offline_earnings_available)
 		gm.critic_review_awarded.connect(_on_critic_review_awarded)
+		if gm.has_signal("marketing_changed"):
+			gm.marketing_changed.connect(func():
+				_update_marketing_ribbon()
+				if marketing_panel != null and marketing_panel.visible:
+					_refresh_marketing_panel()
+			)
+		if gm.has_signal("marketing_upgraded"):
+			gm.marketing_upgraded.connect(func(_lvl):
+				_update_marketing_ribbon()
+				if marketing_panel != null and marketing_panel.visible:
+					_refresh_marketing_panel()
+			)
 		if gm.has_signal("world_restaurants_updated"):
 			gm.world_restaurants_updated.connect(func():
 				if world_map_panel != null and world_map_panel.visible:
 					_refresh_world_map()
 			)
+		if gm.has_signal("perks_updated"):
+			gm.perks_updated.connect(func():
+				if perks_panel != null and perks_panel.visible:
+					_refresh_perks_panel()
+			)
+		if gm.has_signal("shop_updated"):
+			gm.shop_updated.connect(func():
+				if shop_panel != null and shop_panel.visible:
+					_refresh_shop_panel()
+			)
 		gm.menu_updated.connect(func():
 			if kitchen_panel != null and kitchen_panel.visible:
 				_refresh_kitchen_panel()
+			if perks_panel != null and perks_panel.visible:
+				_refresh_perks_panel()
 		)
 		
 		displayed_cash = gm.cash
@@ -283,6 +364,8 @@ func _hide_all_modals() -> void:
 	if quests_panel != null: quests_panel.visible = false
 	if world_map_panel != null: world_map_panel.visible = false
 	if shop_panel != null: shop_panel.visible = false
+	if analytics_panel != null: analytics_panel.visible = false
+	if perks_panel != null: perks_panel.visible = false
 
 func _open_modal(panel: PanelContainer) -> void:
 	if panel == null: return
@@ -314,12 +397,27 @@ func _play_click_sfx() -> void:
 		am.play_sfx("click", 0.08)
 
 func _format_money(amount: float) -> String:
-	if amount >= 1000000.0:
-		return "$%.2fM" % (amount / 1000000.0)
-	elif amount >= 10000.0:
-		return "$%.1fK" % (amount / 1000.0)
-	else:
+	if amount < 0.0:
+		return "- " + _format_money(-amount)
+	if amount < 1000.0:
 		return "$%d" % round(amount)
+
+	var suffixes: Array[String] = ["K", "M", "B", "T", "aa", "ab", "ac", "ad"]
+	var tier: int = int(floor(log(amount) / log(1000.0)))
+	var s_idx: int = clampi(tier - 1, 0, suffixes.size() - 1)
+	var div: float = pow(1000.0, s_idx + 1)
+	var val: float = amount / div
+
+	if val >= 999.95 and s_idx + 1 < suffixes.size():
+		s_idx += 1
+		div = pow(1000.0, s_idx + 1)
+		val = amount / div
+
+	var sfx: String = suffixes[s_idx]
+	if val >= 100.0:
+		return "$%.0f%s" % [val, sfx]
+	else:
+		return "$%.1f%s" % [val, sfx]
 
 # ─── Top Bar Updates ────────────────────────────────────────────────────────
 func _update_top_bar(c: float, g: int, stars: float, rest_name: String, lvl: int, xp: float, next_xp: float) -> void:
@@ -394,12 +492,31 @@ func _process(delta: float) -> void:
 		clock_label.text = "%02d:%02d %s" % [display_hour, mins, am_pm]
 
 	var gm = get_node_or_null("/root/GameManager")
-	if gm != null and gm.is_boosted:
-		var s = ceil(gm.boost_timer)
-		if floating_boost_btn != null:
-			floating_boost_btn.text = "🔥 2X ACTIVE (%ds)" % s
-		if boost_btn != null:
-			boost_btn.text = "⚡ 2X (%ds)" % s
+	if gm != null:
+		if gm.is_boosted:
+			var s = ceil(gm.boost_timer)
+			if floating_boost_btn != null:
+				floating_boost_btn.text = "🔥 2X BOOST (%ds)" % s
+				floating_boost_btn.add_theme_color_override("font_color", Color(1.0, 0.88, 0.2, 1.0))
+			if boost_timer_bar != null:
+				boost_timer_bar.visible = true
+				var progress = clamp(gm.boost_timer / 60.0, 0.0, 1.0)
+				boost_timer_bar.anchor_right = progress
+			if boost_btn != null:
+				boost_btn.text = "⚡ 2X (%ds)" % s
+		else:
+			if floating_boost_btn != null:
+				floating_boost_btn.text = "▶️  x2 BOOST!"
+				floating_boost_btn.add_theme_color_override("font_color", Color(0.12, 0.65, 0.25, 1.0))
+			if boost_timer_bar != null:
+				boost_timer_bar.visible = false
+
+	_update_status_ribbons()
+	if analytics_panel != null and analytics_panel.visible:
+		analytics_refresh_timer += delta
+		if analytics_refresh_timer >= 0.5:
+			analytics_refresh_timer = 0.0
+			_refresh_analytics_panel()
 
 func _on_boost_pressed() -> void:
 	_play_click_sfx()
@@ -451,7 +568,7 @@ func _refresh_quest_banner() -> void:
 	
 	if cur >= tar:
 		quest_claim_btn.visible = true
-		quest_claim_btn.text = "CLAIM  +$%d" % round(active_q.get("reward_cash", 100))
+		quest_claim_btn.text = "CLAIM  +" + _format_money(active_q.get("reward_cash", 100))
 	else:
 		quest_claim_btn.visible = false
 
@@ -523,7 +640,7 @@ func _create_quest_card(q: Dictionary, gm: Node) -> PanelContainer:
 	var cur = q.get("current", 0)
 	var tar = q.get("target", 1)
 	if cur >= tar:
-		btn.text = "CLAIM\n+$%d 💎+%d" % [round(q.get("reward_cash", 100)), q.get("reward_gems", 5)]
+		btn.text = "CLAIM\n+" + _format_money(q.get("reward_cash", 100)) + " 💎+%d" % q.get("reward_gems", 5)
 		btn.add_theme_stylebox_override("normal", _get_green_btn_style())
 		btn.pressed.connect(func():
 			_play_click_sfx()
@@ -535,7 +652,6 @@ func _create_quest_card(q: Dictionary, gm: Node) -> PanelContainer:
 	hbox.add_child(btn)
 	return p
 
-# ─── Station Upgrade Logic (Click in 3D or from UI) ─────────────────────────
 # ─── Station Upgrade Logic (Click in 3D or from UI) ─────────────────────────
 func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 	current_station_id = station_id
@@ -550,7 +666,7 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 	if upgrade_title != null: upgrade_title.text = station_name
 	if upgrade_level != null: upgrade_level.text = "Level %d / %d" % [actual_level, station_max]
 	var inc = gm.get_station_income(station_id)
-	if upgrade_income != null: upgrade_income.text = "💵 +$%d / cust   ⚡ +%d" % [round(inc), max(5, actual_level * 2)]
+	if upgrade_income != null: upgrade_income.text = "💵 +" + _format_money(inc) + " / cust   ⚡ +%d" % max(5, actual_level * 2)
 	if upgrade_desc != null: upgrade_desc.text = "Upgrade the %s to increase cash earned by the restaurant." % station_name
 	
 	if upgrade_max_badge != null:
@@ -741,7 +857,7 @@ func _refresh_upgrade_btn() -> void:
 			upgrade_max_badge.text = "⭐ MAX LEVEL"
 			upgrade_max_badge.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
 	else:
-		upgrade_btn.text = "UPGRADE +%d LVL\n($%d)" % [info.levels, round(info.cost)]
+		upgrade_btn.text = "UPGRADE +%d LVL\n(%s)" % [info.levels, _format_money(info.cost)]
 		upgrade_btn.disabled = not info.can_afford
 		if upgrade_max_badge != null:
 			upgrade_max_badge.visible = false
@@ -760,7 +876,7 @@ func _on_station_upgraded(station_id: String, new_lvl: int) -> void:
 			var is_max = new_lvl >= station_max
 			if upgrade_level != null: upgrade_level.text = "Level %d / %d" % [new_lvl, station_max]
 			var inc = gm.get_station_income(station_id)
-			if upgrade_income != null: upgrade_income.text = "💵 +$%d / cust   ⚡ +%d" % [round(inc), max(5, new_lvl * 2)]
+			if upgrade_income != null: upgrade_income.text = "💵 +" + _format_money(inc) + " / cust   ⚡ +%d" % max(5, new_lvl * 2)
 			if upgrade_max_badge != null:
 				upgrade_max_badge.visible = is_max
 				if is_max:
@@ -823,7 +939,7 @@ func _create_table_card(table_id: String, index: int, gm: Node) -> PanelContaine
 	
 	var sub_lbl = Label.new()
 	if is_unlocked:
-		sub_lbl.text = "%s • Level %d (+$%d/dish)" % [gm.get_station_tier_title(table_id, lvl), lvl, round(gm.get_station_income(table_id))]
+		sub_lbl.text = "%s • Level %d (+%s/dish)" % [gm.get_station_tier_title(table_id, lvl), lvl, _format_money(gm.get_station_income(table_id))]
 		sub_lbl.add_theme_color_override("font_color", Color(0.45, 0.95, 0.55, 1))
 	else:
 		sub_lbl.text = "Locked Station • Unlock for Customers"
@@ -838,7 +954,7 @@ func _create_table_card(table_id: String, index: int, gm: Node) -> PanelContaine
 			btn.text = "MAX"
 			btn.disabled = true
 		else:
-			btn.text = "UPGRADE +%d\n($%d)" % [info.levels, round(info.cost)]
+			btn.text = "UPGRADE +%d\n(%s)" % [info.levels, _format_money(info.cost)]
 			btn.disabled = not info.can_afford
 			btn.pressed.connect(func():
 				_play_click_sfx()
@@ -847,7 +963,7 @@ func _create_table_card(table_id: String, index: int, gm: Node) -> PanelContaine
 			btn.add_theme_stylebox_override("normal", _get_green_btn_style())
 	else:
 		var cost = gm.get_table_unlock_cost(table_id)
-		btn.text = "UNLOCK\n($%d)" % round(cost)
+		btn.text = "UNLOCK\n(%s)" % _format_money(cost)
 		btn.disabled = gm.cash < cost
 		btn.pressed.connect(func():
 			_play_click_sfx()
@@ -892,7 +1008,7 @@ func _refresh_terrace_panel() -> void:
 		vb.add_child(desc)
 		
 		var btn = Button.new()
-		btn.text = "UNLOCK TERRACE ($%d)" % round(gm.TERRACE_UNLOCK_COST)
+		btn.text = "UNLOCK TERRACE (%s)" % _format_money(gm.TERRACE_UNLOCK_COST)
 		btn.disabled = gm.cash < gm.TERRACE_UNLOCK_COST
 		btn.add_theme_stylebox_override("normal", _get_gold_btn_style())
 		btn.pressed.connect(func():
@@ -956,7 +1072,7 @@ func _refresh_parking_panel() -> void:
 			btn.disabled = true
 		else:
 			var cost = gm.get_stall_unlock_cost(i)
-			btn.text = "UNLOCK\n($%d)" % round(cost)
+			btn.text = "UNLOCK\n(%s)" % _format_money(cost)
 			btn.disabled = gm.cash < cost
 			btn.add_theme_stylebox_override("normal", _get_gold_btn_style())
 			btn.pressed.connect(func():
@@ -1019,10 +1135,10 @@ func _create_recipe_card(item: Dictionary, gm: Node) -> PanelContainer:
 	var price_val = item.get("price", 45.0)
 	var is_unlocked = item.get("unlocked", false)
 	if is_unlocked:
-		desc_lbl.text = "$%d / Order • Active on Table Menus" % round(price_val)
+		desc_lbl.text = "%s / Order • Active on Table Menus" % _format_money(price_val)
 		desc_lbl.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55, 1))
 	else:
-		desc_lbl.text = "Earns $%d / Order • %s" % [round(price_val), item.get("desc", "")]
+		desc_lbl.text = "Earns %s / Order • %s" % [_format_money(price_val), item.get("desc", "")]
 		desc_lbl.add_theme_color_override("font_color", Color(0.75, 0.82, 0.9, 0.8))
 	desc_lbl.add_theme_font_size_override("font_size", 11)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1030,12 +1146,12 @@ func _create_recipe_card(item: Dictionary, gm: Node) -> PanelContainer:
 	
 	var btn = Button.new()
 	if is_unlocked:
-		btn.text = "SERVING\n($%d)" % round(price_val)
+		btn.text = "SERVING\n(%s)" % _format_money(price_val)
 		btn.disabled = true
 		btn.add_theme_stylebox_override("normal", _get_green_btn_style())
 	else:
 		var cost = item.get("unlock_cost", 180.0)
-		btn.text = "UNLOCK\n($%d)" % round(cost)
+		btn.text = "UNLOCK\n(%s)" % _format_money(cost)
 		btn.disabled = gm.cash < cost
 		btn.add_theme_stylebox_override("normal", _get_gold_btn_style())
 		btn.pressed.connect(func():
@@ -1082,7 +1198,7 @@ func _create_kitchen_card(st_id: String, st_name: String, icon_str: String, gm: 
 		btn.text = "MAX"
 		btn.disabled = true
 	else:
-		btn.text = "UPGRADE +%d\n($%d)" % [info.levels, round(info.cost)]
+		btn.text = "UPGRADE +%d\n(%s)" % [info.levels, _format_money(info.cost)]
 		btn.disabled = not info.can_afford
 		btn.pressed.connect(func():
 			_play_click_sfx()
@@ -1241,7 +1357,7 @@ func _create_staff_card(st: Dictionary, gm: Node) -> PanelContainer:
 	var btn = Button.new()
 	if is_hired:
 		var cost = gm.get_staff_upgrade_cost(sid)
-		btn.text = "UPGRADE\n($%d)" % round(cost)
+		btn.text = "UPGRADE\n(%s)" % _format_money(cost)
 		btn.disabled = gm.cash < cost
 		btn.pressed.connect(func():
 			_play_click_sfx()
@@ -1250,7 +1366,7 @@ func _create_staff_card(st: Dictionary, gm: Node) -> PanelContainer:
 		btn.add_theme_stylebox_override("normal", _get_green_btn_style())
 	else:
 		var cost = st.get("hire_cost", 200.0)
-		btn.text = "HIRE\n($%d)" % round(cost)
+		btn.text = "HIRE\n(%s)" % _format_money(cost)
 		btn.disabled = gm.cash < cost
 		btn.pressed.connect(func():
 			_play_click_sfx()
@@ -1272,9 +1388,65 @@ func _refresh_marketing_panel() -> void:
 	var gm = get_node_or_null("/root/GameManager")
 	if gm == null:
 		return
+	marketing_vbox.add_child(_create_marketing_agency_card(gm))
 	for cid in ["flyers", "social_ad", "radio_spot"]:
 		if gm.campaigns.has(cid):
 			marketing_vbox.add_child(_create_campaign_card(gm.campaigns[cid], gm))
+
+func _create_marketing_agency_card(gm: Node) -> PanelContainer:
+	var p = PanelContainer.new()
+	var card_sb = _get_card_style()
+	card_sb.border_color = Color(1.0, 0.75, 0.2, 0.95)
+	card_sb.border_width_left = 3
+	p.add_theme_stylebox_override("panel", card_sb)
+	
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 12)
+	p.add_child(hbox)
+	
+	var icon = Label.new()
+	icon.text = "📣"
+	icon.add_theme_font_size_override("font_size", 32)
+	hbox.add_child(icon)
+	
+	var vb = VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(vb)
+	
+	var m_lvl = gm.get_marketing_level() if gm.has_method("get_marketing_level") else 1
+	var max_lvl = gm.get_marketing_max_level() if gm.has_method("get_marketing_max_level") else 25
+	var traffic_pct = round((gm.get_marketing_traffic_multiplier() - 1.0) * 100) if gm.has_method("get_marketing_traffic_multiplier") else 0
+	
+	var name_lbl = Label.new()
+	name_lbl.text = "Marketing Agency (Lv. %d / %d)" % [m_lvl, max_lvl]
+	name_lbl.add_theme_font_size_override("font_size", 16)
+	name_lbl.add_theme_color_override("font_color", Color(1.0, 0.88, 0.25, 1.0))
+	vb.add_child(name_lbl)
+	
+	var desc_lbl = Label.new()
+	desc_lbl.text = "Roadside billboard & diner promotions: +%d%% arrival rate!" % traffic_pct
+	desc_lbl.add_theme_font_size_override("font_size", 12)
+	desc_lbl.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0, 0.9))
+	vb.add_child(desc_lbl)
+	
+	var btn = Button.new()
+	if m_lvl >= max_lvl:
+		btn.text = "MAX LEVEL\n(+360% Traffic)"
+		btn.disabled = true
+		btn.add_theme_stylebox_override("normal", _get_gold_btn_style())
+	else:
+		var cost = gm.get_marketing_upgrade_cost() if gm.has_method("get_marketing_upgrade_cost") else 150.0
+		btn.text = "UPGRADE\n(%s)" % _format_money(cost)
+		btn.disabled = gm.cash < cost
+		btn.pressed.connect(func():
+			_play_click_sfx()
+			if gm.upgrade_marketing():
+				_refresh_marketing_panel()
+				_update_marketing_ribbon()
+		)
+		btn.add_theme_stylebox_override("normal", _get_green_btn_style())
+	hbox.add_child(btn)
+	return p
 
 func _create_campaign_card(camp: Dictionary, gm: Node) -> PanelContainer:
 	var p = PanelContainer.new()
@@ -1315,7 +1487,7 @@ func _create_campaign_card(camp: Dictionary, gm: Node) -> PanelContainer:
 		btn.add_theme_stylebox_override("normal", _get_gold_btn_style())
 	else:
 		var cost = camp.get("cost", 100.0)
-		btn.text = "LAUNCH\n($%d)" % round(cost)
+		btn.text = "LAUNCH\n(%s)" % _format_money(cost)
 		btn.disabled = gm.cash < cost
 		btn.pressed.connect(func():
 			_play_click_sfx()
@@ -1324,6 +1496,58 @@ func _create_campaign_card(camp: Dictionary, gm: Node) -> PanelContainer:
 		btn.add_theme_stylebox_override("normal", _get_green_btn_style())
 	hbox.add_child(btn)
 	return p
+
+func _update_status_ribbons() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+	var fin = gm.get_financial_breakdown() if gm.has_method("get_financial_breakdown") else {}
+	var m_lvl = gm.get_marketing_level() if gm.has_method("get_marketing_level") else 1
+	var has_campaign = false
+	for cid in gm.campaigns.keys():
+		if gm.campaigns[cid].get("time_left", 0.0) > 0.0:
+			has_campaign = true
+			break
+	if ribbon_marketing_lbl != null and ribbon_marketing != null:
+		if m_lvl <= 1 and not has_campaign:
+			var m_exp = fin.get("expenses", {}).get("marketing_min", 50.0)
+			ribbon_marketing_lbl.text = "📉 - %s Marketing" % _format_money(m_exp)
+			ribbon_marketing_lbl.add_theme_color_override("font_color", Color(1.0, 0.72, 0.72, 1.0))
+			ribbon_marketing.add_theme_stylebox_override("panel", _get_red_ribbon_style())
+		else:
+			var traffic_pct = round((gm.get_marketing_traffic_multiplier() - 1.0) * 100)
+			ribbon_marketing_lbl.text = "📈 +%d%% Traffic (Lv. %d)" % [traffic_pct, m_lvl]
+			ribbon_marketing_lbl.add_theme_color_override("font_color", Color(0.72, 1.0, 0.75, 1.0))
+			ribbon_marketing.add_theme_stylebox_override("panel", _get_green_ribbon_style())
+
+	if ribbon_parking_lbl != null:
+		var p_inc = fin.get("income", {}).get("parking_min", 25830.0)
+		ribbon_parking_lbl.text = "📈 + %s Parking" % _format_money(p_inc)
+
+	if ribbon_cleaning_lbl != null:
+		var c_exp = fin.get("expenses", {}).get("cleaning_min", 300.0)
+		ribbon_cleaning_lbl.text = "🧹 - %s Cleaning" % _format_money(c_exp)
+
+func _update_marketing_ribbon() -> void:
+	_update_status_ribbons()
+
+func _get_red_ribbon_style() -> StyleBoxFlat:
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.35, 0.12, 0.12, 0.88)
+	sb.border_width_left = 3
+	sb.border_color = Color(0.85, 0.25, 0.25, 1.0)
+	sb.set_corner_radius_all(4)
+	sb.set_content_margin_all(4)
+	return sb
+
+func _get_green_ribbon_style() -> StyleBoxFlat:
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.12, 0.32, 0.16, 0.88)
+	sb.border_width_left = 3
+	sb.border_color = Color(0.25, 0.85, 0.45, 1.0)
+	sb.set_corner_radius_all(4)
+	sb.set_content_margin_all(4)
+	return sb
 
 # ─── Stylebox Generators ───────────────────────────────────────────────────
 func _get_card_style() -> StyleBoxFlat:
@@ -1532,6 +1756,252 @@ func _on_critic_review_awarded(stars: float, is_positive: bool) -> void:
 	tw.parallel().tween_property(banner, "modulate:a", 0.0, 0.25)
 	tw.tween_callback(banner.queue_free)
 
+# ─── Financial Analytics Modal ──────────────────────────────────────────────
+func _refresh_analytics_panel() -> void:
+	if analytics_vbox == null: return
+	for c in analytics_vbox.get_children():
+		c.queue_free()
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null: return
+	
+	var fin = gm.get_financial_breakdown() if gm.has_method("get_financial_breakdown") else {}
+	var income_data = fin.get("income", {})
+	var expense_data = fin.get("expenses", {})
+	var net_sec = float(fin.get("net_profit", 0.0))
+	
+	# Net Profit Margin Banner
+	var net_banner = PanelContainer.new()
+	var net_style = StyleBoxFlat.new()
+	net_style.bg_color = Color(0.1, 0.35, 0.2, 0.95) if net_sec >= 0.0 else Color(0.4, 0.12, 0.12, 0.95)
+	net_style.border_width_left = 3
+	net_style.border_color = Color(0.3, 0.95, 0.5, 1.0) if net_sec >= 0.0 else Color(0.95, 0.3, 0.3, 1.0)
+	net_style.set_corner_radius_all(10)
+	net_style.set_content_margin_all(12)
+	net_banner.add_theme_stylebox_override("panel", net_style)
+	
+	var net_vbox = VBoxContainer.new()
+	net_vbox.add_theme_constant_override("separation", 2)
+	net_banner.add_child(net_vbox)
+	
+	var net_title = Label.new()
+	net_title.text = "📈 NET CASH FLOW (PROFIT RATE)"
+	net_title.add_theme_font_size_override("font_size", 12)
+	net_title.add_theme_color_override("font_color", Color(0.8, 0.95, 0.85, 0.85))
+	net_vbox.add_child(net_title)
+	
+	var net_val = Label.new()
+	var net_str = ("+" if net_sec >= 0.0 else "-") + _format_money(abs(net_sec))
+	var net_min_str = ("+" if net_sec >= 0.0 else "-") + _format_money(abs(net_sec * 60.0))
+	net_val.text = "%s / sec   (%s / min)" % [net_str, net_min_str]
+	net_val.add_theme_font_size_override("font_size", 18)
+	net_val.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55, 1.0) if net_sec >= 0.0 else Color(1.0, 0.45, 0.45, 1.0))
+	net_vbox.add_child(net_val)
+	analytics_vbox.add_child(net_banner)
+	
+	# Section 1: Incomes
+	var inc_head = Label.new()
+	inc_head.text = "💵 LIVE REVENUE STREAMS (+%s/s)" % _format_money(income_data.get("total", 0.0))
+	inc_head.add_theme_font_size_override("font_size", 14)
+	inc_head.add_theme_color_override("font_color", Color(0.35, 0.95, 0.55, 1.0))
+	analytics_vbox.add_child(inc_head)
+	
+	analytics_vbox.add_child(_create_analytics_row("🍽️ Dining Room Tables", "Main restaurant dining booths, bistro orders & kitchen stoves", "+" + _format_money(income_data.get("dining", 0.0)) + "/s", Color(0.2, 0.85, 0.45, 1.0)))
+	analytics_vbox.add_child(_create_analytics_row("🥤 50s Milkshake Bar", "Stainless steel soda fountain, blenders & sundaes", "+" + _format_money(income_data.get("milkshake", 0.0)) + "/s", Color(0.2, 0.85, 0.45, 1.0)))
+	analytics_vbox.add_child(_create_analytics_row("🍸 Cocktail Lounge", "Mahogany bar stools, mixology cocktails & wine goblets", "+" + _format_money(income_data.get("cocktail", 0.0)) + "/s", Color(0.2, 0.85, 0.45, 1.0)))
+	analytics_vbox.add_child(_create_analytics_row("🚗 Valet Parking Lot", "Automated customer arrivals, valet turnaround & helipad drops", "+" + _format_money(income_data.get("parking", 0.0)) + "/s", Color(0.2, 0.85, 0.45, 1.0)))
+	
+	# Section 2: Expenses
+	var exp_head = Label.new()
+	exp_head.text = "📉 OPERATIONAL EXPENSES (-%s/s)" % _format_money(expense_data.get("total", 0.0))
+	exp_head.add_theme_font_size_override("font_size", 14)
+	exp_head.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45, 1.0))
+	analytics_vbox.add_child(exp_head)
+	
+	analytics_vbox.add_child(_create_analytics_row("📢 Marketing & Campaigns", "Roadside billboard advertising, diner neon & flyers (-%s/min)" % _format_money(expense_data.get("marketing_min", 50.0)), "-" + _format_money(expense_data.get("marketing", 0.0)) + "/s", Color(1.0, 0.45, 0.45, 1.0)))
+	analytics_vbox.add_child(_create_analytics_row("🧹 Cleaning & Sanitation", "Dining room janitorial maintenance, busboy supplies (-%s/min)" % _format_money(expense_data.get("cleaning_min", 300.0)), "-" + _format_money(expense_data.get("cleaning", 0.0)) + "/s", Color(1.0, 0.45, 0.45, 1.0)))
+	analytics_vbox.add_child(_create_analytics_row("👔 Staff Payroll & Wages", "Active hourly wages for chefs, waiters, hostess, bartender, cleaner & manager", "-" + _format_money(expense_data.get("staff", 0.0)) + "/s", Color(1.0, 0.45, 0.45, 1.0)))
+
+func _create_analytics_row(title: String, desc: String, value_txt: String, val_color: Color) -> PanelContainer:
+	var p = PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _get_card_style())
+	
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	p.add_child(hbox)
+	
+	var vb = VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_theme_constant_override("separation", 2)
+	hbox.add_child(vb)
+	
+	var title_lbl = Label.new()
+	title_lbl.text = title
+	title_lbl.add_theme_font_size_override("font_size", 14)
+	title_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	vb.add_child(title_lbl)
+	
+	var desc_lbl = Label.new()
+	desc_lbl.text = desc
+	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.add_theme_color_override("font_color", Color(0.7, 0.78, 0.88, 0.85))
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(desc_lbl)
+	
+	var val_lbl = Label.new()
+	val_lbl.text = value_txt
+	val_lbl.add_theme_font_size_override("font_size", 15)
+	val_lbl.add_theme_color_override("font_color", val_color)
+	hbox.add_child(val_lbl)
+	
+	return p
+
+# ─── Global Perks & Menu Book Modal ─────────────────────────────────────────
+func _refresh_perks_panel() -> void:
+	if perks_vbox == null: return
+	for c in perks_vbox.get_children():
+		c.queue_free()
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null: return
+
+	# Section 1: Research Perks
+	var sec1 = Label.new()
+	sec1.text = "🔬 RESTAURANT-WIDE RESEARCH PERKS"
+	sec1.add_theme_font_size_override("font_size", 15)
+	sec1.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35, 1.0))
+	perks_vbox.add_child(sec1)
+
+	var perks = gm.get_research_perks() if gm.has_method("get_research_perks") else {}
+	for pid in perks.keys():
+		var perk = perks[pid]
+		perks_vbox.add_child(_create_perk_card(perk, gm))
+
+	# Section 2: Michelin Gourmet Menu Book
+	var sec2 = Label.new()
+	sec2.text = "📖 MICHELIN GOURMET RECIPES & DISHES"
+	sec2.add_theme_font_size_override("font_size", 15)
+	sec2.add_theme_color_override("font_color", Color(0.4, 0.85, 1.0, 1.0))
+	perks_vbox.add_child(sec2)
+
+	for item_id in gm.menu_items.keys():
+		var item = gm.menu_items[item_id]
+		perks_vbox.add_child(_create_menu_perk_card(item, gm))
+
+func _create_perk_card(perk: Dictionary, gm: Node) -> PanelContainer:
+	var p = PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _get_card_style())
+	
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 12)
+	p.add_child(hbox)
+	
+	var icon_lbl = Label.new()
+	icon_lbl.text = perk.get("icon", "💡")
+	icon_lbl.add_theme_font_size_override("font_size", 24)
+	hbox.add_child(icon_lbl)
+	
+	var vb = VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_theme_constant_override("separation", 2)
+	hbox.add_child(vb)
+	
+	var name_lbl = Label.new()
+	name_lbl.text = perk.get("name", "Perk")
+	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	vb.add_child(name_lbl)
+	
+	var eff_lbl = Label.new()
+	eff_lbl.text = "⚡ " + perk.get("effect", "")
+	eff_lbl.add_theme_font_size_override("font_size", 12)
+	eff_lbl.add_theme_color_override("font_color", Color(0.35, 0.95, 0.55, 1.0))
+	vb.add_child(eff_lbl)
+	
+	var desc_lbl = Label.new()
+	desc_lbl.text = perk.get("desc", "")
+	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.add_theme_color_override("font_color", Color(0.7, 0.78, 0.88, 0.85))
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(desc_lbl)
+	
+	var btn = Button.new()
+	btn.custom_minimum_size = Vector2(130, 40)
+	var is_unlocked = perk.get("unlocked", false)
+	var cost = float(perk.get("cost", 500.0))
+	
+	if is_unlocked:
+		btn.text = "✓ RESEARCHED"
+		btn.disabled = true
+		btn.add_theme_stylebox_override("normal", _get_green_btn_style())
+	else:
+		btn.text = "RESEARCH\n(%s)" % _format_money(cost)
+		btn.disabled = gm.cash < cost
+		btn.add_theme_stylebox_override("normal", _get_gold_btn_style())
+		btn.pressed.connect(func():
+			_play_click_sfx()
+			if gm.unlock_perk(perk["id"]):
+				_refresh_perks_panel()
+		)
+	hbox.add_child(btn)
+	return p
+
+func _create_menu_perk_card(item: Dictionary, gm: Node) -> PanelContainer:
+	var p = PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _get_card_style())
+	
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 12)
+	p.add_child(hbox)
+	
+	var icon_lbl = Label.new()
+	icon_lbl.text = item.get("icon", "🍽️")
+	icon_lbl.add_theme_font_size_override("font_size", 24)
+	hbox.add_child(icon_lbl)
+	
+	var vb = VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_theme_constant_override("separation", 2)
+	hbox.add_child(vb)
+	
+	var name_lbl = Label.new()
+	name_lbl.text = item.get("name", "Dish")
+	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	vb.add_child(name_lbl)
+	
+	var rev_lbl = Label.new()
+	rev_lbl.text = "💵 %s / Order • Active on Dining Menus" % _format_money(item.get("price", 45.0))
+	rev_lbl.add_theme_font_size_override("font_size", 12)
+	rev_lbl.add_theme_color_override("font_color", Color(0.35, 0.95, 0.55, 1.0))
+	vb.add_child(rev_lbl)
+	
+	var desc_lbl = Label.new()
+	desc_lbl.text = item.get("desc", "")
+	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.add_theme_color_override("font_color", Color(0.7, 0.78, 0.88, 0.85))
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(desc_lbl)
+	
+	var btn = Button.new()
+	btn.custom_minimum_size = Vector2(130, 40)
+	var is_unlocked = item.get("unlocked", false)
+	var cost = float(item.get("unlock_cost", 100.0))
+	
+	if is_unlocked:
+		btn.text = "✓ SERVING"
+		btn.disabled = true
+		btn.add_theme_stylebox_override("normal", _get_green_btn_style())
+	else:
+		btn.text = "UNLOCK\n(%s)" % _format_money(cost)
+		btn.disabled = gm.cash < cost
+		btn.add_theme_stylebox_override("normal", _get_gold_btn_style())
+		btn.pressed.connect(func():
+			_play_click_sfx()
+			if gm.unlock_dish(item["id"]):
+				_refresh_perks_panel()
+		)
+	hbox.add_child(btn)
+	return p
+
 # ─── World Map Display ──────────────────────────────────────────────────────
 func _refresh_world_map() -> void:
 	if world_map_grid == null:
@@ -1599,6 +2069,10 @@ func _refresh_world_map() -> void:
 		tag_lbl.text = r.get("tagline", "")
 		tag_lbl.add_theme_font_size_override("font_size", 11)
 		tag_lbl.add_theme_color_override("font_color", Color(0.7, 0.82, 0.95, 0.85))
+		if rest_id == "idle_diner":
+			name_lbl.text = "⭐ Restaurant 1: Idle Diner"
+			tag_lbl.text = "Classic 1950s American Diner • 100% Max Level Complete"
+			tag_lbl.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35, 1.0))
 		card_vbox.add_child(tag_lbl)
 
 		# Multiplier & Stats
@@ -1618,7 +2092,7 @@ func _refresh_world_map() -> void:
 		var cost = float(r.get("cost", 0.0))
 
 		if is_active:
-			btn.text = "🟢 CURRENT LOCATION"
+			btn.text = "🟢 RESTAURANT 1 (100% MAX LEVEL)" if rest_id == "idle_diner" else "🟢 CURRENT LOCATION"
 			btn.disabled = true
 			var btn_style = StyleBoxFlat.new()
 			btn_style.bg_color = Color(0.12, 0.45, 0.25, 0.9)
@@ -1687,7 +2161,7 @@ func _refresh_shop_panel() -> void:
 		"cash_small",
 		"💰 Small Tip Jar",
 		"Instant cash infusion for quick kitchen expansions.",
-		"+$500 Cash",
+		"+%s Cash" % _format_money(500.0),
 		"💎 10 GEMS",
 		Color(0.95, 0.65, 0.15, 1.0),
 		gm.gems < 10,
@@ -1698,7 +2172,7 @@ func _refresh_shop_panel() -> void:
 		"cash_medium",
 		"💼 Tycoon Briefcase",
 		"Substantial stack of cash for multi-level dining upgrades.",
-		"+$2,500 Cash",
+		"+%s Cash" % _format_money(2500.0),
 		"💎 40 GEMS",
 		Color(0.95, 0.65, 0.15, 1.0),
 		gm.gems < 40,
@@ -1709,7 +2183,7 @@ func _refresh_shop_panel() -> void:
 		"cash_vault",
 		"🏦 Golden Diner Vault",
 		"Massive bullion reserve to instantly fund any restaurant purchase.",
-		"+$10,000 Cash",
+		"+%s Cash" % _format_money(10000.0),
 		"💎 120 GEMS",
 		Color(0.95, 0.65, 0.15, 1.0),
 		gm.gems < 120,
@@ -1739,13 +2213,30 @@ func _refresh_shop_panel() -> void:
 		gm
 	))
 
-	# 4. Currency Exchange
+	# 4. Permanent Boosters
+	var perm_boosters = gm.get_permanent_boosters() if gm.has_method("get_permanent_boosters") else {}
+	for bid in perm_boosters.keys():
+		var b = perm_boosters[bid]
+		var is_owned = b.get("owned", false)
+		var gem_cost = int(b.get("gem_cost", 50))
+		shop_vbox.add_child(_create_shop_card(
+			bid,
+			b.get("icon", "👑") + " " + b.get("name", "Booster") + " (Permanent)",
+			b.get("desc", ""),
+			"⭐ " + b.get("effect", ""),
+			"✓ OWNED" if is_owned else "💎 %d GEMS" % gem_cost,
+			Color(0.2, 0.75, 0.4, 1.0) if is_owned else Color(0.95, 0.65, 0.15, 1.0),
+			is_owned or gm.gems < gem_cost,
+			gm
+		))
+
+	# 5. Currency Exchange
 	shop_vbox.add_child(_create_shop_card(
 		"buy_gems",
 		"💎 Diamond Stash",
 		"Exchange bistro earnings for precious premium diamonds.",
 		"+50 Gems",
-		"$1,000 CASH",
+		_format_money(1000.0) + " CASH",
 		Color(0.65, 0.45, 0.95, 1.0),
 		gm.cash < 1000.0,
 		gm

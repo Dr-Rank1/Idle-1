@@ -1,0 +1,54 @@
+[gd_scene load_steps=8 format=3 uid="uid://reservbook123"]
+
+[sub_resource type="StandardMaterial3D" id="Material_binder_leather"]
+albedo_color = Color(0.14, 0.18, 0.28, 1)
+roughness = 0.45
+
+[sub_resource type="BoxMesh" id="BoxMesh_binder"]
+material = SubResource("Material_binder_leather")
+size = Vector3(0.44, 0.016, 0.32)
+
+[sub_resource type="StandardMaterial3D" id="Material_paper_cream"]
+albedo_color = Color(0.97, 0.96, 0.91, 1)
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="BoxMesh_page_stack"]
+material = SubResource("Material_paper_cream")
+size = Vector3(0.19, 0.016, 0.28)
+
+[sub_resource type="StandardMaterial3D" id="Material_gold_trim"]
+albedo_color = Color(0.95, 0.78, 0.22, 1)
+metallic = 0.85
+roughness = 0.25
+
+[sub_resource type="BoxMesh" id="BoxMesh_ribbon"]
+material = SubResource("Material_gold_trim")
+size = Vector3(0.014, 0.022, 0.34)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pen"]
+material = SubResource("Material_gold_trim")
+top_radius = 0.007
+bottom_radius = 0.007
+height = 0.24
+
+[node name="ReservationBook" type="Node3D"]
+
+[node name="BinderBase" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008, 0)
+mesh = SubResource("BoxMesh_binder")
+
+[node name="PageStackLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.99863, -0.052336, 0, 0.052336, 0.99863, 0, 0, 0, 1, -0.105, 0.018, 0)
+mesh = SubResource("BoxMesh_page_stack")
+
+[node name="PageStackRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.99863, 0.052336, 0, -0.052336, 0.99863, 0, 0, 0, 1, 0.105, 0.018, 0)
+mesh = SubResource("BoxMesh_page_stack")
+
+[node name="BookmarkRibbon" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.01, 0.02, 0.01)
+mesh = SubResource("BoxMesh_ribbon")
+
+[node name="ExecutivePen" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, 0.24, 0.015, -0.02)
+mesh = SubResource("CylinderMesh_pen")

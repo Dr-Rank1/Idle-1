@@ -59,8 +59,25 @@ var janitor_on_break: bool = false
 var janitor_speed: float = 3.2
 
 var breakroom_routine_timer: float = 28.0
+var sign_board_mat: StandardMaterial3D = null
+
+# Front sliding entrance door controller
+const SLIDE_DOOR_POS: Vector3 = Vector3(-1.5, 0.0, 10.5)
+const SLIDE_DOOR_MAX_OFFSET: float = 0.85
+var _door_open_ratio: float = 0.0
+var _sliding_door_left: Node3D = null
+var _sliding_door_right: Node3D = null
+var _door_pane_left: Node3D = null
+var _door_pane_right: Node3D = null
+var _door_handle_left: Node3D = null
+var _door_handle_right: Node3D = null
+var _door_left_base_x: float = -2.08
+var _door_right_base_x: float = -0.92
+var _handle_left_base_x: float = -1.56
+var _handle_right_base_x: float = -1.44
 
 func _ready() -> void:
+	_init_sliding_doors()
 	waiter_scene = load("res://scenes/waiter.tscn")
 	if floating_cash_scene == null:
 		floating_cash_scene = load("res://scenes/floating_cash.tscn")
@@ -215,6 +232,7 @@ func _setup_custom_textures() -> void:
 			sign_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 			sign_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 			sign_board_node.material_override = sign_mat
+			sign_board_mat = sign_mat
 
 	# Reception & Waiting Room Elegant Cream Cabochon Floor
 	var rec_tile_path = ProjectSettings.globalize_path("res://assets/textures/reception_tiles.png")
@@ -1903,6 +1921,63 @@ func _process(delta: float) -> void:
 	_process_floor_manager(delta)
 	_process_janitor(delta)
 	_process_breakroom_routine(delta)
+	_process_sliding_doors(delta)
+
+	if sign_board_mat != null:
+		var gm = get_node_or_null("/root/GameManager")
+		var m_lvl = gm.get_marketing_level() if gm != null else 1
+		var m_bonus = (m_lvl - 1) * 0.16
+		var pulse = sin(Time.get_ticks_msec() * 0.0035) * 0.75
+		sign_board_mat.emission_energy_multiplier = clamp(4.0 + m_bonus + pulse, 3.2, 9.5)
+
+func _init_sliding_doors() -> void:
+	_sliding_door_left = get_node_or_null("BuildingWalls/SlidingDoorLeft")
+	_sliding_door_right = get_node_or_null("BuildingWalls/SlidingDoorRight")
+	_door_pane_left = get_node_or_null("BuildingWalls/DoorPaneLeft")
+	_door_pane_right = get_node_or_null("BuildingWalls/DoorPaneRight")
+	_door_handle_left = get_node_or_null("BuildingWalls/DoorHandleLeft")
+	_door_handle_right = get_node_or_null("BuildingWalls/DoorHandleRight")
+
+func _process_sliding_doors(delta: float) -> void:
+	if _sliding_door_left == null and _door_pane_left == null:
+		_init_sliding_doors()
+		if _sliding_door_left == null and _door_pane_left == null:
+			return
+
+	var should_open: bool = false
+	# Check approaching / passing customers
+	if customers_container != null:
+		for cust in customers_container.get_children():
+			if is_instance_valid(cust) and cust is Node3D:
+				var dist = cust.global_position.distance_to(SLIDE_DOOR_POS)
+				if dist < 3.2:
+					should_open = true
+					break
+
+	# Check approaching staff or janitor
+	if not should_open:
+		for staff_node in get_tree().get_nodes_in_group("staff"):
+			if is_instance_valid(staff_node):
+				if staff_node.global_position.distance_to(SLIDE_DOOR_POS) < 2.5:
+					should_open = true
+					break
+
+	var target_ratio: float = 1.0 if should_open else 0.0
+	_door_open_ratio = move_toward(_door_open_ratio, target_ratio, delta * 3.2)
+
+	if _sliding_door_left != null:
+		_sliding_door_left.position.x = -SLIDE_DOOR_MAX_OFFSET * _door_open_ratio
+	elif _door_pane_left != null:
+		_door_pane_left.position.x = _door_left_base_x - SLIDE_DOOR_MAX_OFFSET * _door_open_ratio
+		if _door_handle_left != null:
+			_door_handle_left.position.x = _handle_left_base_x - SLIDE_DOOR_MAX_OFFSET * _door_open_ratio
+
+	if _sliding_door_right != null:
+		_sliding_door_right.position.x = SLIDE_DOOR_MAX_OFFSET * _door_open_ratio
+	elif _door_pane_right != null:
+		_door_pane_right.position.x = _door_right_base_x + SLIDE_DOOR_MAX_OFFSET * _door_open_ratio
+		if _door_handle_right != null:
+			_door_handle_right.position.x = _handle_right_base_x + SLIDE_DOOR_MAX_OFFSET * _door_open_ratio
 
 func _setup_active_service_sectors() -> void:
 	lounge_seats.clear()
@@ -2648,4 +2723,50 @@ func _apply_material_to_node(node: Node, mat: Material) -> void:
 		node.material_override = mat
 	for child in node.get_children():
 		_apply_material_to_node(child, mat)
+
+func spawn_vip_investor(spawn_pos: Vector3) -> Node3D:
+	if customer_scene == null:
+		customer_scene = load("res://scenes/customer.tscn")
+	if customer_scene == null:
+		return null
+		
+	var cust = customer_scene.instantiate()
+	customers_container.add_child(cust)
+	cust.global_position = spawn_pos
+	if cust.has_method("set_as_vip_investor"):
+		cust.set_as_vip_investor(true)
+	
+	var waypoints: Array[Vector3] = [
+		Vector3(-6.0, 0.0, 16.5),
+		Vector3(-1.5, 0.0, 16.5),
+		Vector3(-1.5, 0.0, 13.8),
+		Vector3(-1.5, 0.0, 12.0),
+		cust.DOOR_POS,
+		cust.HOST_POS
+	]
+	
+	var avail_tables = _get_available_tables()
+	if avail_tables.size() > 0:
+		var target_table = avail_tables[0]
+		for t in avail_tables:
+			if t.table_id in ["table_10", "table_11", "table_12", "table_7", "table_8", "table_9"]:
+				target_table = t
+				break
+		target_table.occupy(cust)
+		cust.assigned_table_id = target_table.table_id
+		cust.table_ref = target_table
+		cust.seat_target_pos = target_table.get_seat_position()
+		cust.seat_target_rot_y = target_table.get_seat_rotation_y()
+		cust.seat_identifier = target_table.table_id
+		cust.order_placed.connect(_on_customer_order_placed)
+		cust.current_state = cust.State.WALKING_TO_HOST
+		waypoints.append(cust.AISLE_POS)
+		waypoints.append(target_table.get_seat_position())
+		cust.set_waypoints(waypoints)
+	else:
+		cust.current_state = cust.State.WALKING_TO_HOST
+		cust.set_waypoints(waypoints)
+		
+	return cust
+
 

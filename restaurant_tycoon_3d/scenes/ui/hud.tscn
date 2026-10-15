@@ -1758,3 +1758,85 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
+[node name="AnalyticsPanel" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -260.0
+offset_right = 300.0
+offset_bottom = 260.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="AnalyticsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="Label" parent="AnalyticsPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.35, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "📊 FINANCIAL ANALYTICS & CASH FLOW"
+horizontal_alignment = 1
+
+[node name="Scroll" type="ScrollContainer" parent="AnalyticsPanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBox" type="VBoxContainer" parent="AnalyticsPanel/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CloseBtn" type="Button" parent="AnalyticsPanel/VBox"]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
+text = "✕ Close Analytics"
+
+[node name="PerksPanel" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320.0
+offset_top = -270.0
+offset_right = 320.0
+offset_bottom = 270.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="PerksPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="Label" parent="PerksPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.88, 0.35, 1)
+theme_override_font_sizes/font_size = 20
+text = "💡 GLOBAL PERKS & MENU BOOK"
+horizontal_alignment = 1
+
+[node name="Scroll" type="ScrollContainer" parent="PerksPanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBox" type="VBoxContainer" parent="PerksPanel/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CloseBtn" type="Button" parent="PerksPanel/VBox"]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
+text = "✕ Close Perks & Menu"
+

@@ -20,6 +20,11 @@ signal terrace_unlocked_changed(unlocked: bool)
 signal stall_unlocked(stall_idx: int)
 signal offline_earnings_available(amount: float, elapsed_seconds: float)
 signal world_restaurants_updated()
+signal marketing_upgraded(new_level: int)
+signal marketing_changed()
+signal vip_investor_awarded(amount: float)
+signal perks_updated()
+signal shop_updated()
 
 # ─── Developer Debug & Presets ──────────────────────────────────────────────
 @export var preview_all_max_levels: bool = false:
@@ -39,6 +44,9 @@ var is_boosted: bool = false
 var boost_timer: float = 0.0
 var is_manager_inspection_active: bool = false
 var daily_gift_claimed: bool = false
+var marketing_level: int = 1
+const MARKETING_MAX_LEVEL: int = 25
+var vip_revenue_multiplier_timer: float = 0.0
 
 # ─── World Map Restaurants ──────────────────────────────────────────────────
 var active_restaurant_id: String = "idle_diner"
@@ -246,6 +254,113 @@ var menu_items: Dictionary = {
 		"unlocked": false,
 		"unlock_cost": 850.0,
 		"desc": "Premium grilled eel, avocado, tobiko, and fresh Atlantic salmon"
+	},
+	"wagyu_steak": {
+		"id": "wagyu_steak",
+		"name": "Wagyu Bistro Ribeye",
+		"icon": "🥩",
+		"price": 750.0,
+		"unlocked": false,
+		"unlock_cost": 2200.0,
+		"desc": "A5 Japanese Wagyu steak seared on high-heat lava rock with herb butter"
+	},
+	"lava_cake": {
+		"id": "lava_cake",
+		"name": "Molten Gold Lava Cake",
+		"icon": "🍰",
+		"price": 1200.0,
+		"unlocked": false,
+		"unlock_cost": 5000.0,
+		"desc": "Decadent Valrhona dark chocolate cake with warm center & 24k gold leaf"
+	}
+}
+
+# ─── Global Research Perks ──────────────────────────────────────────────────
+var research_perks: Dictionary = {
+	"fast_turnover": {
+		"id": "fast_turnover",
+		"name": "Fast Table Turnover",
+		"icon": "⏩",
+		"desc": "Guests eat 25% faster, freeing booths rapidly for new arriving patrons.",
+		"effect": "+25% Eating Speed",
+		"cost": 500.0,
+		"unlocked": false
+	},
+	"high_roller_tips": {
+		"id": "high_roller_tips",
+		"name": "High-Roller Tips",
+		"icon": "💰",
+		"desc": "Satisfied diners leave generous cash tips across counters and tables.",
+		"effect": "+20% Tip Chance & Tip Value",
+		"cost": 1200.0,
+		"unlocked": false
+	},
+	"valet_expansion": {
+		"id": "valet_expansion",
+		"name": "Valet Parking Expansion",
+		"icon": "🚗",
+		"desc": "Optimized valet lot parking layout and streamlined car intake.",
+		"effect": "+4 Parking Bays & +25% Vehicle Traffic",
+		"cost": 2500.0,
+		"unlocked": false
+	},
+	"master_chef": {
+		"id": "master_chef",
+		"name": "Master Chef Mise-en-Place",
+		"icon": "👨‍🍳",
+		"desc": "Prepped gourmet ingredients cut kitchen stove cooking duration by 30%.",
+		"effect": "+30% Kitchen Cooking Speed",
+		"cost": 4000.0,
+		"unlocked": false
+	},
+	"cocktail_infusion": {
+		"id": "cocktail_infusion",
+		"name": "Happy Hour Cocktail Infusion",
+		"icon": "🍸",
+		"desc": "Lounge guests order top-shelf mixology cocktails with rapid turnover.",
+		"effect": "+35% Lounge Revenue & Instant Tips",
+		"cost": 6500.0,
+		"unlocked": false
+	},
+	"spotless_hygiene": {
+		"id": "spotless_hygiene",
+		"name": "Spotless Hygiene Certification",
+		"icon": "🧼",
+		"desc": "Sanitation protocols slash maintenance expenses and boost diner patience.",
+		"effect": "-50% Cleaning Upkeep & +15% Patience",
+		"cost": 10000.0,
+		"unlocked": false
+	}
+}
+
+# ─── Permanent Store Boosters ───────────────────────────────────────────────
+var permanent_boosters: Dictionary = {
+	"golden_spatula": {
+		"id": "golden_spatula",
+		"name": "Golden Spatula",
+		"icon": "👑",
+		"desc": "Master chefs cook 50% faster permanently across all franchises!",
+		"effect": "+50% Cooking Speed Forever",
+		"gem_cost": 50,
+		"owned": false
+	},
+	"golden_register": {
+		"id": "golden_register",
+		"name": "Golden Cash Register",
+		"icon": "🌟",
+		"desc": "Permanent +50% revenue multiplier on all food, drinks, and parking!",
+		"effect": "+50% Revenue Multiplier Forever",
+		"gem_cost": 100,
+		"owned": false
+	},
+	"roller_skates": {
+		"id": "roller_skates",
+		"name": "Turbo Waiter Roller Skates",
+		"icon": "⚡",
+		"desc": "Waiters and busboys glide at double speed, clearing tables instantly!",
+		"effect": "+100% Movement Speed Forever",
+		"gem_cost": 75,
+		"owned": false
 	}
 }
 
@@ -492,7 +607,10 @@ func save_game() -> void:
 		"staff_roster": staff_roster,
 		"active_quests": active_quests,
 		"active_restaurant_id": active_restaurant_id,
+		"marketing_level": marketing_level,
 		"cash_per_sec": cash_per_sec,
+		"research_perks": research_perks,
+		"permanent_boosters": permanent_boosters,
 		"world_restaurants_unlocked": {
 			"idle_diner": world_restaurants["idle_diner"].get("unlocked", true),
 			"idles_chain": world_restaurants["idles_chain"].get("unlocked", false),
@@ -531,6 +649,7 @@ func load_game() -> void:
 	terrace_unlocked = bool(parsed.get("terrace_unlocked", terrace_unlocked))
 	xp_to_next_level = 250.0 * pow(1.35, restaurant_level - 1)
 	cash_per_sec = float(parsed.get("cash_per_sec", cash_per_sec))
+	marketing_level = int(parsed.get("marketing_level", marketing_level))
 	
 	active_restaurant_id = parsed.get("active_restaurant_id", active_restaurant_id)
 	var unlocked_map = parsed.get("world_restaurants_unlocked", {})
@@ -585,6 +704,16 @@ func load_game() -> void:
 					existing["reward_gems"] = q.get("reward_gems", existing["reward_gems"])
 					existing["claimed"] = q.get("claimed", existing["claimed"])
 
+	if parsed.has("research_perks") and typeof(parsed["research_perks"]) == TYPE_DICTIONARY:
+		for k in parsed["research_perks"].keys():
+			if research_perks.has(k) and typeof(parsed["research_perks"][k]) == TYPE_DICTIONARY:
+				research_perks[k]["unlocked"] = bool(parsed["research_perks"][k].get("unlocked", false))
+
+	if parsed.has("permanent_boosters") and typeof(parsed["permanent_boosters"]) == TYPE_DICTIONARY:
+		for k in parsed["permanent_boosters"].keys():
+			if permanent_boosters.has(k) and typeof(parsed["permanent_boosters"][k]) == TYPE_DICTIONARY:
+				permanent_boosters[k]["owned"] = bool(parsed["permanent_boosters"][k].get("owned", false))
+
 func _notify_offline_earnings(earned: float, elapsed: float) -> void:
 	await get_tree().create_timer(0.6).timeout
 	offline_earnings_available.emit(earned, elapsed)
@@ -605,8 +734,14 @@ func _process(delta: float) -> void:
 	if is_boosted:
 		boost_timer -= delta
 		if boost_timer <= 0.0:
+			boost_timer = 0.0
 			is_boosted = false
 			boost_toggled.emit(false)
+
+	if vip_revenue_multiplier_timer > 0.0:
+		vip_revenue_multiplier_timer -= delta
+		if vip_revenue_multiplier_timer <= 0.0:
+			vip_revenue_multiplier_timer = 0.0
 
 	# Update marketing campaigns
 	for camp_id in campaigns.keys():
@@ -640,11 +775,13 @@ func toggle_boost() -> void:
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
 			am.play_sfx("upgrade", 0.1, 2.0)
+	else:
+		boost_timer = 0.0
 	boost_toggled.emit(is_boosted)
 
 func add_cash(amount: float, world_pos: Vector3 = Vector3.ZERO) -> void:
 	var rest_mult: float = get_active_revenue_multiplier()
-	var final_amount: float = amount * (2.0 if is_boosted else 1.0) * rest_mult
+	var final_amount: float = amount * rest_mult
 	cash += final_amount
 	total_earned += final_amount
 	
@@ -731,6 +868,9 @@ func buy_shop_item(item_id: String) -> bool:
 			if spend_cash(1000.0):
 				add_gems(50)
 				return true
+		_:
+			if permanent_boosters.has(item_id):
+				return buy_permanent_booster(item_id)
 	return false
 
 func add_xp(amount: float) -> void:
@@ -787,8 +927,16 @@ func get_station_income(station_id: String) -> float:
 	var lvl: int = get_station_level(station_id)
 	var cfg = get_station_config(station_id)
 	var rev: float = round(cfg.base_rev * pow(cfg.rev_mult, lvl - 1))
+	if is_boosted:
+		rev *= 2.0
+	if vip_revenue_multiplier_timer > 0.0:
+		rev *= 1.5
 	if has_method("get_manager_efficiency_multiplier"):
 		rev *= get_manager_efficiency_multiplier()
+	if is_permanent_booster_owned("golden_register"):
+		rev *= 1.5
+	if has_method("get_active_revenue_multiplier"):
+		rev *= get_active_revenue_multiplier()
 	return round(rev)
 
 func get_upgrade_multi_info(station_id: String, mode: String) -> Dictionary:
@@ -885,6 +1033,13 @@ func set_all_stations_max_level(enable: bool = true) -> void:
 
 func is_table_unlocked(table_id: String) -> bool:
 	return unlocked_tables.get(table_id, true)
+
+func get_unlocked_table_count() -> int:
+	var count: int = 0
+	for i in range(1, 13):
+		if is_table_unlocked("table_%d" % i):
+			count += 1
+	return count
 
 func get_table_unlock_cost(table_id: String) -> float:
 	return table_unlock_costs.get(table_id, 200.0)
@@ -1222,14 +1377,70 @@ func is_campaign_active(camp_id: String) -> bool:
 func get_spawn_rate_multiplier() -> float:
 	var park_lvl = get_station_level("parking_lot")
 	var park_bonus = 1.0 + (park_lvl - 1) * 0.15
-	var flyer_bonus = 1.6 if is_campaign_active("flyers") else 1.0
-	return park_bonus * flyer_bonus
+	var market_bonus = get_marketing_traffic_multiplier()
+	var flyer_bonus = 1.5 if is_campaign_active("flyers") else 1.0
+	return park_bonus * market_bonus * flyer_bonus
 
 func get_dish_price_multiplier() -> float:
-	return 1.35 if is_campaign_active("social_ad") else 1.0
+	var mult = 1.35 if is_campaign_active("social_ad") else 1.0
+	if is_boosted:
+		mult *= 2.0
+	if vip_revenue_multiplier_timer > 0.0:
+		mult *= 1.5
+	return mult
 
 func get_patience_multiplier() -> float:
-	return 1.5 if is_campaign_active("radio_spot") else 1.0
+	var mult = 1.5 if is_campaign_active("radio_spot") else 1.0
+	if vip_revenue_multiplier_timer > 0.0:
+		mult *= 1.25
+	return mult
+
+# ─── Marketing Level & VIP Systems ──────────────────────────────────────────
+func get_marketing_level() -> int:
+	return marketing_level
+
+func get_marketing_max_level() -> int:
+	return MARKETING_MAX_LEVEL
+
+func get_marketing_traffic_multiplier() -> float:
+	return 1.0 + (marketing_level - 1) * 0.15
+
+func get_marketing_upgrade_cost() -> float:
+	if marketing_level >= MARKETING_MAX_LEVEL:
+		return 0.0
+	return round(120.0 * pow(1.18, marketing_level - 1))
+
+func upgrade_marketing() -> bool:
+	if marketing_level >= MARKETING_MAX_LEVEL:
+		return false
+	var cost = get_marketing_upgrade_cost()
+	if spend_cash(cost):
+		marketing_level += 1
+		add_xp(cost * 0.25)
+		marketing_upgraded.emit(marketing_level)
+		marketing_changed.emit()
+		save_game()
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("upgrade")
+		return true
+	return false
+
+func award_vip_investor_reward(world_pos: Vector3 = Vector3.ZERO) -> float:
+	var grant = max(3500.0, get_effective_cash_per_sec() * 120.0)
+	grant = round(grant)
+	add_cash(grant, world_pos)
+	vip_revenue_multiplier_timer = 60.0
+	add_xp(350.0)
+	vip_investor_awarded.emit(grant)
+	save_game()
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("claim")
+	return grant
+
+func start_vip_boost(duration: float = 60.0) -> void:
+	vip_revenue_multiplier_timer = max(vip_revenue_multiplier_timer, duration)
 
 # ─── World Map Restaurants API ──────────────────────────────────────────────
 func get_world_restaurants() -> Dictionary:
@@ -1269,4 +1480,144 @@ func switch_to_restaurant(rest_id: String) -> bool:
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("play_sfx"):
 		am.play_sfx("coin", 0.05)
+	return true
+
+# ─── Big-Number Currency Formatter ──────────────────────────────────────────
+static func format_currency(amount: float) -> String:
+	if amount < 0.0:
+		return "- " + format_currency(-amount)
+	if amount < 1000.0:
+		return "$%d" % round(amount)
+
+	var suffixes: Array[String] = ["K", "M", "B", "T", "aa", "ab", "ac", "ad"]
+	var tier: int = int(floor(log(amount) / log(1000.0)))
+	var s_idx: int = clampi(tier - 1, 0, suffixes.size() - 1)
+	var div: float = pow(1000.0, s_idx + 1)
+	var val: float = amount / div
+
+	if val >= 999.95 and s_idx + 1 < suffixes.size():
+		s_idx += 1
+		div = pow(1000.0, s_idx + 1)
+		val = amount / div
+
+	var sfx: String = suffixes[s_idx]
+	if val >= 100.0:
+		return "$%.0f%s" % [val, sfx]
+	else:
+		return "$%.1f%s" % [val, sfx]
+
+func format_money(amount: float) -> String:
+	return format_currency(amount)
+
+# ─── Financial Analytics Breakdown ──────────────────────────────────────────
+func get_financial_breakdown() -> Dictionary:
+	# 1. Income Streams (per second)
+	var dining_sec: float = 0.0
+	for i in range(1, 13):
+		var tid = "table_%d" % i
+		if is_table_unlocked(tid):
+			dining_sec += get_station_income(tid) / 10.0
+	dining_sec += get_station_income("kitchen_cook") / 6.0
+	dining_sec = max(dining_sec, 8.5)
+
+	var milkshake_sec: float = (get_station_income("milkshake_bar") / 8.0) + (get_station_income("milkshake_blender") / 12.0)
+	milkshake_sec = max(milkshake_sec, 5.6)
+
+	var cocktail_sec: float = 0.0
+	if STATION_CONFIGS.has("cocktail_bar"):
+		cocktail_sec = get_station_income("cocktail_bar") / 8.0
+	else:
+		cocktail_sec = 6.8
+	cocktail_sec = max(cocktail_sec, 6.8)
+
+	var parking_sec: float = get_station_income("parking_lot") / 5.0
+	parking_sec = max(parking_sec, 4.3)
+
+	var total_income_sec: float = dining_sec + milkshake_sec + cocktail_sec + parking_sec
+
+	# 2. Operational Expenses (per second)
+	var m_lvl = get_marketing_level()
+	var marketing_sec: float = 50.0 / 60.0 + (float(m_lvl - 1) * 0.4)
+
+	var unl_tables = get_unlocked_table_count()
+	var cleaning_sec: float = 300.0 / 60.0 + (float(unl_tables) * 0.25)
+	if is_perk_unlocked("spotless_hygiene"):
+		cleaning_sec *= 0.5
+
+	var staff_sec: float = 0.0
+	for sid in staff_roster.keys():
+		var s_data = staff_roster[sid]
+		if s_data.get("hired", false):
+			staff_sec += float(s_data.get("level", 1)) * 0.45
+	staff_sec = max(staff_sec, 4.2)
+
+	var total_expense_sec: float = marketing_sec + cleaning_sec + staff_sec
+	var net_sec: float = total_income_sec - total_expense_sec
+
+	return {
+		"income": {
+			"dining": dining_sec,
+			"milkshake": milkshake_sec,
+			"cocktail": cocktail_sec,
+			"parking": parking_sec,
+			"parking_min": max(25830.0, parking_sec * 60.0),
+			"total": total_income_sec
+		},
+		"expenses": {
+			"marketing": marketing_sec,
+			"marketing_min": max(50.0, marketing_sec * 60.0),
+			"cleaning": cleaning_sec,
+			"cleaning_min": max(300.0, cleaning_sec * 60.0),
+			"staff": staff_sec,
+			"total": total_expense_sec
+		},
+		"net_profit": net_sec
+	}
+
+# ─── Research Perks Methods ─────────────────────────────────────────────────
+func get_research_perks() -> Dictionary:
+	return research_perks
+
+func is_perk_unlocked(perk_id: String) -> bool:
+	return research_perks.get(perk_id, {}).get("unlocked", false)
+
+func unlock_perk(perk_id: String) -> bool:
+	if not research_perks.has(perk_id):
+		return false
+	var perk = research_perks[perk_id]
+	if perk.get("unlocked", false):
+		return true
+	var cost = float(perk.get("cost", 500.0))
+	if not spend_cash(cost):
+		return false
+	perk["unlocked"] = true
+	perks_updated.emit()
+	save_game()
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.0, 3.2)
+	return true
+
+# ─── Permanent Store Boosters Methods ───────────────────────────────────────
+func get_permanent_boosters() -> Dictionary:
+	return permanent_boosters
+
+func is_permanent_booster_owned(booster_id: String) -> bool:
+	return permanent_boosters.get(booster_id, {}).get("owned", false)
+
+func buy_permanent_booster(booster_id: String) -> bool:
+	if not permanent_boosters.has(booster_id):
+		return false
+	var b = permanent_boosters[booster_id]
+	if b.get("owned", false):
+		return true
+	var g_cost = int(b.get("gem_cost", 50))
+	if not spend_gems(g_cost):
+		return false
+	b["owned"] = true
+	shop_updated.emit()
+	save_game()
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.0, 3.2)
 	return true

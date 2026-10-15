@@ -86,6 +86,11 @@ var is_waiting_for_food: bool = false
 var ordered_dish: Dictionary = {}
 var is_vip_critic: bool = false
 var critic_badge: Label3D = null
+var is_vip_investor: bool = false
+var investor_badge: Label3D = null
+var briefcase_prop: Node3D = null
+var vip_reward_claimed: bool = false
+signal vip_reward_awarded(amount: float)
 
 # Landmark Waypoints for clean dining hall entrance navigation (matching res1_30s.jpg & res1_08s.jpg)
 const DOOR_POS: Vector3 = Vector3(-1.5, 0.0, 10.5)
@@ -134,6 +139,7 @@ func _ready() -> void:
 	
 	if radial_ring != null and radial_ring.mesh != null and radial_ring.mesh.material != null:
 		radial_ring.material_override = radial_ring.mesh.material.duplicate()
+	input_event.connect(_on_input_event)
 
 func _setup_bubble_bg() -> void:
 	if bubble_bg == null:
@@ -146,6 +152,10 @@ func _setup_bubble_bg() -> void:
 	if _bubble_texture != null:
 		bubble_bg.texture = _bubble_texture
 
+func _on_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		if is_vip_investor:
+			claim_vip_investor_reward()
 
 func set_as_critic(is_critic: bool = true) -> void:
 	is_vip_critic = is_critic
@@ -164,6 +174,100 @@ func set_as_critic(is_critic: bool = true) -> void:
 			critic_badge.outline_modulate = Color(0.25, 0.08, 0.0, 0.95)
 			critic_badge.position = Vector3(0, 1.85, 0)
 			add_child(critic_badge)
+
+func set_as_vip_investor(is_investor: bool = true) -> void:
+	is_vip_investor = is_investor
+	if is_vip_investor:
+		max_patience = 45.0
+		current_patience = 45.0
+		move_speed = 3.4
+		input_ray_pickable = true
+		
+		# 1. VIP Investor Billboard Badge
+		if investor_badge == null:
+			investor_badge = Label3D.new()
+			investor_badge.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			investor_badge.double_sided = false
+			investor_badge.font_size = 20
+			investor_badge.outline_size = 6
+			investor_badge.text = "💼 VIP INVESTOR • TAP OR SERVE!"
+			investor_badge.modulate = Color(1.0, 0.88, 0.2, 1.0)
+			investor_badge.outline_modulate = Color(0.25, 0.08, 0.0, 0.95)
+			investor_badge.position = Vector3(0, 1.95, 0)
+			add_child(investor_badge)
+			
+		# 2. Golden Briefcase Prop
+		if mesh_root == null:
+			mesh_root = get_node_or_null("MeshRoot")
+		var target_parent = mesh_root if mesh_root != null else self
+		if briefcase_prop == null:
+			briefcase_prop = Node3D.new()
+			briefcase_prop.name = "GoldenBriefcase"
+			briefcase_prop.position = Vector3(0.38, 0.45, 0.0)
+			
+			var case_mesh = MeshInstance3D.new()
+			var bm = BoxMesh.new()
+			bm.size = Vector3(0.12, 0.28, 0.38)
+			var gold_mat = StandardMaterial3D.new()
+			gold_mat.albedo_color = Color(1.0, 0.82, 0.18, 1.0)
+			gold_mat.metallic = 0.92
+			gold_mat.roughness = 0.22
+			gold_mat.emission_enabled = true
+			gold_mat.emission = Color(1.0, 0.78, 0.15, 1.0)
+			gold_mat.emission_energy_multiplier = 0.65
+			case_mesh.mesh = bm
+			case_mesh.material_override = gold_mat
+			briefcase_prop.add_child(case_mesh)
+			
+			var handle_mesh = MeshInstance3D.new()
+			var hm = BoxMesh.new()
+			hm.size = Vector3(0.04, 0.08, 0.14)
+			var h_mat = StandardMaterial3D.new()
+			h_mat.albedo_color = Color(0.2, 0.2, 0.25, 1.0)
+			handle_mesh.mesh = hm
+			handle_mesh.material_override = h_mat
+			handle_mesh.position = Vector3(0, 0.16, 0)
+			briefcase_prop.add_child(handle_mesh)
+			
+			target_parent.add_child(briefcase_prop)
+
+func claim_vip_investor_reward() -> float:
+	if not is_vip_investor or vip_reward_claimed:
+		return 0.0
+	vip_reward_claimed = true
+	
+	var gm = get_node_or_null("/root/GameManager")
+	var grant: float = 3500.0
+	if gm != null and gm.has_method("award_vip_investor_reward"):
+		grant = gm.award_vip_investor_reward(global_position + Vector3(0, 1.5, 0))
+	elif gm != null:
+		gm.add_cash(grant, global_position + Vector3(0, 1.5, 0))
+		if "vip_revenue_multiplier_timer" in gm:
+			gm.vip_revenue_multiplier_timer = 60.0
+			
+	if investor_badge != null:
+		investor_badge.text = "💰 $3,500 VIP GRANT FUNDED! 🚀"
+		investor_badge.modulate = Color(0.3, 1.0, 0.5, 1.0)
+		if is_inside_tree():
+			var tw = create_tween()
+			tw.tween_property(investor_badge, "scale", Vector3(1.3, 1.3, 1.3), 0.2)
+			tw.tween_property(investor_badge, "scale", Vector3.ONE, 0.25)
+		
+	if celebration_particles != null:
+		celebration_particles.restart()
+		
+	set_bubble_text("💵 +$3,500")
+	_play_anim("emote-yes")
+	vip_reward_awarded.emit(grant)
+	
+	if get_tree() != null:
+		get_tree().create_timer(1.8).timeout.connect(func():
+			if is_instance_valid(self):
+				if current_state == State.WALKING_TO_HOST or current_state == State.AT_HOST:
+					current_state = State.WALKING_TO_EXIT
+					set_waypoints([DOOR_POS, Vector3(-1.5, 0.0, 13.8), Vector3(-1.5, 0.0, 16.5), Vector3(-22.0, 0.0, 16.5)])
+		, CONNECT_ONE_SHOT)
+	return grant
 
 func _setup_random_character() -> void:
 	var model_path = CHARACTER_MODELS.pick_random()
@@ -600,7 +704,8 @@ func _on_timer_complete() -> void:
 			if gm != null and gm.has_method("get_dish_price_multiplier"):
 				price_mult = gm.get_dish_price_multiplier()
 			var total_revenue: float = (dish_price * price_mult) + table_bonus
-			set_bubble_text("💵 +$%d" % round(total_revenue))
+			var form_rev = gm.format_money(total_revenue) if gm != null and gm.has_method("format_money") else ("$%d" % round(total_revenue))
+			set_bubble_text("💵 +" + form_rev)
 			
 			if gm != null:
 				gm.add_cash(total_revenue, global_position + Vector3(0, 1.8, 0))
@@ -633,11 +738,27 @@ func on_food_delivered() -> void:
 		patience_root.visible = false
 		
 	var gm = get_node_or_null("/root/GameManager")
-	if is_vip_critic:
+	if is_vip_investor:
+		var grant = 5000.0
+		if gm != null:
+			gm.add_cash(grant, global_position + Vector3(0, 2.2, 0))
+			gm.award_critic_review(true, grant)
+			if gm.has_method("start_vip_boost"):
+				gm.start_vip_boost(60.0)
+		var grant_str = gm.format_money(grant) if gm != null and gm.has_method("format_money") else ("$%d" % round(grant))
+		_spawn_floating_text("💼 VIP INVESTOR FEAST! +" + grant_str + " & BOOST! 🚀", Color(1.0, 0.88, 0.2, 1.0))
+		set_bubble_text("💼⭐⭐⭐⭐⭐")
+		if celebration_particles != null:
+			celebration_particles.restart()
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("upgrade", 0.0, 4.0)
+	elif is_vip_critic:
 		var bounty: float = ordered_dish.get("price", 80.0) * 3.0
 		if gm != null:
 			gm.award_critic_review(true, bounty)
-		_spawn_floating_text("⭐⭐⭐⭐⭐ 5-STAR CRITIC REVIEW! +$%d ⭐" % bounty, Color(1.0, 0.88, 0.2, 1.0))
+		var bounty_str = gm.format_money(bounty) if gm != null and gm.has_method("format_money") else ("$%d" % round(bounty))
+		_spawn_floating_text("⭐⭐⭐⭐⭐ 5-STAR CRITIC REVIEW! +" + bounty_str + " ⭐", Color(1.0, 0.88, 0.2, 1.0))
 		set_bubble_text("⭐⭐⭐⭐⭐")
 		if celebration_particles != null:
 			celebration_particles.restart()
@@ -648,7 +769,8 @@ func on_food_delivered() -> void:
 		var tip: float = round(ordered_dish.get("price", 45.0) * 0.30)
 		if gm != null:
 			gm.add_cash(tip, global_position + Vector3(0, 2.2, 0))
-		_spawn_floating_text("+$%d Speedy Tip! ⚡" % tip, Color(0.35, 1.0, 0.5, 1.0))
+		var tip_str = gm.format_money(tip) if gm != null and gm.has_method("format_money") else ("$%d" % round(tip))
+		_spawn_floating_text("+" + tip_str + " Speedy Tip! ⚡", Color(0.35, 1.0, 0.5, 1.0))
 		set_bubble_badge("fork_knife")
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
@@ -657,7 +779,10 @@ func on_food_delivered() -> void:
 		set_bubble_badge("fork_knife")
 		
 	current_state = State.EATING
-	state_timer = 3.2
+	var eat_duration: float = 3.2
+	if gm != null and gm.has_method("is_perk_unlocked") and gm.is_perk_unlocked("fast_turnover"):
+		eat_duration *= 0.75
+	state_timer = eat_duration
 	_play_anim("sit")
 	if table_ref != null and table_ref.has_method("serve_food"):
 		var d_id = ordered_dish.get("id", "burger")
@@ -744,7 +869,8 @@ func on_lounge_drink_served(drink_id: String = "wine_merlot") -> void:
 	var price: float = ordered_dish.get("price", 42.0)
 	var price_mult: float = gm.get_dish_price_multiplier() if gm != null and gm.has_method("get_dish_price_multiplier") else 1.0
 	var total_revenue: float = price * price_mult
-	set_bubble_text("💵 +$%d" % round(total_revenue))
+	var form_rev = gm.format_money(total_revenue) if gm != null and gm.has_method("format_money") else ("$%d" % round(total_revenue))
+	set_bubble_text("💵 +" + form_rev)
 	
 	lounge_drink_finished.emit(self, seat_identifier)
 	
@@ -781,7 +907,8 @@ func on_milkshake_served(treat_id: String = "sundae") -> void:
 	var station_bonus: float = gm.get_station_income("milkshake_bar") if gm != null else 45.0
 	var treat_price: float = ordered_dish.get("price", 48.0)
 	var total_revenue: float = station_bonus + treat_price
-	set_bubble_text("💵 +$%d" % round(total_revenue))
+	var form_diner = gm.format_money(total_revenue) if gm != null and gm.has_method("format_money") else ("$%d" % round(total_revenue))
+	set_bubble_text("💵 +" + form_diner)
 	
 	diner_treat_finished.emit(self, seat_identifier)
 	

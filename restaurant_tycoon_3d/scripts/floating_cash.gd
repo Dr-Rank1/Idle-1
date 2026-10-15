@@ -1,7 +1,9 @@
 extends Label3D
 
 func setup(amount: float, start_pos: Vector3) -> void:
-	text = "💵 +$%d" % round(amount)
+	var gm = Engine.get_main_loop().root.get_node_or_null("GameManager") if Engine.get_main_loop() else null
+	var formatted: String = gm.format_money(amount) if gm != null and gm.has_method("format_money") else ("$%d" % round(amount))
+	text = "💵 +" + formatted
 	position = start_pos
 	modulate = Color(0.3, 1.0, 0.52, 1.0)
 	font_size = 50
