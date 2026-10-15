@@ -149,6 +149,12 @@ func focus_station(station_id: String) -> void:
 	else:
 		focus_zone("dining", true)
 
+func focus_target_node(target: Node3D, duration: float = 0.45) -> void:
+	if target != null and is_instance_valid(target):
+		var wp = target.global_position
+		var cam_pos = Vector3(wp.x + 18.37, 15.0, wp.z + 18.37)
+		pan_to_position(cam_pos, duration, false)
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_MIDDLE or event.button_index == MOUSE_BUTTON_RIGHT:

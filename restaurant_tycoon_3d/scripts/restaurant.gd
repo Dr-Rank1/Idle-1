@@ -92,6 +92,8 @@ func _ready() -> void:
 		
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
+		if gm.has_method("register_restaurant"):
+			gm.register_restaurant(self)
 		gm.spawn_floating_cash.connect(_on_spawn_floating_cash)
 		gm.staff_updated.connect(_on_staff_updated)
 		gm.station_upgraded.connect(_on_station_upgraded)
@@ -1792,10 +1794,11 @@ func _process_janitor(delta: float) -> void:
 		if janitor_patrol_timer <= 0.0:
 			janitor_patrol_timer = randf_range(12.0, 20.0)
 			var dirty_tbl: Node3D = null
-			for tbl in tables_container.get_children():
-				if tbl.get("is_dirty") == true:
-					dirty_tbl = tbl
-					break
+			if tables_container != null:
+				for tbl in tables_container.get_children():
+					if tbl.get("is_dirty") == true:
+						dirty_tbl = tbl
+						break
 			if dirty_tbl != null:
 				if janitor_status_label != null:
 					janitor_status_label.text = "🧹 Sanitizing Table..."
@@ -1928,6 +1931,14 @@ func _process(delta: float) -> void:
 	_process_janitor(delta)
 	_process_breakroom_routine(delta)
 	_process_sliding_doors(delta)
+
+	# VIP Auto-Collector: automatically sweeps up floating cash stacks without tapping
+	var gm_ref = get_node_or_null("/root/GameManager")
+	if gm_ref != null and gm_ref.has_method("is_vip_auto_collector_active") and gm_ref.is_vip_auto_collector_active():
+		if tables_container != null:
+			for t in tables_container.get_children():
+				if is_instance_valid(t) and t.has_method("has_visible_cash_stack") and t.has_visible_cash_stack():
+					t.collect_booth_cash()
 
 	if sign_board_mat != null:
 		var gm = get_node_or_null("/root/GameManager")
@@ -2137,6 +2148,8 @@ func _get_tables_targeted_by_waiters() -> Array[Node3D]:
 	return targeted
 
 func _find_unclaimed_dirty_table(targeted: Array[Node3D]) -> Node3D:
+	if tables_container == null:
+		return null
 	for tbl in tables_container.get_children():
 		var is_dirty = tbl.get("is_dirty")
 		var is_occupied = tbl.get("is_occupied")
@@ -2168,6 +2181,8 @@ func _dispatch_waiter_tasks() -> void:
 
 func _get_available_tables() -> Array[Node3D]:
 	var available: Array[Node3D] = []
+	if tables_container == null:
+		return available
 	for table in tables_container.get_children():
 		var is_unlocked = table.get("is_unlocked")
 		if is_unlocked == null:
@@ -2539,14 +2554,6 @@ func _spawn_counter_cash_stack(pos: Vector3, amount: float) -> void:
 	lbl.position = Vector3(0, 0.35, 0)
 	stack_root.add_child(lbl)
 	
-	var am = get_node_or_null("/root/AudioManager")
-	if am != null and am.has_method("play_sfx"):
-		am.play_sfx("coin", 0.04, 1.0)
-		
-	var gm = get_node_or_null("/root/GameManager")
-	if gm != null and gm.has_signal("spawn_flying_currency_trail"):
-		gm.spawn_flying_currency_trail.emit(pos, amount)
-		
 	var stack_data = {
 		"node": stack_root,
 		"pos": pos,
@@ -2601,8 +2608,6 @@ func register_cash_collection(pos: Vector3, base_amount: float) -> void:
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
 		gm.add_cash(final_amount, pos)
-		if gm.has_signal("spawn_flying_currency_trail"):
-			gm.spawn_flying_currency_trail.emit(pos, final_amount)
 			
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("play_sfx"):
@@ -2887,5 +2892,56 @@ func spawn_vip_investor(spawn_pos: Vector3) -> Node3D:
 		cust.set_waypoints(waypoints)
 		
 	return cust
+
+func get_sector_bottleneck_status() -> Dictionary:
+	# 1. Lobby Queue Full (red)
+	waiting_customers = waiting_customers.filter(func(c): return is_instance_valid(c))
+	if waiting_customers.size() >= MAX_WAITING_CUSTOMERS:
+		return {
+			"text": "Lobby Queue Full",
+			"color": Color(0.95, 0.28, 0.28, 1.0),
+			"code": "LOBBY_FULL",
+			"icon": "🔴"
+		}
+	
+	# 2. Kitchen Backlogged (red)
+	var total_backlog = pending_orders.size() + pending_diner_orders.size() + pending_lounge_orders.size()
+	if pending_orders.size() >= 3 or total_backlog >= 4:
+		return {
+			"text": "Kitchen Backlogged",
+			"color": Color(0.95, 0.28, 0.28, 1.0),
+			"code": "KITCHEN_BACKLOGGED",
+			"icon": "🔴"
+		}
+		
+	# 3. Waiters Busy (amber)
+	var active_waiters = waiters.filter(func(w): return is_instance_valid(w))
+	var dirty_tables_count = 0
+	if tables_container != null:
+		for tbl in tables_container.get_children():
+			if tbl.get("is_dirty") == true and not tbl.get("is_occupied"):
+				dirty_tables_count += 1
+				
+	var idle_waiters_count = 0
+	for w in active_waiters:
+		if w.get("current_state") == 0: # State.IDLE
+			idle_waiters_count += 1
+			
+	var has_waiter_work = pending_orders.size() > 0 or dirty_tables_count > 0
+	if active_waiters.size() > 0 and idle_waiters_count == 0 and has_waiter_work:
+		return {
+			"text": "Waiters Busy",
+			"color": Color(0.96, 0.65, 0.12, 1.0),
+			"code": "WAITERS_BUSY",
+			"icon": "🟡"
+		}
+	
+	# 4. Optimal Flow (green)
+	return {
+		"text": "Optimal Flow",
+		"color": Color(0.18, 0.78, 0.35, 1.0),
+		"code": "OPTIMAL",
+		"icon": "🟢"
+	}
 
 

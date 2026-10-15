@@ -120,18 +120,41 @@ class _HudOverlayState extends State<HudOverlay> {
                             : CrossFadeState.showSecond,
                         firstChild: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            _StatusRibbon(
+                          children: [
+                            Builder(
+                              builder: (context) {
+                                final b = gs.getSectorBottleneckStatus();
+                                final col = b['color'] as Color;
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 3),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1E2430).withValues(alpha: 0.9),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border(left: BorderSide(color: col, width: 3)),
+                                  ),
+                                  child: Text(
+                                    '${b['icon']} ${b['text']}',
+                                    style: TextStyle(
+                                      color: col,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            const _StatusRibbon(
                               text: '📉 - 50 Marketing',
                               isPositive: false,
                             ),
-                            SizedBox(height: 3),
-                            _StatusRibbon(
+                            const SizedBox(height: 3),
+                            const _StatusRibbon(
                               text: '📈 + 25,830 Parking',
                               isPositive: true,
                             ),
-                            SizedBox(height: 3),
-                            _StatusRibbon(
+                            const SizedBox(height: 3),
+                            const _StatusRibbon(
                               text: '🧹 - 300 Cleaning',
                               isPositive: false,
                             ),
@@ -1019,6 +1042,50 @@ class StatsPanel extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
+              // Sector Bottleneck Status Pill
+              Builder(
+                builder: (context) {
+                  final b = gs.getSectorBottleneckStatus();
+                  final col = b['color'] as Color;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: col.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: col, width: 1.5),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(b['icon'] as String, style: const TextStyle(fontSize: 16)),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'OPERATIONAL STATUS',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            Text(
+                              b['text'] as String,
+                              style: TextStyle(
+                                color: col,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
               _statRow('💵 Total Earned', _fmt.format(gs.totalEarned)),
               _statRow('👥 Guests On-Site', '$guestCount'),
               _statRow('👔 Staff Members', '$staffCount'),

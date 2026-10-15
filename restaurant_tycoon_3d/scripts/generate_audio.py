@@ -197,6 +197,71 @@ def generate_claim_reward_sfx():
         samples.append(sample)
     create_wav("assets/audio/quest_claim.wav", samples, sr)
 
+def generate_diamond_chime_sfx():
+    # Crystalline, glittering high-register chime arpeggio (E6 -> G#6 -> B6 -> E7 with glass overtones)
+    sr = 44100
+    duration = 0.55
+    total_samples = int(sr * duration)
+    samples = []
+    notes = [
+        (0.00, 1318.51, 0.10),
+        (0.06, 1661.22, 0.10),
+        (0.12, 1975.53, 0.12),
+        (0.18, 2637.02, 0.35)
+    ]
+    for i in range(total_samples):
+        t = i / sr
+        sample = 0.0
+        for start_t, freq, note_dur in notes:
+            if t >= start_t:
+                dt = t - start_t
+                env = math.exp(-dt * 12.0)
+                # Pure glass sine + bright high crystalline overtones
+                w = math.sin(2.0 * math.pi * freq * dt) * 0.7
+                w += math.sin(2.0 * math.pi * freq * 2.0 * dt) * 0.2
+                w += math.sin(2.0 * math.pi * freq * 3.0 * dt) * 0.1
+                sample += w * env * 0.35
+        samples.append(sample)
+    create_wav("assets/audio/diamond_chime.wav", samples, sr)
+
+def generate_gold_coin_chime_sfx():
+    # Weighty metallic dual gold coin clink (D6 1174.7 Hz -> A6 1760 Hz)
+    sr = 44100
+    duration = 0.42
+    total_samples = int(sr * duration)
+    samples = []
+    
+    for i in range(total_samples):
+        t = i / sr
+        env1 = math.exp(-t * 20.0)
+        s1 = (math.sin(2.0 * math.pi * 1174.66 * t) + 0.35 * math.sin(2.0 * math.pi * 2349.32 * t)) * env1
+        
+        s2 = 0.0
+        if t > 0.07:
+            t2 = t - 0.07
+            env2 = math.exp(-t2 * 16.0)
+            s2 = (math.sin(2.0 * math.pi * 1760.00 * t2) + 0.45 * math.sin(2.0 * math.pi * 3520.00 * t2)) * env2
+            
+        sample = (s1 * 0.48 + s2 * 0.52) * 0.65
+        samples.append(sample)
+    create_wav("assets/audio/gold_coin_chime.wav", samples, sr)
+
+def generate_energy_spark_sfx():
+    # Electric zap whoosh / boost charge (frequency sweep 300 -> 1200 Hz with crackle)
+    sr = 44100
+    duration = 0.35
+    total_samples = int(sr * duration)
+    samples = []
+    for i in range(total_samples):
+        t = i / sr
+        freq = 320.0 + (t / duration) * 980.0
+        env = math.exp(-t * 6.5)
+        # FM modulation for electric crackle
+        mod = math.sin(2.0 * math.pi * 45.0 * t) * 60.0
+        s = math.sin(2.0 * math.pi * (freq + mod) * t) * env * 0.4
+        samples.append(s)
+    create_wav("assets/audio/energy_spark.wav", samples, sr)
+
 if __name__ == "__main__":
     generate_coin_sfx()
     generate_order_bell_sfx()
@@ -205,4 +270,8 @@ if __name__ == "__main__":
     generate_restaurant_ambience()
     generate_button_click_sfx()
     generate_claim_reward_sfx()
+    generate_diamond_chime_sfx()
+    generate_gold_coin_chime_sfx()
+    generate_energy_spark_sfx()
     print("All audio generated successfully!")
+

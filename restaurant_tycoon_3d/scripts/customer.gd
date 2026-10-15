@@ -174,6 +174,9 @@ func set_as_critic(is_critic: bool = true) -> void:
 			critic_badge.outline_modulate = Color(0.25, 0.08, 0.0, 0.95)
 			critic_badge.position = Vector3(0, 1.85, 0)
 			add_child(critic_badge)
+		var gm = get_node_or_null("/root/GameManager")
+		if gm != null and gm.has_method("notify_vip_arrival"):
+			gm.notify_vip_arrival(self, "👑 Michelin Critic Arrived!", "critic", max_patience)
 
 func set_as_vip_investor(is_investor: bool = true) -> void:
 	is_vip_investor = is_investor
@@ -230,6 +233,10 @@ func set_as_vip_investor(is_investor: bool = true) -> void:
 			briefcase_prop.add_child(handle_mesh)
 			
 			target_parent.add_child(briefcase_prop)
+
+		var gm = get_node_or_null("/root/GameManager")
+		if gm != null and gm.has_method("notify_vip_arrival"):
+			gm.notify_vip_arrival(self, "💼 VIP Investor Landing!", "investor", max_patience)
 
 func claim_vip_investor_reward() -> float:
 	if not is_vip_investor or vip_reward_claimed:

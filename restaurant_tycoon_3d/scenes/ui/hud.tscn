@@ -1,6 +1,50 @@
-[gd_scene load_steps=23 format=3 uid="uid://hud12345"]
+[gd_scene load_steps=27 format=3 uid="uid://hud12345"]
 
 [ext_resource type="Script" path="res://scripts/ui_controller.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shop_banner"]
+bg_color = Color(0.42, 0.08, 0.12, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 4
+border_color = Color(1, 0.82, 0.22, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+content_margin_left = 16.0
+content_margin_top = 10.0
+content_margin_right = 16.0
+content_margin_bottom = 10.0
+shadow_color = Color(0.8, 0.15, 0.2, 0.35)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_active"]
+bg_color = Color(0.95, 0.72, 0.15, 1)
+border_width_bottom = 3
+border_color = Color(1, 0.9, 0.45, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_inactive"]
+bg_color = Color(0.12, 0.15, 0.22, 0.9)
+border_width_bottom = 2
+border_color = Color(0.25, 0.32, 0.45, 0.7)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 6.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pill_profile"]
 bg_color = Color(0.08, 0.11, 0.17, 0.94)
@@ -36,6 +80,24 @@ content_margin_top = 6.0
 content_margin_right = 16.0
 content_margin_bottom = 6.0
 shadow_color = Color(0.1, 0.8, 0.3, 0.25)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pill_gold"]
+bg_color = Color(0.18, 0.13, 0.04, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 3
+border_color = Color(0.98, 0.8, 0.2, 0.9)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 6.0
+shadow_color = Color(0.95, 0.75, 0.1, 0.25)
 shadow_size = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pill_purple"]
@@ -775,6 +837,32 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.65, 0.95, 0.75, 0.9)
 theme_override_font_sizes/font_size = 10
 text = "📈 +$6.22K/s"
+
+[node name="GoldCoinPanel" type="PanelContainer" parent="HUD/TopBar"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_pill_gold")
+
+[node name="HBox" type="HBoxContainer" parent="HUD/TopBar/GoldCoinPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Icon" type="Label" parent="HUD/TopBar/GoldCoinPanel/HBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "🪙"
+
+[node name="GoldCoinLabel" type="Label" parent="HUD/TopBar/GoldCoinPanel/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.88, 0.4, 1)
+theme_override_font_sizes/font_size = 15
+text = "150"
+
+[node name="AddGoldBtn" type="Button" parent="HUD/TopBar/GoldCoinPanel/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_mini_plus")
+text = "+"
 
 [node name="EnergyPanel" type="PanelContainer" parent="HUD/TopBar"]
 layout_mode = 2
@@ -1840,34 +1928,97 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -320.0
-offset_top = -260.0
-offset_right = 320.0
-offset_bottom = 260.0
+offset_left = -335.0
+offset_top = -290.0
+offset_right = 335.0
+offset_bottom = 290.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="VBox" type="VBoxContainer" parent="ShopPanel"]
 layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="TopHBox" type="HBoxContainer" parent="ShopPanel/VBox"]
-layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="TitleLabel" type="Label" parent="ShopPanel/VBox/TopHBox"]
+[node name="HeaderBanner" type="PanelContainer" parent="ShopPanel/VBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_shop_banner")
+
+[node name="BannerHBox" type="HBoxContainer" parent="ShopPanel/VBox/HeaderBanner"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Icon" type="Label" parent="ShopPanel/VBox/HeaderBanner/BannerHBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "🏪"
+
+[node name="TitleVBox" type="VBoxContainer" parent="ShopPanel/VBox/HeaderBanner/BannerHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
-theme_override_font_sizes/font_size = 20
-text = "🛒 TYCOON SUPERSTORE"
+theme_override_constants/separation = 0
 
-[node name="CloseShopBtn" type="Button" parent="ShopPanel/VBox/TopHBox"]
+[node name="TitleLabel" type="Label" parent="ShopPanel/VBox/HeaderBanner/BannerHBox/TitleVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.35, 1)
+theme_override_font_sizes/font_size = 20
+text = "TYCOON SUPERSTORE"
+
+[node name="SubtitleLabel" type="Label" parent="ShopPanel/VBox/HeaderBanner/BannerHBox/TitleVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.75, 0.85)
+theme_override_font_sizes/font_size = 11
+text = "★ Premium Boosters • Time Warps • Treasury Chests ★"
+
+[node name="CloseShopBtn" type="Button" parent="ShopPanel/VBox/HeaderBanner/BannerHBox"]
 custom_minimum_size = Vector2(34, 34)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
 text = "✕"
+
+[node name="TabsScroll" type="ScrollContainer" parent="ShopPanel/VBox"]
+layout_mode = 2
+horizontal_scroll_mode = 2
+vertical_scroll_mode = 0
+
+[node name="TabsHBox" type="HBoxContainer" parent="ShopPanel/VBox/TabsScroll"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TabFeatured" type="Button" parent="ShopPanel/VBox/TabsScroll/TabsHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.08, 0.02, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_tab_active")
+text = "⭐ Featured"
+
+[node name="TabBoosts" type="Button" parent="ShopPanel/VBox/TabsScroll/TabsHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
+text = "⚡ Boosts"
+
+[node name="TabTimeSkips" type="Button" parent="ShopPanel/VBox/TabsScroll/TabsHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
+text = "⏱️ Time Skips"
+
+[node name="TabChests" type="Button" parent="ShopPanel/VBox/TabsScroll/TabsHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
+text = "📦 Chests"
+
+[node name="TabCurrencies" type="Button" parent="ShopPanel/VBox/TabsScroll/TabsHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
+text = "💎 Currencies"
 
 [node name="Scroll" type="ScrollContainer" parent="ShopPanel/VBox"]
 layout_mode = 2

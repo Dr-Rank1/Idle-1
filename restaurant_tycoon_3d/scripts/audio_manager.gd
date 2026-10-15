@@ -18,6 +18,10 @@ func _ready() -> void:
 	sounds["sizzle"] = load("res://assets/audio/cooking_sizzle.wav")
 	sounds["click"] = load("res://assets/audio/button_click.wav")
 	sounds["claim"] = load("res://assets/audio/quest_claim.wav")
+	sounds["diamond"] = load("res://assets/audio/diamond_chime.wav")
+	sounds["gem"] = sounds.get("diamond")
+	sounds["gold_coin"] = load("res://assets/audio/gold_coin_chime.wav")
+	sounds["energy"] = load("res://assets/audio/energy_spark.wav")
 	
 	ambience_player = AudioStreamPlayer.new()
 	ambience_player.stream = sounds.get("ambience")

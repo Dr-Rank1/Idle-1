@@ -11,8 +11,14 @@ extends CanvasLayer
 
 @onready var cash_label: Label = $HUD/TopBar/CashPanel/HBox/VBox/CashLabel
 @onready var cash_rate_label: Label = $HUD/TopBar/CashPanel/HBox/VBox/RateLabel
+@onready var gem_panel: PanelContainer = get_node_or_null("HUD/TopBar/GemPanel")
 @onready var gem_label: Label = $HUD/TopBar/GemPanel/HBox/GemLabel
 @onready var add_gem_btn: Button = $HUD/TopBar/GemPanel/HBox/AddGemBtn
+@onready var gold_panel: PanelContainer = get_node_or_null("HUD/TopBar/GoldCoinPanel")
+@onready var gold_label: Label = get_node_or_null("HUD/TopBar/GoldCoinPanel/HBox/GoldCoinLabel")
+@onready var add_gold_btn: Button = get_node_or_null("HUD/TopBar/GoldCoinPanel/HBox/AddGoldBtn")
+@onready var energy_panel: PanelContainer = get_node_or_null("HUD/TopBar/EnergyPanel")
+@onready var add_energy_btn: Button = get_node_or_null("HUD/TopBar/EnergyPanel/HBox/AddEnergyBtn")
 @onready var boost_btn: Button = $HUD/TopBar/BoostBtn
 
 # ─── Left Objectives / Quest Banner ─────────────────────────────────────────
@@ -136,7 +142,12 @@ var boost_timer_bar: Panel = null
 @onready var shop_btn: Button = get_node_or_null("HUD/ShopBtn")
 @onready var shop_panel: PanelContainer = get_node_or_null("ShopPanel")
 @onready var shop_vbox: VBoxContainer = get_node_or_null("ShopPanel/VBox/Scroll/ItemsVBox")
-@onready var close_shop_btn: Button = get_node_or_null("ShopPanel/VBox/TopHBox/CloseShopBtn")
+@onready var close_shop_btn: Button = get_node_or_null("ShopPanel/VBox/HeaderBanner/BannerHBox/CloseShopBtn") if get_node_or_null("ShopPanel/VBox/HeaderBanner/BannerHBox/CloseShopBtn") != null else get_node_or_null("ShopPanel/VBox/TopHBox/CloseShopBtn")
+@onready var tab_featured_btn: Button = get_node_or_null("ShopPanel/VBox/TabsScroll/TabsHBox/TabFeatured")
+@onready var tab_boosts_btn: Button = get_node_or_null("ShopPanel/VBox/TabsScroll/TabsHBox/TabBoosts")
+@onready var tab_timeskips_btn: Button = get_node_or_null("ShopPanel/VBox/TabsScroll/TabsHBox/TabTimeSkips")
+@onready var tab_chests_btn: Button = get_node_or_null("ShopPanel/VBox/TabsScroll/TabsHBox/TabChests")
+@onready var tab_currencies_btn: Button = get_node_or_null("ShopPanel/VBox/TabsScroll/TabsHBox/TabCurrencies")
 
 @onready var analytics_panel: PanelContainer = get_node_or_null("AnalyticsPanel")
 @onready var analytics_vbox: VBoxContainer = get_node_or_null("AnalyticsPanel/VBox/Scroll/VBox")
@@ -154,9 +165,14 @@ var boost_timer_bar: Panel = null
 
 var current_station_id: String = ""
 var current_multiplier: String = "1"
+var current_shop_category: String = "featured"
 var displayed_cash: float = 650.0
+var displayed_gold: float = 150.0
+var displayed_gems: float = 50.0
 var displayed_rate: float = 0.0
 var cash_tween: Tween = null
+var gold_tween: Tween = null
+var gems_tween: Tween = null
 var rate_tween: Tween = null
 var sim_time_minutes: float = 8.0 * 60.0 + 34.0
 var analytics_refresh_timer: float = 0.0
@@ -172,8 +188,19 @@ var _just_upgraded_on_hold: bool = false
 const HOLD_INITIAL_DELAY: float = 0.35
 
 var cash_texture: Texture2D = null
+var gold_texture: Texture2D = null
+var diamond_texture: Texture2D = null
 var style_multi_active: StyleBoxFlat = null
 var style_multi_inactive: StyleBoxFlat = null
+var shop_tab_style_active: StyleBoxFlat = null
+var shop_tab_style_inactive: StyleBoxFlat = null
+
+# ─── VIP Arrival Alert Toast & Bottleneck Status ─────────────────────────────
+var active_vip_toast: PanelContainer = null
+var active_vip_node: Node3D = null
+var active_vip_duration: float = 0.0
+var active_vip_timer: float = 0.0
+var active_vip_progress_bar: ProgressBar = null
 
 func _get_game_manager() -> Node:
 	if is_inside_tree():
@@ -203,7 +230,15 @@ func _ready() -> void:
 	_hide_all_modals()
 	
 	boost_btn.pressed.connect(_on_boost_pressed)
-	add_gem_btn.pressed.connect(_on_add_gem_pressed)
+	if add_gem_btn != null: add_gem_btn.pressed.connect(func(): _open_shop_at_section("currencies"))
+	if add_gold_btn != null: add_gold_btn.pressed.connect(func(): _open_shop_at_section("currencies"))
+	if add_energy_btn != null: add_energy_btn.pressed.connect(func(): _open_shop_at_section("currencies"))
+
+	if tab_featured_btn != null: tab_featured_btn.pressed.connect(func(): _select_shop_category("featured"))
+	if tab_boosts_btn != null: tab_boosts_btn.pressed.connect(func(): _select_shop_category("boosts"))
+	if tab_timeskips_btn != null: tab_timeskips_btn.pressed.connect(func(): _select_shop_category("timeskips"))
+	if tab_chests_btn != null: tab_chests_btn.pressed.connect(func(): _select_shop_category("chests"))
+	if tab_currencies_btn != null: tab_currencies_btn.pressed.connect(func(): _select_shop_category("currencies"))
 	
 	# Navigation Dock with Camera Smooth Glides
 	if nav_parking_btn != null:
@@ -393,6 +428,18 @@ func _ready() -> void:
 	if gm != null:
 		gm.cash_changed.connect(_on_cash_changed)
 		gm.gems_changed.connect(_on_gems_changed)
+		if gm.has_signal("golden_coins_changed"):
+			gm.golden_coins_changed.connect(_on_golden_coins_changed)
+		if gm.has_signal("diamonds_changed"):
+			gm.diamonds_changed.connect(_on_gems_changed)
+		if gm.has_signal("energy_changed"):
+			gm.energy_changed.connect(_on_energy_changed)
+		if gm.has_signal("currencies_updated"):
+			gm.currencies_updated.connect(_on_currencies_updated)
+		if gm.has_signal("time_skip_activated"):
+			gm.time_skip_activated.connect(_on_time_skip_activated)
+		if gm.has_signal("overdrive_boost_activated"):
+			gm.overdrive_boost_activated.connect(_on_overdrive_boost_activated)
 		gm.cash_rate_updated.connect(_on_cash_rate_updated)
 		gm.level_updated.connect(_on_level_updated)
 		gm.station_upgraded.connect(_on_station_upgraded)
@@ -432,6 +479,8 @@ func _ready() -> void:
 				if shop_panel != null and shop_panel.visible:
 					_refresh_shop_panel()
 			)
+		if gm.has_signal("vip_arrived"):
+			gm.vip_arrived.connect(_on_vip_arrived)
 		gm.menu_updated.connect(func():
 			if kitchen_panel != null and kitchen_panel.visible:
 				_refresh_kitchen_panel()
@@ -440,8 +489,14 @@ func _ready() -> void:
 		)
 		
 		displayed_cash = gm.cash
+		displayed_gold = float(gm.golden_coins)
+		displayed_gems = float(gm.diamonds)
 		displayed_rate = gm.get_effective_cash_per_sec()
 		_update_top_bar(gm.cash, gm.gems, gm.star_rating, gm.restaurant_name, gm.restaurant_level, gm.restaurant_xp, gm.xp_to_next_level)
+		if gold_label != null:
+			gold_label.text = "%d" % gm.golden_coins
+		if energy_label != null:
+			energy_label.text = "%d/%d" % [gm.energy, gm.max_energy]
 		if cash_rate_label != null:
 			cash_rate_label.text = "+%s/s" % _format_money(displayed_rate)
 		_set_multiplier("1")
@@ -722,6 +777,11 @@ func _toggle_modal(panel: PanelContainer, refresh_func: Callable) -> void:
 		refresh_func.call()
 		_open_modal(panel)
 
+func open_analytics_modal() -> void:
+	if analytics_panel != null:
+		_refresh_analytics_panel()
+		_open_modal(analytics_panel)
+
 func _play_click_sfx() -> void:
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("play_sfx"):
@@ -795,9 +855,52 @@ func _on_cash_changed(new_cash: float) -> void:
 	_update_affordability_badges()
 
 func _on_gems_changed(new_gems: int) -> void:
-	if gem_label != null: gem_label.text = "%d" % new_gems
+	if gems_tween != null and gems_tween.is_valid():
+		gems_tween.kill()
+	gems_tween = create_tween()
+	gems_tween.tween_method(func(val: float):
+		displayed_gems = val
+		if gem_label != null:
+			gem_label.text = "%d" % round(val)
+	, displayed_gems, float(new_gems), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if shop_panel != null and shop_panel.visible:
 		_refresh_shop_panel()
+
+func _on_golden_coins_changed(new_gold: int) -> void:
+	if gold_tween != null and gold_tween.is_valid():
+		gold_tween.kill()
+	gold_tween = create_tween()
+	gold_tween.tween_method(func(val: float):
+		displayed_gold = val
+		if gold_label != null:
+			gold_label.text = "%d" % round(val)
+	, displayed_gold, float(new_gold), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if shop_panel != null and shop_panel.visible:
+		_refresh_shop_panel()
+
+func _on_energy_changed(new_energy: int) -> void:
+	if energy_label != null:
+		var gm = _get_game_manager()
+		var max_e = gm.max_energy if gm != null else 50
+		energy_label.text = "%d/%d" % [new_energy, max_e]
+	if shop_panel != null and shop_panel.visible:
+		_refresh_shop_panel()
+
+func _on_currencies_updated(c: float, g: int, d: int, e: int) -> void:
+	_on_cash_changed(c)
+	_on_golden_coins_changed(g)
+	_on_gems_changed(d)
+	_on_energy_changed(e)
+
+func _on_time_skip_activated(hours: int, amount: float) -> void:
+	trigger_time_skip_shower(hours, amount)
+
+func _on_overdrive_boost_activated(_multiplier: float, _duration: float) -> void:
+	var am = _get_audio_manager()
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.0, 2.5)
+	if floating_boost_btn != null:
+		_punch_ui_element(floating_boost_btn)
 
 func _on_cash_rate_updated(new_rate: float) -> void:
 	if rate_tween != null and rate_tween.is_valid():
@@ -836,21 +939,32 @@ func _process(delta: float) -> void:
 	if gm != null:
 		if gm.is_boosted:
 			var s = ceil(gm.boost_timer)
+			var mult_str = "%.0fX" % gm.boost_multiplier if gm.boost_multiplier >= 2.0 else "2X"
+			var time_str = ""
+			if s >= 3600.0:
+				time_str = "%dh %dm" % [int(s / 3600.0), int((int(s) % 3600) / 60)]
+			elif s >= 60.0:
+				time_str = "%dm %02ds" % [int(s / 60.0), int(s) % 60]
+			else:
+				time_str = "%ds" % int(s)
+
 			if floating_boost_btn != null:
-				floating_boost_btn.text = "🔥 2X BOOST (%ds)" % s
+				floating_boost_btn.text = "🔥 %s BOOST (%s)" % [mult_str, time_str]
 				floating_boost_btn.add_theme_color_override("font_color", Color(1.0, 0.88, 0.2, 1.0))
 			if boost_timer_bar != null:
 				boost_timer_bar.visible = true
 				var progress = clamp(gm.boost_timer / 60.0, 0.0, 1.0)
 				boost_timer_bar.anchor_right = progress
 			if boost_btn != null:
-				boost_btn.text = "⚡ 2X (%ds)" % s
+				boost_btn.text = "⚡ %s (%s)" % [mult_str, time_str]
 		else:
 			if floating_boost_btn != null:
 				floating_boost_btn.text = "▶️  x2 BOOST!"
 				floating_boost_btn.add_theme_color_override("font_color", Color(0.12, 0.65, 0.25, 1.0))
 			if boost_timer_bar != null:
 				boost_timer_bar.visible = false
+			if boost_btn != null:
+				boost_btn.text = "⚡ 2X"
 
 	_update_status_ribbons()
 	if analytics_panel != null and analytics_panel.visible:
@@ -858,6 +972,18 @@ func _process(delta: float) -> void:
 		if analytics_refresh_timer >= 0.5:
 			analytics_refresh_timer = 0.0
 			_refresh_analytics_panel()
+
+	# ─── VIP Arrival Alert Toast Countdown ─────────────────────────────────────
+	if active_vip_toast != null and is_instance_valid(active_vip_toast):
+		active_vip_timer -= delta
+		if active_vip_progress_bar != null and is_instance_valid(active_vip_progress_bar):
+			active_vip_progress_bar.value = max(0.0, active_vip_timer)
+		var is_vip_valid = is_instance_valid(active_vip_node)
+		if is_vip_valid:
+			if active_vip_node.get("vip_reward_claimed") == true or (active_vip_node.has_method("get") and active_vip_node.get("current_state") == 8):
+				is_vip_valid = false
+		if active_vip_timer <= 0.0 or not is_vip_valid:
+			_dismiss_vip_toast()
 
 	# ─── Hold-to-Upgrade continuous loop ───────────────────────────────────────
 	if _is_holding_upgrade and _hold_station_id != "":
@@ -1073,6 +1199,8 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 			hours_badge_label.text = "☀️ 24 Hours Open"
 		else:
 			hours_badge_label.text = "🌙 Closes: 11:00 PM"
+
+	_update_header_bottleneck_pill()
 
 	if upgrade_milestone_bar != null:
 		if is_max:
@@ -2151,6 +2279,194 @@ func _on_critic_review_awarded(stars: float, is_positive: bool) -> void:
 	tw.parallel().tween_property(banner, "modulate:a", 0.0, 0.25)
 	tw.tween_callback(banner.queue_free)
 
+# ─── Michelin Critic & VIP Arrival Toast Banner ──────────────────────────────
+func _on_vip_arrived(vip_node: Node3D, title: String, type: String, duration: float) -> void:
+	if active_vip_toast != null and is_instance_valid(active_vip_toast):
+		active_vip_toast.queue_free()
+		active_vip_toast = null
+		
+	active_vip_node = vip_node
+	active_vip_duration = max(5.0, duration)
+	active_vip_timer = active_vip_duration
+	
+	var toast = PanelContainer.new()
+	toast.name = "VipArrivalToast"
+	toast.custom_minimum_size = Vector2(420, 54)
+	toast.anchors_preset = Control.PRESET_CENTER_TOP
+	toast.anchor_left = 0.5
+	toast.anchor_top = 0.0
+	toast.anchor_right = 0.5
+	toast.anchor_bottom = 0.0
+	toast.offset_left = -210.0
+	toast.offset_right = 210.0
+	toast.offset_top = -65.0
+	toast.offset_bottom = -11.0
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.14, 0.12, 0.08, 0.96)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(1.0, 0.82, 0.22, 1.0)
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_left = 12
+	style.corner_radius_bottom_right = 12
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	toast.add_theme_stylebox_override("panel", style)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 5)
+	toast.add_child(vbox)
+	
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 8)
+	vbox.add_child(hbox)
+	
+	var title_lbl = Label.new()
+	title_lbl.text = title
+	title_lbl.add_theme_font_size_override("font_size", 13)
+	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.35, 1.0))
+	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(title_lbl)
+	
+	var locate_btn = Button.new()
+	locate_btn.name = "LocateBtn"
+	locate_btn.text = "📍 LOCATE"
+	locate_btn.custom_minimum_size = Vector2(76, 24)
+	locate_btn.add_theme_font_size_override("font_size", 11)
+	locate_btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+	
+	var btn_style = StyleBoxFlat.new()
+	btn_style.bg_color = Color(0.85, 0.65, 0.12, 1.0)
+	btn_style.set_corner_radius_all(6)
+	btn_style.content_margin_left = 8
+	btn_style.content_margin_right = 8
+	btn_style.content_margin_top = 3
+	btn_style.content_margin_bottom = 3
+	locate_btn.add_theme_stylebox_override("normal", btn_style)
+	
+	var btn_hover = btn_style.duplicate()
+	btn_hover.bg_color = Color(0.96, 0.75, 0.2, 1.0)
+	locate_btn.add_theme_stylebox_override("hover", btn_hover)
+	
+	locate_btn.pressed.connect(func():
+		_locate_vip(vip_node)
+	)
+	apply_button_squash_and_stretch(locate_btn)
+	hbox.add_child(locate_btn)
+	
+	var pbar = ProgressBar.new()
+	pbar.name = "ProgressBar"
+	pbar.custom_minimum_size = Vector2(0, 6)
+	pbar.max_value = active_vip_duration
+	pbar.value = active_vip_duration
+	pbar.show_percentage = false
+	
+	var pbar_bg = StyleBoxFlat.new()
+	pbar_bg.bg_color = Color(0.2, 0.18, 0.15, 0.8)
+	pbar_bg.set_corner_radius_all(3)
+	pbar.add_theme_stylebox_override("background", pbar_bg)
+	
+	var pbar_fill = StyleBoxFlat.new()
+	pbar_fill.bg_color = Color(1.0, 0.82, 0.22, 1.0)
+	pbar_fill.set_corner_radius_all(3)
+	pbar.add_theme_stylebox_override("fill", pbar_fill)
+	vbox.add_child(pbar)
+	
+	active_vip_progress_bar = pbar
+	
+	toast.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			_locate_vip(vip_node)
+	)
+	
+	var hud_node = get_node_or_null("HUD")
+	if hud_node != null:
+		hud_node.add_child(toast)
+	else:
+		add_child(toast)
+		
+	active_vip_toast = toast
+	
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("bell", 0.05, 3.0)
+		
+	var tw = create_tween()
+	tw.tween_property(toast, "offset_top", 24.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(toast, "offset_bottom", 78.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _locate_vip(vip_node: Node3D) -> void:
+	if vip_node == null or not is_instance_valid(vip_node):
+		return
+	var cam = get_viewport().get_camera_3d() if get_viewport() != null else null
+	if cam == null:
+		var tree = get_tree()
+		if tree != null and tree.current_scene != null:
+			cam = tree.current_scene.find_child("Camera3D", true, false)
+	if cam != null and is_instance_valid(cam):
+		if cam.has_method("focus_target_node"):
+			cam.focus_target_node(vip_node, 0.45)
+		elif cam.has_method("pan_to_position"):
+			var wp = vip_node.global_position
+			cam.pan_to_position(Vector3(wp.x + 18.37, 15.0, wp.z + 18.37), 0.45, false)
+	_play_click_sfx()
+
+func _dismiss_vip_toast() -> void:
+	if active_vip_toast == null or not is_instance_valid(active_vip_toast):
+		active_vip_toast = null
+		return
+	var t = active_vip_toast
+	active_vip_toast = null
+	var tw = create_tween()
+	tw.tween_property(t, "offset_top", -65.0, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(t, "offset_bottom", -11.0, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tw.tween_callback(t.queue_free)
+
+func _update_header_bottleneck_pill() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	var info = gm.get_bottleneck_status() if gm != null and gm.has_method("get_bottleneck_status") else {"text": "Optimal Flow", "color": Color(0.18, 0.78, 0.35, 1.0), "code": "OPTIMAL", "icon": "🟢"}
+	
+	var header_hbox = get_node_or_null("UpgradePanel/VBox/HeaderBar/HBox")
+	if header_hbox == null:
+		return
+	var pill = header_hbox.get_node_or_null("BottleneckStatusPill")
+	if pill == null:
+		pill = PanelContainer.new()
+		pill.name = "BottleneckStatusPill"
+		var lbl = Label.new()
+		lbl.name = "BottleneckLabel"
+		lbl.add_theme_font_size_override("font_size", 11)
+		pill.add_child(lbl)
+		header_hbox.add_child(pill)
+		if hours_badge_label != null and hours_badge_label.get_parent() == header_hbox:
+			header_hbox.move_child(pill, hours_badge_label.get_index())
+			
+	var p_style = StyleBoxFlat.new()
+	var col = info.get("color", Color(0.18, 0.78, 0.35)) as Color
+	p_style.bg_color = col.lerp(Color.BLACK, 0.7)
+	p_style.border_width_left = 1
+	p_style.border_width_top = 1
+	p_style.border_width_right = 1
+	p_style.border_width_bottom = 1
+	p_style.border_color = col
+	p_style.set_corner_radius_all(6)
+	p_style.content_margin_left = 6
+	p_style.content_margin_right = 6
+	p_style.content_margin_top = 2
+	p_style.content_margin_bottom = 2
+	pill.add_theme_stylebox_override("panel", p_style)
+	
+	var pill_lbl = pill.get_node_or_null("BottleneckLabel") as Label
+	if pill_lbl != null:
+		pill_lbl.text = "%s %s" % [info.get("icon", "🟢"), info.get("text", "Optimal Flow")]
+		pill_lbl.add_theme_color_override("font_color", col)
+
 # ─── Financial Analytics Modal ──────────────────────────────────────────────
 func _refresh_analytics_panel() -> void:
 	if analytics_vbox == null: return
@@ -2163,6 +2479,49 @@ func _refresh_analytics_panel() -> void:
 	var income_data = fin.get("income", {})
 	var expense_data = fin.get("expenses", {})
 	var net_sec = float(fin.get("net_profit", 0.0))
+	
+	# Sector Bottleneck Status Pill
+	var bottleneck_info = gm.get_bottleneck_status() if gm.has_method("get_bottleneck_status") else {"text": "Optimal Flow", "color": Color(0.18, 0.78, 0.35, 1.0), "code": "OPTIMAL", "icon": "🟢"}
+	var b_banner = PanelContainer.new()
+	var b_style = StyleBoxFlat.new()
+	var b_col = bottleneck_info.get("color", Color(0.18, 0.78, 0.35)) as Color
+	b_style.bg_color = b_col.lerp(Color.BLACK, 0.75)
+	b_style.border_width_left = 3
+	b_style.border_width_top = 1
+	b_style.border_width_right = 1
+	b_style.border_width_bottom = 1
+	b_style.border_color = b_col
+	b_style.set_corner_radius_all(10)
+	b_style.set_content_margin_all(10)
+	b_banner.add_theme_stylebox_override("panel", b_style)
+	
+	var b_hbox = HBoxContainer.new()
+	b_hbox.add_theme_constant_override("separation", 10)
+	b_banner.add_child(b_hbox)
+	
+	var b_icon = Label.new()
+	b_icon.text = bottleneck_info.get("icon", "🟢")
+	b_icon.add_theme_font_size_override("font_size", 16)
+	b_hbox.add_child(b_icon)
+	
+	var b_vbox = VBoxContainer.new()
+	b_vbox.add_theme_constant_override("separation", 1)
+	b_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b_hbox.add_child(b_vbox)
+	
+	var b_tag = Label.new()
+	b_tag.text = "OPERATIONAL BOTTLENECK DIAGNOSTIC"
+	b_tag.add_theme_font_size_override("font_size", 11)
+	b_tag.add_theme_color_override("font_color", Color(0.78, 0.85, 0.9, 0.85))
+	b_vbox.add_child(b_tag)
+	
+	var b_text = Label.new()
+	b_text.text = bottleneck_info.get("text", "Optimal Flow")
+	b_text.add_theme_font_size_override("font_size", 15)
+	b_text.add_theme_color_override("font_color", b_col)
+	b_vbox.add_child(b_text)
+	
+	analytics_vbox.add_child(b_banner)
 	
 	# Net Profit Margin Banner
 	var net_banner = PanelContainer.new()
@@ -2532,110 +2891,360 @@ func _refresh_world_map() -> void:
 		world_map_grid.add_child(card)
 
 # ─── Tycoon Superstore Modal ────────────────────────────────────────────────
+func _init_shop_tab_styles() -> void:
+	shop_tab_style_active = StyleBoxFlat.new()
+	shop_tab_style_active.bg_color = Color(0.95, 0.72, 0.15, 1.0)
+	shop_tab_style_active.border_width_bottom = 3
+	shop_tab_style_active.border_color = Color(1.0, 0.9, 0.45, 1.0)
+	shop_tab_style_active.set_corner_radius_all(12)
+	shop_tab_style_active.content_margin_left = 14.0
+	shop_tab_style_active.content_margin_top = 6.0
+	shop_tab_style_active.content_margin_right = 14.0
+	shop_tab_style_active.content_margin_bottom = 6.0
+
+	shop_tab_style_inactive = StyleBoxFlat.new()
+	shop_tab_style_inactive.bg_color = Color(0.12, 0.15, 0.22, 0.9)
+	shop_tab_style_inactive.border_width_bottom = 2
+	shop_tab_style_inactive.border_color = Color(0.2, 0.25, 0.35, 0.8)
+	shop_tab_style_inactive.set_corner_radius_all(12)
+	shop_tab_style_inactive.content_margin_left = 14.0
+	shop_tab_style_inactive.content_margin_top = 6.0
+	shop_tab_style_inactive.content_margin_right = 14.0
+	shop_tab_style_inactive.content_margin_bottom = 6.0
+
+func _update_shop_tab_styles() -> void:
+	if shop_tab_style_active == null:
+		_init_shop_tab_styles()
+	var tabs = {
+		"featured": tab_featured_btn,
+		"boosts": tab_boosts_btn,
+		"timeskips": tab_timeskips_btn,
+		"chests": tab_chests_btn,
+		"currencies": tab_currencies_btn
+	}
+	for cat in tabs.keys():
+		var btn = tabs[cat]
+		if btn != null:
+			if cat == current_shop_category:
+				btn.add_theme_stylebox_override("normal", shop_tab_style_active)
+				btn.add_theme_stylebox_override("hover", shop_tab_style_active)
+				btn.add_theme_stylebox_override("pressed", shop_tab_style_active)
+				btn.add_theme_color_override("font_color", Color(0.12, 0.08, 0.02, 1.0))
+			else:
+				btn.add_theme_stylebox_override("normal", shop_tab_style_inactive)
+				btn.add_theme_stylebox_override("hover", shop_tab_style_inactive)
+				btn.add_theme_stylebox_override("pressed", shop_tab_style_inactive)
+				btn.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0, 1.0))
+
+func _select_shop_category(category_name: String) -> void:
+	_play_click_sfx()
+	current_shop_category = category_name
+	_update_shop_tab_styles()
+	_refresh_shop_panel()
+
+func _open_shop_at_section(category: String) -> void:
+	_play_click_sfx()
+	current_shop_category = category
+	_update_shop_tab_styles()
+	if shop_panel != null and not shop_panel.visible:
+		_toggle_modal(shop_panel, _refresh_shop_panel)
+	else:
+		_refresh_shop_panel()
+
 func _refresh_shop_panel() -> void:
 	if shop_vbox == null: return
 	for c in shop_vbox.get_children():
 		c.queue_free()
-	var gm = get_node_or_null("/root/GameManager")
+	var gm = _get_game_manager()
 	if gm == null: return
 
-	# 1. Daily Free Gift
-	shop_vbox.add_child(_create_shop_card(
-		"daily_gift",
-		"🎁 Daily Supply Delivery",
-		"Daily care package from head chef! Free cash & diamonds.",
-		"+$250 Cash & +5 Gems",
-		"FREE CLAIM" if gm.can_claim_daily_gift() else "✓ CLAIMED",
-		Color(0.2, 0.75, 0.4, 1.0) if gm.can_claim_daily_gift() else Color(0.4, 0.4, 0.5, 0.6),
-		not gm.can_claim_daily_gift(),
-		gm
-	))
+	_update_shop_tab_styles()
 
-	# 2. Instant Cash Packs
-	shop_vbox.add_child(_create_shop_card(
-		"cash_small",
-		"💰 Small Tip Jar",
-		"Instant cash infusion for quick kitchen expansions.",
-		"+%s Cash" % _format_money(500.0),
-		"💎 10 GEMS",
-		Color(0.95, 0.65, 0.15, 1.0),
-		gm.gems < 10,
-		gm
-	))
+	match current_shop_category:
+		"featured":
+			# Daily Free Gift
+			shop_vbox.add_child(_create_shop_card(
+				"daily_gift",
+				"🎁 Daily Supply Delivery",
+				"Daily care package from head chef! Free cash & diamonds.",
+				"+$250 Cash & +5 Gems",
+				"FREE CLAIM" if gm.can_claim_daily_gift() else "✓ CLAIMED",
+				Color(0.2, 0.75, 0.4, 1.0) if gm.can_claim_daily_gift() else Color(0.4, 0.4, 0.5, 0.6),
+				not gm.can_claim_daily_gift(),
+				gm
+			))
+			# Permanent x2 Income
+			var perm_owned = gm.is_permanent_booster_owned("perm_2x_income")
+			shop_vbox.add_child(_create_shop_card(
+				"perm_2x_income",
+				"👑 Permanent x2 Income",
+				"Doubles all restaurant dishes, counters and drive-thru sales permanently!",
+				"⭐ Permanent 2X Profit Multiplier",
+				"✓ OWNED" if perm_owned else "💎 150 GEMS",
+				Color(0.2, 0.75, 0.4, 1.0) if perm_owned else Color(0.95, 0.65, 0.15, 1.0),
+				perm_owned or gm.diamonds < 150,
+				gm
+			))
+			# VIP Auto-Collector
+			var vip_owned = gm.is_permanent_booster_owned("vip_auto_collector")
+			shop_vbox.add_child(_create_shop_card(
+				"vip_auto_collector",
+				"🤖 VIP Auto-Collector",
+				"Automatically sweeps up and collects table cash stacks, customer tips and register earnings!",
+				"⭐ Hands-Free Instant Cash Pickup",
+				"✓ OWNED" if vip_owned else "💎 100 GEMS",
+				Color(0.2, 0.75, 0.4, 1.0) if vip_owned else Color(0.95, 0.65, 0.15, 1.0),
+				vip_owned or gm.diamonds < 100,
+				gm
+			))
+			# Other permanent boosters
+			var perm_boosters = gm.get_permanent_boosters() if gm.has_method("get_permanent_boosters") else {}
+			for bid in ["fast_service", "vip_rush"]:
+				if perm_boosters.has(bid):
+					var b = perm_boosters[bid]
+					var is_owned = b.get("owned", false)
+					var gem_cost = int(b.get("gem_cost", 50))
+					shop_vbox.add_child(_create_shop_card(
+						bid,
+						b.get("icon", "👑") + " " + b.get("name", "Booster") + " (Permanent)",
+						b.get("desc", ""),
+						"⭐ " + b.get("effect", ""),
+						"✓ OWNED" if is_owned else "💎 %d GEMS" % gem_cost,
+						Color(0.2, 0.75, 0.4, 1.0) if is_owned else Color(0.95, 0.65, 0.15, 1.0),
+						is_owned or gm.diamonds < gem_cost,
+						gm
+					))
 
-	shop_vbox.add_child(_create_shop_card(
-		"cash_medium",
-		"💼 Tycoon Briefcase",
-		"Substantial stack of cash for multi-level dining upgrades.",
-		"+%s Cash" % _format_money(2500.0),
-		"💎 40 GEMS",
-		Color(0.95, 0.65, 0.15, 1.0),
-		gm.gems < 40,
-		gm
-	))
+		"boosts":
+			# Temporary Overdrive Boosts
+			shop_vbox.add_child(_create_shop_card(
+				"boost_2x_1h",
+				"⚡ 2X Profit Rush (1 Hour)",
+				"Doubles all restaurant revenue for a full 60 minutes (3600s)!",
+				"🔥 2X Multiplier (1 Hour)",
+				"💎 25 GEMS",
+				Color(0.2, 0.7, 0.95, 1.0),
+				gm.diamonds < 25,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"boost_5x_15m",
+				"🔥 5X Super Rush (15 Mins)",
+				"Skyrockets diner dining speed and dish revenue by 500% for 15 minutes!",
+				"🔥 5X Multiplier (15 Mins)",
+				"💎 45 GEMS",
+				Color(0.95, 0.45, 0.15, 1.0),
+				gm.diamonds < 45,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"boost_10x_5m",
+				"💥 10X Mega Overdrive (5 Mins)",
+				"Maximum diner rush! 10X revenue across all tables, bars and stations!",
+				"🔥 10X Multiplier (5 Mins)",
+				"💎 75 GEMS",
+				Color(0.95, 0.25, 0.25, 1.0),
+				gm.diamonds < 75,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"boost_5m",
+				"⚡ 5-Minute Lunch Rush",
+				"Doubles all customer revenue and diner tips for 5 minutes (300s)!",
+				"🔥 2X Multiplier (5 Mins)",
+				"💎 15 GEMS",
+				Color(0.2, 0.7, 0.95, 1.0),
+				gm.diamonds < 15,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"boost_15m",
+				"🔥 15-Minute Happy Hour",
+				"High-intensity diner rush! 2X revenue for a full 15 minutes (900s)!",
+				"🔥 2X Multiplier (15 Mins)",
+				"💎 35 GEMS",
+				Color(0.95, 0.35, 0.25, 1.0),
+				gm.diamonds < 35,
+				gm
+			))
 
-	shop_vbox.add_child(_create_shop_card(
-		"cash_vault",
-		"🏦 Golden Diner Vault",
-		"Massive bullion reserve to instantly fund any restaurant purchase.",
-		"+%s Cash" % _format_money(10000.0),
-		"💎 120 GEMS",
-		Color(0.95, 0.65, 0.15, 1.0),
-		gm.gems < 120,
-		gm
-	))
+		"timeskips":
+			var rate = gm.get_effective_cash_per_sec()
+			var reward_1h = max(rate * 3600.0, 1800.0)
+			var reward_4h = max(rate * 14400.0, 7200.0)
+			var reward_24h = max(rate * 86400.0, 43200.0)
 
-	# 3. Revenue Boosters
-	shop_vbox.add_child(_create_shop_card(
-		"boost_5m",
-		"⚡ 5-Minute Lunch Rush",
-		"Doubles all customer revenue and diner tips for 5 minutes (300s)!",
-		"🔥 2X Multiplier (5 Mins)",
-		"💎 15 GEMS",
-		Color(0.2, 0.7, 0.95, 1.0),
-		gm.gems < 15,
-		gm
-	))
+			# 1-Hour Time Warp (Diamonds & Coins)
+			shop_vbox.add_child(_create_shop_card(
+				"timeskip_1h_diamond",
+				"⏱️ 1-Hour Time Warp",
+				"Instantly fast-forwards diner earnings by 1 hour based on current income rate.",
+				"+%s Cash Immediately" % _format_money(reward_1h),
+				"💎 20 GEMS",
+				Color(0.2, 0.7, 0.95, 1.0),
+				gm.diamonds < 20,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"timeskip_1h_gold",
+				"⏱️ 1-Hour Time Warp (Gold Coins)",
+				"Fast-forward 1 hour of profits using golden prestige coins.",
+				"+%s Cash Immediately" % _format_money(reward_1h),
+				"🪙 150 COINS",
+				Color(0.95, 0.75, 0.15, 1.0),
+				gm.golden_coins < 150,
+				gm
+			))
+			# 4-Hour Time Warp (Diamonds & Coins)
+			shop_vbox.add_child(_create_shop_card(
+				"timeskip_4h_diamond",
+				"⏳ 4-Hour Time Warp",
+				"Instantly fast-forwards diner earnings by 4 hours based on current income rate.",
+				"+%s Cash Immediately" % _format_money(reward_4h),
+				"💎 60 GEMS",
+				Color(0.2, 0.7, 0.95, 1.0),
+				gm.diamonds < 60,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"timeskip_4h_gold",
+				"⏳ 4-Hour Time Warp (Gold Coins)",
+				"Fast-forward 4 hours of profits using golden prestige coins.",
+				"+%s Cash Immediately" % _format_money(reward_4h),
+				"🪙 500 COINS",
+				Color(0.95, 0.75, 0.15, 1.0),
+				gm.golden_coins < 500,
+				gm
+			))
+			# 24-Hour Day Jump (Diamonds & Coins)
+			shop_vbox.add_child(_create_shop_card(
+				"timeskip_24h_diamond",
+				"🚀 24-Hour Day Jump",
+				"A massive 24-hour leap forward in restaurant revenue!",
+				"+%s Cash Immediately" % _format_money(reward_24h),
+				"💎 250 GEMS",
+				Color(0.85, 0.35, 0.95, 1.0),
+				gm.diamonds < 250,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"timeskip_24h_gold",
+				"🚀 24-Hour Day Jump (Gold Coins)",
+				"A massive 24-hour leap forward in restaurant revenue with golden coins!",
+				"+%s Cash Immediately" % _format_money(reward_24h),
+				"🪙 2000 COINS",
+				Color(0.95, 0.75, 0.15, 1.0),
+				gm.golden_coins < 2000,
+				gm
+			))
 
-	shop_vbox.add_child(_create_shop_card(
-		"boost_15m",
-		"🔥 15-Minute Happy Hour",
-		"High-intensity diner rush! 2X revenue for a full 15 minutes (900s)!",
-		"🔥 2X Multiplier (15 Mins)",
-		"💎 35 GEMS",
-		Color(0.95, 0.35, 0.25, 1.0),
-		gm.gems < 35,
-		gm
-	))
+		"chests":
+			# Treasury Cash Chests
+			shop_vbox.add_child(_create_shop_card(
+				"cash_chest_small",
+				"💰 Small Tip Jar",
+				"Instant cash infusion for quick kitchen expansions.",
+				"+%s Cash" % _format_money(1000.0),
+				"💎 10 GEMS",
+				Color(0.95, 0.65, 0.15, 1.0),
+				gm.diamonds < 10,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"cash_chest_medium",
+				"💼 Tycoon Briefcase",
+				"Substantial stack of cash for multi-level dining upgrades.",
+				"+%s Cash" % _format_money(6500.0),
+				"💎 40 GEMS",
+				Color(0.95, 0.65, 0.15, 1.0),
+				gm.diamonds < 40,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"cash_chest_grand",
+				"🏦 Golden Diner Vault",
+				"Massive bullion reserve to instantly fund any restaurant purchase.",
+				"+%s Cash" % _format_money(35000.0),
+				"💎 150 GEMS",
+				Color(0.95, 0.65, 0.15, 1.0),
+				gm.diamonds < 150,
+				gm
+			))
 
-	# 4. Permanent Boosters
-	var perm_boosters = gm.get_permanent_boosters() if gm.has_method("get_permanent_boosters") else {}
-	for bid in perm_boosters.keys():
-		var b = perm_boosters[bid]
-		var is_owned = b.get("owned", false)
-		var gem_cost = int(b.get("gem_cost", 50))
-		shop_vbox.add_child(_create_shop_card(
-			bid,
-			b.get("icon", "👑") + " " + b.get("name", "Booster") + " (Permanent)",
-			b.get("desc", ""),
-			"⭐ " + b.get("effect", ""),
-			"✓ OWNED" if is_owned else "💎 %d GEMS" % gem_cost,
-			Color(0.2, 0.75, 0.4, 1.0) if is_owned else Color(0.95, 0.65, 0.15, 1.0),
-			is_owned or gm.gems < gem_cost,
-			gm
-		))
-
-	# 5. Currency Exchange
-	shop_vbox.add_child(_create_shop_card(
-		"buy_gems",
-		"💎 Diamond Stash",
-		"Exchange bistro earnings for precious premium diamonds.",
-		"+50 Gems",
-		_format_money(1000.0) + " CASH",
-		Color(0.65, 0.45, 0.95, 1.0),
-		gm.cash < 1000.0,
-		gm
-	))
+		"currencies":
+			# Golden Coins Packs
+			shop_vbox.add_child(_create_shop_card(
+				"gold_pouch",
+				"🪙 Pouch of Gold",
+				"Prestige golden coins for unlocking high-tier research perks.",
+				"+100 Golden Coins",
+				"💎 15 GEMS",
+				Color(0.95, 0.75, 0.15, 1.0),
+				gm.diamonds < 15,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"gold_chest",
+				"🪙 Chest of Gold",
+				"Hefty chest of gold coins to accelerate diner operations.",
+				"+500 Golden Coins",
+				"💎 60 GEMS",
+				Color(0.95, 0.75, 0.15, 1.0),
+				gm.diamonds < 60,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"gold_trove",
+				"🪙 Royal Gold Trove",
+				"Abundant store of golden coins for serious prestige managers.",
+				"+1500 Golden Coins",
+				"💎 150 GEMS",
+				Color(0.95, 0.75, 0.15, 1.0),
+				gm.diamonds < 150,
+				gm
+			))
+			# Energy Packs
+			shop_vbox.add_child(_create_shop_card(
+				"energy_pack",
+				"⚡ Lightning Energy Pack",
+				"Recharge station boost capacity immediately.",
+				"+25 Lightning Energy",
+				"💎 10 GEMS",
+				Color(0.2, 0.7, 0.95, 1.0),
+				gm.diamonds < 10 or gm.energy >= gm.max_energy,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"energy_full",
+				"⚡ Full Energy Refill",
+				"Instantly refills energy reserves back to 50/50 maximum!",
+				"+50 Max Energy (Full)",
+				"💎 20 GEMS",
+				Color(0.2, 0.8, 0.4, 1.0),
+				gm.diamonds < 20 or gm.energy >= gm.max_energy,
+				gm
+			))
+			# Diamond Purchases with Cash
+			shop_vbox.add_child(_create_shop_card(
+				"buy_gems",
+				"💎 Diamond Stash",
+				"Exchange diner cash earnings for precious diamonds.",
+				"+50 Diamonds",
+				_format_money(2500.0) + " CASH",
+				Color(0.65, 0.45, 0.95, 1.0),
+				gm.cash < 2500.0,
+				gm
+			))
+			shop_vbox.add_child(_create_shop_card(
+				"buy_gems_large",
+				"💎 Diamond Treasury",
+				"Large cash purchase for a substantial diamond hoard.",
+				"+250 Diamonds",
+				_format_money(10000.0) + " CASH",
+				Color(0.65, 0.45, 0.95, 1.0),
+				gm.cash < 10000.0,
+				gm
+			))
 
 func _create_shop_card(item_id: String, title_txt: String, desc_txt: String, value_txt: String, btn_txt: String, btn_color: Color, is_disabled: bool, gm: Node) -> PanelContainer:
 	var p = PanelContainer.new()
@@ -2689,7 +3298,7 @@ func _create_shop_card(item_id: String, title_txt: String, desc_txt: String, val
 	return p
 
 # ─── 3D-to-HUD Flying Currency Trails ───────────────────────────────────────
-func spawn_flying_currency_trail(world_pos: Vector3, amount: float = 0.0, count: int = 5) -> void:
+func spawn_flying_currency_trail(world_pos: Vector3, amount: float = 0.0, currency_type_or_count: Variant = "cash") -> void:
 	var cam: Camera3D = get_viewport().get_camera_3d()
 	if cam == null:
 		return
@@ -2711,22 +3320,67 @@ func spawn_flying_currency_trail(world_pos: Vector3, amount: float = 0.0, count:
 	
 	if currency_trails_layer == null:
 		return
-		
+
+	var currency_type: String = "cash"
+	var coin_count: int = 5
+	if currency_type_or_count is String:
+		currency_type = currency_type_or_count
+		if amount > 0.0:
+			coin_count = clampi(int(amount / 20.0), 3, 7)
+		else:
+			coin_count = 5
+	elif currency_type_or_count is int:
+		coin_count = clampi(int(currency_type_or_count), 3, 7)
+
 	var target_screen_pos: Vector2 = Vector2(160.0, 42.0)
-	var cash_panel = get_node_or_null("HUD/TopBar/CashPanel")
-	if cash_panel != null and cash_panel.is_inside_tree():
-		target_screen_pos = cash_panel.global_position + cash_panel.size * 0.5
-	elif cash_label != null and cash_label.is_inside_tree():
-		target_screen_pos = cash_label.global_position + cash_label.size * 0.5
-		
-	if cash_texture == null:
-		if ResourceLoader.exists("res://assets/textures/bubble_cash_stack.png"):
-			cash_texture = load("res://assets/textures/bubble_cash_stack.png")
-			
-	var coin_count: int = clampi(count, 3, 7)
-	if amount > 0.0:
-		coin_count = clampi(int(amount / 20.0), 3, 7)
-		
+	var target_panel: Control = null
+	var sound_name: String = "coin"
+	var trail_tex: Texture2D = null
+	var fallback_emoji: String = "💵"
+
+	match currency_type:
+		"diamond", "diamonds", "gem", "gems":
+			sound_name = "diamond"
+			fallback_emoji = "💎"
+			if gem_panel != null and gem_panel.is_inside_tree():
+				target_panel = gem_panel
+				target_screen_pos = gem_panel.global_position + gem_panel.size * 0.5
+			if diamond_texture == null and ResourceLoader.exists("res://assets/textures/bubble_diamond.png"):
+				diamond_texture = load("res://assets/textures/bubble_diamond.png")
+			trail_tex = diamond_texture
+			coin_count = clampi(int(amount), 3, 7) if amount > 0.0 else 5
+		"gold", "gold_coin", "golden_coins":
+			sound_name = "gold_coin"
+			fallback_emoji = "🪙"
+			if gold_panel != null and gold_panel.is_inside_tree():
+				target_panel = gold_panel
+				target_screen_pos = gold_panel.global_position + gold_panel.size * 0.5
+			if gold_texture == null and ResourceLoader.exists("res://assets/textures/bubble_gold_coin.png"):
+				gold_texture = load("res://assets/textures/bubble_gold_coin.png")
+			trail_tex = gold_texture
+			coin_count = clampi(int(amount / 10.0), 3, 7) if amount > 0.0 else 5
+		"energy":
+			sound_name = "energy"
+			fallback_emoji = "⚡"
+			if energy_panel != null and energy_panel.is_inside_tree():
+				target_panel = energy_panel
+				target_screen_pos = energy_panel.global_position + energy_panel.size * 0.5
+			coin_count = clampi(int(amount / 5.0), 3, 6) if amount > 0.0 else 4
+		_: # "cash"
+			sound_name = "coin"
+			fallback_emoji = "💵"
+			var cash_panel = get_node_or_null("HUD/TopBar/CashPanel")
+			if cash_panel != null and cash_panel.is_inside_tree():
+				target_panel = cash_panel
+				target_screen_pos = cash_panel.global_position + cash_panel.size * 0.5
+			elif cash_label != null and cash_label.is_inside_tree():
+				target_screen_pos = cash_label.global_position + cash_label.size * 0.5
+			if cash_texture == null and ResourceLoader.exists("res://assets/textures/bubble_cash_stack.png"):
+				cash_texture = load("res://assets/textures/bubble_cash_stack.png")
+			trail_tex = cash_texture
+			if amount > 0.0:
+				coin_count = clampi(int(amount / 20.0), 3, 7)
+
 	for i in range(coin_count):
 		var p0: Vector2 = start_screen_pos + Vector2(randf_range(-18.0, 18.0), randf_range(-18.0, 18.0))
 		var mid: Vector2 = (p0 + target_screen_pos) * 0.5
@@ -2737,15 +3391,15 @@ func spawn_flying_currency_trail(world_pos: Vector3, amount: float = 0.0, count:
 		
 		var sprite = TextureRect.new()
 		sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if cash_texture != null:
-			sprite.texture = cash_texture
+		if trail_tex != null:
+			sprite.texture = trail_tex
 			sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			sprite.custom_minimum_size = Vector2(26, 26)
 			sprite.size = Vector2(26, 26)
 			sprite.pivot_offset = Vector2(13, 13)
 		else:
 			var lbl = Label.new()
-			lbl.text = "💵"
+			lbl.text = fallback_emoji
 			lbl.add_theme_font_size_override("font_size", 20)
 			sprite.add_child(lbl)
 			sprite.custom_minimum_size = Vector2(26, 26)
@@ -2764,7 +3418,7 @@ func spawn_flying_currency_trail(world_pos: Vector3, amount: float = 0.0, count:
 		tw.chain().tween_property(sprite, "modulate:a", 1.0, 0.06)
 		tw.parallel().tween_property(sprite, "scale", Vector2.ONE, 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		
-		# 0.45 second smooth arc flight to treasury counter
+		# 0.45 second smooth arc flight to counter
 		tw.parallel().tween_method(func(t: float):
 			if not is_instance_valid(sprite):
 				return
@@ -2778,17 +3432,150 @@ func spawn_flying_currency_trail(world_pos: Vector3, amount: float = 0.0, count:
 				sprite.queue_free()
 			var am = _get_audio_manager()
 			if am != null and am.has_method("play_sfx"):
-				am.play_sfx("coin", 0.06, 0.5)
-			_punch_treasury_counter()
+				am.play_sfx(sound_name, 0.06, 0.5)
+			if target_panel != null:
+				_punch_ui_element(target_panel)
+			else:
+				_punch_treasury_counter()
 		)
+
+func _punch_ui_element(node: Control) -> void:
+	if node != null and node.is_inside_tree():
+		node.pivot_offset = node.size * 0.5
+		var tw = create_tween()
+		tw.tween_property(node, "scale", Vector2(1.14, 1.14), 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(node, "scale", Vector2.ONE, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 
 func _punch_treasury_counter() -> void:
 	var cash_panel = get_node_or_null("HUD/TopBar/CashPanel")
-	if cash_panel != null and cash_panel.is_inside_tree():
-		cash_panel.pivot_offset = cash_panel.size * 0.5
+	if cash_panel != null:
+		_punch_ui_element(cash_panel)
+
+# ─── Dramatic Instant Time Skip Cash Shower ─────────────────────────────────
+func trigger_time_skip_shower(hours: int, amount: float) -> void:
+	var hud_node = get_node_or_null("HUD")
+	if hud_node == null:
+		return
+		
+	# 1. Spawn falling cash shower (35 fluttering bills & coins)
+	var vp_size = get_viewport().get_visible_rect().size
+	var bill_tex = load("res://assets/textures/bubble_cash_stack.png") if ResourceLoader.exists("res://assets/textures/bubble_cash_stack.png") else null
+	var coin_tex = load("res://assets/textures/bubble_gold_coin.png") if ResourceLoader.exists("res://assets/textures/bubble_gold_coin.png") else null
+
+	for i in range(35):
+		var bill = TextureRect.new()
+		bill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var is_coin = (i % 3 == 0)
+		var chosen_tex = coin_tex if (is_coin and coin_tex != null) else bill_tex
+		if chosen_tex != null:
+			bill.texture = chosen_tex
+			bill.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			var sz = randf_range(28.0, 44.0)
+			bill.custom_minimum_size = Vector2(sz, sz)
+			bill.size = Vector2(sz, sz)
+			bill.pivot_offset = Vector2(sz * 0.5, sz * 0.5)
+		else:
+			var lbl = Label.new()
+			lbl.text = "🪙" if is_coin else "💵"
+			lbl.add_theme_font_size_override("font_size", 28)
+			bill.add_child(lbl)
+			bill.custom_minimum_size = Vector2(32, 32)
+			bill.size = Vector2(32, 32)
+			bill.pivot_offset = Vector2(16, 16)
+
+		var start_x = randf_range(20.0, vp_size.x - 20.0)
+		var start_y = randf_range(-80.0, -20.0)
+		var end_x = start_x + randf_range(-100.0, 100.0)
+		var end_y = vp_size.y + randf_range(40.0, 100.0)
+		var duration = randf_range(0.9, 1.6)
+		var delay = randf_range(0.0, 0.45)
+
+		bill.position = Vector2(start_x, start_y)
+		bill.rotation = randf_range(-0.5, 0.5)
+		bill.modulate.a = 0.0
+		hud_node.add_child(bill)
+
 		var tw = create_tween()
-		tw.tween_property(cash_panel, "scale", Vector2(1.14, 1.14), 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tw.tween_property(cash_panel, "scale", Vector2.ONE, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		if delay > 0.0:
+			tw.tween_interval(delay)
+		tw.parallel().tween_property(bill, "modulate:a", 1.0, 0.1)
+		tw.parallel().tween_property(bill, "position:y", end_y, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.parallel().tween_property(bill, "position:x", end_x, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.parallel().tween_property(bill, "rotation", bill.rotation + randf_range(-2.0, 2.0), duration)
+		tw.chain().tween_callback(func():
+			if is_instance_valid(bill):
+				bill.queue_free()
+		)
+
+	# 2. Grand celebratory announcement toast
+	var toast = PanelContainer.new()
+	toast.name = "TimeSkipToast"
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.custom_minimum_size = Vector2(400, 100)
+	toast.anchors_preset = Control.PRESET_CENTER
+	toast.anchor_left = 0.5
+	toast.anchor_top = 0.42
+	toast.anchor_right = 0.5
+	toast.anchor_bottom = 0.42
+	toast.offset_left = -200.0
+	toast.offset_right = 200.0
+	toast.offset_top = -50.0
+	toast.offset_bottom = 50.0
+	toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	toast.grow_vertical = Control.GROW_DIRECTION_BOTH
+	toast.pivot_offset = Vector2(200, 50)
+
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.12, 0.22, 0.96)
+	sb.border_width_left = 3
+	sb.border_width_top = 3
+	sb.border_width_right = 3
+	sb.border_width_bottom = 4
+	sb.border_color = Color(1.0, 0.85, 0.25, 1.0)
+	sb.set_corner_radius_all(18)
+	sb.content_margin_left = 20.0
+	sb.content_margin_top = 14.0
+	sb.content_margin_right = 20.0
+	sb.content_margin_bottom = 14.0
+	sb.shadow_color = Color(0.0, 0.0, 0.0, 0.6)
+	sb.shadow_size = 16
+	toast.add_theme_stylebox_override("panel", sb)
+
+	var vb = VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 4)
+	toast.add_child(vb)
+
+	var header_lbl = Label.new()
+	header_lbl.text = "⏱️ %d-HOUR TIME WARP COMPLETED!" % hours
+	header_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header_lbl.add_theme_font_size_override("font_size", 16)
+	header_lbl.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35, 1.0))
+	vb.add_child(header_lbl)
+
+	var reward_lbl = Label.new()
+	reward_lbl.text = "+%s CASH CREDITED!" % _format_money(amount)
+	reward_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	reward_lbl.add_theme_font_size_override("font_size", 20)
+	reward_lbl.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55, 1.0))
+	vb.add_child(reward_lbl)
+
+	toast.scale = Vector2.ZERO
+	hud_node.add_child(toast)
+
+	var toast_tw = create_tween()
+	toast_tw.tween_property(toast, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	toast_tw.tween_interval(1.8)
+	toast_tw.tween_property(toast, "scale", Vector2(0.8, 0.8), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	toast_tw.parallel().tween_property(toast, "modulate:a", 0.0, 0.25)
+	toast_tw.chain().tween_callback(func():
+		if is_instance_valid(toast):
+			toast.queue_free()
+	)
+
+	var am = _get_audio_manager()
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("claim", 0.0, 2.0)
+		am.play_sfx("coin", 0.05, 1.5)
 
 # ─── Hold-to-Upgrade Implementation ─────────────────────────────────────────
 func _start_hold_upgrade(station_or_staff_id: String, is_staff: bool = false) -> void:

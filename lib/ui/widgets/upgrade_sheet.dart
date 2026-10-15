@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -18,15 +19,44 @@ class UpgradeSheet extends StatefulWidget {
 
 class _UpgradeSheetState extends State<UpgradeSheet> {
   int _selectedSubIndex = 0;
+  String _currentMultiplier = 'x1';
 
   @override
   Widget build(BuildContext context) {
     return Consumer<GameState>(
       builder: (context, gs, _) {
         final station = widget.station;
-        final canAfford = gs.cash >= station.upgradeCost;
         final isMaxed = station.level >= station.maxLevel;
         final levelFraction = station.level / station.maxLevel;
+
+        int levelsToBuy = 1;
+        double totalCost = 0.0;
+        if (_currentMultiplier == 'x1') {
+          levelsToBuy = (!isMaxed) ? 1 : 0;
+          totalCost = station.upgradeCost;
+        } else if (_currentMultiplier == 'x10') {
+          levelsToBuy = min(10, station.maxLevel - station.level);
+          for (int i = 0; i < levelsToBuy; i++) {
+            totalCost += station.baseCostFn(station.level + i);
+          }
+        } else {
+          int count = 0;
+          double acc = 0.0;
+          for (int l = station.level; l < station.maxLevel; l++) {
+            double c = station.baseCostFn(l);
+            if (acc + c <= gs.cash || count == 0) {
+              acc += c;
+              count++;
+            } else {
+              break;
+            }
+          }
+          levelsToBuy = count;
+          totalCost = acc;
+        }
+
+        final canAfford = !isMaxed && levelsToBuy > 0 && gs.cash >= totalCost;
+        final bottleneck = gs.getSectorBottleneckStatus();
 
         final zoneTitle = _getZoneTitle(station.zone);
         final operatingHours = _getOperatingHours(station.zone);
@@ -127,9 +157,9 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
 
               const SizedBox(height: 10),
 
-              // Reddish-Brown Header Bar showing Zone Title and Operating Hours
+              // Reddish-Brown Header Bar showing Zone Title, Bottleneck Status, Multiplier Toggle, and Operating Hours
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFF8C261E),
                   borderRadius: BorderRadius.circular(10),
@@ -145,12 +175,64 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
-                        fontSize: 14,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Sector Bottleneck Status Pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (bottleneck['color'] as Color).withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: bottleneck['color'] as Color, width: 1),
+                      ),
+                      child: Text(
+                        '${bottleneck['icon']} ${bottleneck['text']}',
+                        style: TextStyle(
+                          color: bottleneck['color'] as Color,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 10,
+                        ),
                       ),
                     ),
                     const Spacer(),
+                    // Bulk-Buy Multiplier Toggle Pill (x1, x10, MAX)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF5A1A10),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFD84315), width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: ['x1', 'x10', 'MAX'].map((m) {
+                          final isSel = _currentMultiplier == m;
+                          return GestureDetector(
+                            onTap: () => setState(() => _currentMultiplier = m),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isSel ? const Color(0xFF00E676) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                m,
+                                style: TextStyle(
+                                  color: isSel ? const Color(0xFF1B5E20) : Colors.white70,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
                         color: Colors.black38,
                         borderRadius: BorderRadius.circular(6),
@@ -160,7 +242,7 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
                         style: const TextStyle(
                           color: Color(0xFFFFD6A5),
                           fontWeight: FontWeight.w700,
-                          fontSize: 11,
+                          fontSize: 10,
                         ),
                       ),
                     ),
@@ -170,15 +252,85 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
 
               const SizedBox(height: 6),
 
-              // Cyan/Green Milestone Progress Bar
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: levelFraction.clamp(0.0, 1.0),
-                  minHeight: 8,
-                  backgroundColor: const Color(0xFF2E1A14),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00E5FF)),
-                ),
+              // Cyan/Green Milestone Progress Bar with Milestone Progress Ticks at Levels 10, 25, 50
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final barWidth = constraints.maxWidth;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: levelFraction.clamp(0.0, 1.0),
+                              minHeight: 10,
+                              backgroundColor: const Color(0xFF2E1A14),
+                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00E5FF)),
+                            ),
+                          ),
+                          // Milestone progress ticks at Levels 10, 25, 50
+                          ...[10, 25, 50].map((milestone) {
+                            final frac = milestone / station.maxLevel;
+                            if (frac > 1.0) return const SizedBox.shrink();
+                            final xPos = barWidth * frac;
+                            final reached = station.level >= milestone;
+                            return Positioned(
+                              left: (xPos - 1).clamp(0.0, barWidth - 2),
+                              top: 0,
+                              bottom: 0,
+                              child: Container(
+                                width: 2,
+                                color: reached ? const Color(0xFFFFD54F) : Colors.white38,
+                              ),
+                            );
+                          }),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Lv ${station.level} / ${station.maxLevel}',
+                        style: const TextStyle(
+                          color: Color(0xFF45241C),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 10,
+                        ),
+                      ),
+                      Row(
+                        children: [10, 25, 50].map((m) {
+                          final reached = station.level >= m;
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  reached ? Icons.star : Icons.star_border,
+                                  size: 11,
+                                  color: reached ? const Color(0xFF8C261E) : Colors.black45,
+                                ),
+                                Text(
+                                  '$m',
+                                  style: TextStyle(
+                                    color: reached ? const Color(0xFF8C261E) : Colors.black45,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ],
               ),
 
               const SizedBox(height: 6),
@@ -357,9 +509,10 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
                         _UpgradeActionBtn(
                           isMaxed: isMaxed,
                           canAfford: canAfford,
-                          cost: station.upgradeCost,
+                          levelsToBuy: levelsToBuy,
+                          cost: totalCost,
                           onTap: () {
-                            gs.upgradeStation(station.id);
+                            gs.upgradeStationBulk(station.id, levelsToBuy);
                           },
                         ),
                       ],
@@ -577,12 +730,14 @@ class _SubItem {
 class _UpgradeActionBtn extends StatelessWidget {
   final bool isMaxed;
   final bool canAfford;
+  final int levelsToBuy;
   final double cost;
   final VoidCallback onTap;
 
   const _UpgradeActionBtn({
     required this.isMaxed,
     required this.canAfford,
+    this.levelsToBuy = 1,
     required this.cost,
     required this.onTap,
   });
@@ -652,9 +807,9 @@ class _UpgradeActionBtn extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'UPGRADE',
-              style: TextStyle(
+            Text(
+              levelsToBuy > 1 ? 'UPGRADE +$levelsToBuy' : 'UPGRADE',
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w900,
                 fontSize: 11,

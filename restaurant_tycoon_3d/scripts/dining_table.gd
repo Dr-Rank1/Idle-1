@@ -771,8 +771,6 @@ func collect_booth_cash() -> float:
 		var gm = get_node_or_null("/root/GameManager")
 		if gm != null:
 			gm.add_cash(amount, c_pos)
-			if gm.has_signal("spawn_flying_currency_trail"):
-				gm.spawn_flying_currency_trail.emit(c_pos, amount)
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
 			am.play_sfx("coin", 0.04, 1.0)

@@ -18,8 +18,9 @@ class GameState extends ChangeNotifier {
   int reputation = 1;          // prestige multiplier level
   int prestigeStars = 0;       // permanent prestige stars earned
   double starRating = 5.0;
-  String hotelName = 'Idle Diner';
   String restaurantName = 'Idle Diner';
+  String get hotelName => restaurantName;
+  set hotelName(String val) => restaurantName = val;
   int restaurantLevel = 1;
   double restaurantXp = 0.0;
   int marketingLevel = 1;
@@ -61,7 +62,19 @@ class GameState extends ChangeNotifier {
   late final List<Station> stations;
 
   // ─── Managers ─────────────────────────────────────────────────────────────
-  final List<Manager> managers = List.from(allManagers);
+  final List<Manager> managers = allManagers.map((m) => Manager(
+    id: m.id,
+    name: m.name,
+    emoji: m.emoji,
+    rarity: m.rarity,
+    affectsZone: m.affectsZone,
+    description: m.description,
+    incomeBoost: m.incomeBoost,
+    speedBoost: m.speedBoost,
+    guestBoost: m.guestBoost,
+    isUnlocked: m.isUnlocked,
+    isAssigned: m.isAssigned,
+  )).toList();
 
   // ─── Particles & Labels ───────────────────────────────────────────────────
   final List<FloatingLabel> floatingLabels = [];
@@ -1152,21 +1165,68 @@ class GameState extends ChangeNotifier {
   // ═══════════════════════════════════════════════════════════════════════════
 
   bool upgradeStation(String stationId) {
+    return upgradeStationBulk(stationId, 1);
+  }
+
+  bool upgradeStationBulk(String stationId, int levelsToBuy) {
     final s = _stationById(stationId);
-    if (s == null) return false;
-    if (s.level >= s.maxLevel) return false;
-    if (cash < s.upgradeCost) return false;
+    if (s == null || levelsToBuy <= 0) return false;
+    int bought = 0;
+    while (bought < levelsToBuy && s.level < s.maxLevel && cash >= s.upgradeCost) {
+      cash -= s.upgradeCost;
+      s.level++;
+      bought++;
+    }
+    if (bought > 0) {
+      final pos = _gridToViewport(s.gx, s.gy);
+      _spawnCashParticles(pos);
+      _spawnCashParticles(pos.translate(20, -20));
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
 
-    cash -= s.upgradeCost;
-    s.level++;
+  Map<String, dynamic> getSectorBottleneckStatus() {
+    final lobbyQueue = characters.where((c) => c.isGuest && (c.state == CharacterState.queuingAtReception || c.state == CharacterState.arriving)).length;
+    if (lobbyQueue >= 3) {
+      return {
+        'text': 'Lobby Queue Full',
+        'color': const Color(0xFFEF4444),
+        'code': 'LOBBY_FULL',
+        'icon': '🔴',
+      };
+    }
 
-    // Confetti burst at station
-    final pos = _gridToViewport(s.gx, s.gy);
-    _spawnCashParticles(pos);
-    _spawnCashParticles(pos.translate(20, -20));
+    final foodWaiting = stations.where((s) => s.zone == ZoneType.kitchen && s.foodReady).length;
+    final queueDining = characters.where((c) => c.isGuest && c.state == CharacterState.queuingAtTable).length;
+    if (foodWaiting >= 2 || queueDining >= 3) {
+      return {
+        'text': 'Kitchen Backlogged',
+        'color': const Color(0xFFEF4444),
+        'code': 'KITCHEN_BACKLOGGED',
+        'icon': '🔴',
+      };
+    }
 
-    notifyListeners();
-    return true;
+    final waiters = characters.where((c) => c.type == CharacterType.waiter).toList();
+    final busyWaiters = waiters.where((w) => w.state != CharacterState.idle).length;
+    final pendingTables = stations.where((s) => s.isDirty || s.foodReady).length;
+    if (waiters.isNotEmpty && busyWaiters == waiters.length && pendingTables > 0) {
+      return {
+        'text': 'Waiters Busy',
+        'color': const Color(0xFFF59E0B),
+        'code': 'WAITERS_BUSY',
+        'icon': '🟡',
+      };
+    }
+
+    return {
+      'text': 'Optimal Flow',
+      'color': const Color(0xFF22C55E),
+      'code': 'OPTIMAL',
+      'icon': '🟢',
+    };
   }
 
   double claimOfflineEarnings([double multiplier = 1.0]) {
@@ -1189,6 +1249,10 @@ class GameState extends ChangeNotifier {
     final m = managers.firstWhere((m) => m.id == managerId,
         orElse: () => managers.first);
     if (!m.isUnlocked || m.isAssigned) return false;
+
+    for (final other in managers.where((other) => other.affectsZone == m.affectsZone)) {
+      other.isAssigned = false;
+    }
 
     m.isAssigned = true;
     _applyManagerBoosts();

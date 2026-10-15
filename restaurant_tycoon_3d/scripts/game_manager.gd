@@ -3,12 +3,16 @@ extends Node
 # ─── Signals ────────────────────────────────────────────────────────────────
 signal cash_changed(new_amount: float)
 signal gems_changed(new_amount: int)
+signal diamonds_changed(new_amount: int)
+signal golden_coins_changed(new_amount: int)
+signal energy_changed(new_amount: int)
+signal currencies_updated(cash: float, golden_coins: int, diamonds: int, energy: int)
 signal cash_rate_updated(rate: float)
 signal level_updated(new_level: int, current_xp: float, target_xp: float)
 signal reputation_changed(new_rep: int)
 signal station_upgraded(station_id: String, new_level: int)
 signal spawn_floating_cash(amount: float, world_pos: Vector3)
-signal spawn_flying_currency_trail(world_pos: Vector3, amount: float)
+signal spawn_flying_currency_trail(world_pos: Vector3, amount: float, currency_type: String)
 signal boost_toggled(active: bool)
 signal menu_updated()
 signal staff_updated(staff_id: String)
@@ -26,6 +30,11 @@ signal marketing_changed()
 signal vip_investor_awarded(amount: float)
 signal perks_updated()
 signal shop_updated()
+signal vip_arrived(vip_node: Node3D, title: String, type: String, duration: float)
+signal time_skip_activated(hours: int, cash_amount: float)
+signal overdrive_boost_activated(multiplier: float, duration: float)
+
+var restaurant_node: Node3D = null
 
 # ─── Developer Debug & Presets ──────────────────────────────────────────────
 @export var preview_all_max_levels: bool = false:
@@ -36,13 +45,23 @@ signal shop_updated()
 
 # ─── Economy State ──────────────────────────────────────────────────────────
 var cash: float = 650.0
-var gems: int = 50
+var golden_coins: int = 150
+var diamonds: int = 50
+var gems: int:
+	get:
+		return diamonds
+	set(val):
+		diamonds = val
+var energy: int = 50
+var max_energy: int = 50
+var energy_regen_timer: float = 0.0
 var total_earned: float = 0.0
 var pending_offline_earnings: float = 0.0
 var star_rating: float = 4.8
 var restaurant_name: String = "Idle Diner"
 var is_boosted: bool = false
 var boost_timer: float = 0.0
+var boost_multiplier: float = 2.0
 var is_manager_inspection_active: bool = false
 var daily_gift_claimed: bool = false
 var marketing_level: int = 1
@@ -344,6 +363,26 @@ var research_perks: Dictionary = {
 
 # ─── Permanent Store Boosters ───────────────────────────────────────────────
 var permanent_boosters: Dictionary = {
+	"perm_2x_income": {
+		"id": "perm_2x_income",
+		"name": "Permanent x2 Income",
+		"icon": "💎",
+		"desc": "Doubles all restaurant station revenue permanently across all shifts and locations!",
+		"effect": "+100% Station Output Forever (2x)",
+		"gem_cost": 150,
+		"diamond_cost": 150,
+		"owned": false
+	},
+	"vip_auto_collector": {
+		"id": "vip_auto_collector",
+		"name": "VIP Auto-Collector",
+		"icon": "🤖",
+		"desc": "Executive concierge automatically sweeps up and deposits all floating table cash stacks and tips instantly!",
+		"effect": "Instant Auto-Collect Floating Cash",
+		"gem_cost": 100,
+		"diamond_cost": 100,
+		"owned": false
+	},
 	"golden_spatula": {
 		"id": "golden_spatula",
 		"name": "Golden Spatula",
@@ -602,7 +641,11 @@ func _notification(what: int) -> void:
 func save_game() -> void:
 	var data = {
 		"cash": cash,
-		"gems": gems,
+		"golden_coins": golden_coins,
+		"diamonds": diamonds,
+		"gems": diamonds,
+		"energy": energy,
+		"energy_regen_timer": energy_regen_timer,
 		"total_earned": total_earned,
 		"star_rating": star_rating,
 		"restaurant_name": restaurant_name,
@@ -647,13 +690,17 @@ func load_game() -> void:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return
 	
-	cash = parsed.get("cash", cash)
-	gems = parsed.get("gems", gems)
-	total_earned = parsed.get("total_earned", total_earned)
-	star_rating = parsed.get("star_rating", star_rating)
-	restaurant_name = parsed.get("restaurant_name", restaurant_name)
-	restaurant_level = parsed.get("restaurant_level", restaurant_level)
-	restaurant_xp = parsed.get("restaurant_xp", restaurant_xp)
+	cash = float(parsed.get("cash", cash))
+	diamonds = int(parsed.get("diamonds", parsed.get("gems", diamonds)))
+	golden_coins = int(parsed.get("golden_coins", golden_coins))
+	energy = int(parsed.get("energy", energy))
+	energy = clampi(energy, 0, max_energy)
+	energy_regen_timer = float(parsed.get("energy_regen_timer", energy_regen_timer))
+	total_earned = float(parsed.get("total_earned", total_earned))
+	star_rating = float(parsed.get("star_rating", star_rating))
+	restaurant_name = str(parsed.get("restaurant_name", restaurant_name))
+	restaurant_level = int(parsed.get("restaurant_level", restaurant_level))
+	restaurant_xp = float(parsed.get("restaurant_xp", restaurant_xp))
 	unlocked_stalls = int(parsed.get("unlocked_stalls", unlocked_stalls))
 	terrace_unlocked = bool(parsed.get("terrace_unlocked", terrace_unlocked))
 	xp_to_next_level = 250.0 * pow(1.35, restaurant_level - 1)
@@ -723,6 +770,13 @@ func load_game() -> void:
 			if permanent_boosters.has(k) and typeof(parsed["permanent_boosters"][k]) == TYPE_DICTIONARY:
 				permanent_boosters[k]["owned"] = bool(parsed["permanent_boosters"][k].get("owned", false))
 
+	currencies_updated.emit(cash, golden_coins, diamonds, energy)
+	cash_changed.emit(cash)
+	diamonds_changed.emit(diamonds)
+	gems_changed.emit(diamonds)
+	golden_coins_changed.emit(golden_coins)
+	energy_changed.emit(energy)
+
 func _notify_offline_earnings(earned: float, elapsed: float) -> void:
 	await get_tree().create_timer(0.6).timeout
 	offline_earnings_available.emit(earned, elapsed)
@@ -739,6 +793,15 @@ func _process(delta: float) -> void:
 	if autosave_timer >= 20.0:
 		autosave_timer = 0.0
 		save_game()
+
+	# Lightning Energy Regeneration: 1 unit every 60 seconds up to max_energy (50)
+	if energy < max_energy:
+		energy_regen_timer += delta
+		if energy_regen_timer >= 60.0:
+			energy_regen_timer -= 60.0
+			add_energy(1)
+	else:
+		energy_regen_timer = 0.0
 
 	if is_boosted:
 		boost_timer -= delta
@@ -799,9 +862,10 @@ func add_cash(amount: float, world_pos: Vector3 = Vector3.ZERO) -> void:
 	_progress_quest("earn_cash", int(final_amount))
 	
 	cash_changed.emit(cash)
+	currencies_updated.emit(cash, golden_coins, diamonds, energy)
 	if world_pos != Vector3.ZERO:
 		spawn_floating_cash.emit(final_amount, world_pos)
-		spawn_flying_currency_trail.emit(world_pos, final_amount)
+		spawn_flying_currency_trail.emit(world_pos, final_amount, "cash")
 	
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("play_sfx"):
@@ -811,30 +875,123 @@ func spend_cash(amount: float) -> bool:
 	if cash >= amount:
 		cash -= amount
 		cash_changed.emit(cash)
+		currencies_updated.emit(cash, golden_coins, diamonds, energy)
 		return true
 	return false
 
+func add_golden_coins(amount: int, world_pos: Vector3 = Vector3.ZERO) -> void:
+	golden_coins += amount
+	golden_coins_changed.emit(golden_coins)
+	currencies_updated.emit(cash, golden_coins, diamonds, energy)
+	if world_pos != Vector3.ZERO:
+		spawn_flying_currency_trail.emit(world_pos, float(amount), "gold")
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("gold_coin")
+
+func spend_golden_coins(amount: int) -> bool:
+	if golden_coins >= amount:
+		golden_coins -= amount
+		golden_coins_changed.emit(golden_coins)
+		currencies_updated.emit(cash, golden_coins, diamonds, energy)
+		return true
+	return false
+
+func get_golden_coins() -> int:
+	return golden_coins
+
+func add_diamonds(amount: int, world_pos: Vector3 = Vector3.ZERO) -> void:
+	diamonds += amount
+	diamonds_changed.emit(diamonds)
+	gems_changed.emit(diamonds)
+	currencies_updated.emit(cash, golden_coins, diamonds, energy)
+	if world_pos != Vector3.ZERO:
+		spawn_flying_currency_trail.emit(world_pos, float(amount), "diamond")
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("diamond")
+
+func spend_diamonds(amount: int) -> bool:
+	if diamonds >= amount:
+		diamonds -= amount
+		diamonds_changed.emit(diamonds)
+		gems_changed.emit(diamonds)
+		currencies_updated.emit(cash, golden_coins, diamonds, energy)
+		return true
+	return false
+
+func get_diamonds() -> int:
+	return diamonds
+
 func add_gems(amount: int) -> void:
-	gems += amount
-	gems_changed.emit(gems)
+	add_diamonds(amount)
+
+func spend_gems(amount: int) -> bool:
+	return spend_diamonds(amount)
+
+func add_energy(amount: int) -> void:
+	energy = clampi(energy + amount, 0, max_energy)
+	energy_changed.emit(energy)
+	currencies_updated.emit(cash, golden_coins, diamonds, energy)
+
+func spend_energy(amount: int) -> bool:
+	if energy >= amount:
+		energy -= amount
+		energy_changed.emit(energy)
+		currencies_updated.emit(cash, golden_coins, diamonds, energy)
+		return true
+	return false
+
+func get_energy() -> int:
+	return energy
+
+func get_max_energy() -> int:
+	return max_energy
+
+func trigger_overdrive(cost: int = 10, duration: float = 60.0) -> bool:
+	if spend_energy(cost):
+		add_boost_time(duration)
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("energy")
+		return true
+	return false
+
+func is_vip_auto_collector_active() -> bool:
+	return is_permanent_booster_owned("vip_auto_collector")
+
+func apply_overdrive_boost(multiplier: float, duration_seconds: float) -> void:
+	is_boosted = true
+	if multiplier > boost_multiplier:
+		boost_multiplier = multiplier
+		boost_timer = duration_seconds
+	else:
+		boost_timer += duration_seconds
+	overdrive_boost_activated.emit(boost_multiplier, boost_timer)
+	boost_toggled.emit(true)
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.1, 2.2)
+	save_game()
+
+func add_boost_time(seconds: float) -> void:
+	apply_overdrive_boost(2.0, seconds)
+
+func execute_time_skip(hours: int, cost_diamonds: int = 0, cost_gold: int = 0) -> float:
+	if cost_diamonds > 0 and not spend_diamonds(cost_diamonds):
+		return 0.0
+	if cost_gold > 0 and not spend_golden_coins(cost_gold):
+		return 0.0
+	var seconds = float(hours * 3600)
+	var rate = get_effective_cash_per_sec()
+	var total_reward = max(rate * seconds, float(hours) * 1800.0)
+	add_cash(total_reward)
+	time_skip_activated.emit(hours, total_reward)
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("play_sfx"):
 		am.play_sfx("claim")
-
-func spend_gems(amount: int) -> bool:
-	if gems >= amount:
-		gems -= amount
-		gems_changed.emit(gems)
-		return true
-	return false
-
-func add_boost_time(seconds: float) -> void:
-	is_boosted = true
-	boost_timer = max(boost_timer, 0.0) + seconds
-	var am = get_node_or_null("/root/AudioManager")
-	if am != null and am.has_method("play_sfx"):
-		am.play_sfx("upgrade", 0.1, 2.0)
-	boost_toggled.emit(true)
+	save_game()
+	return total_reward
 
 func can_claim_daily_gift() -> bool:
 	return not daily_gift_claimed
@@ -844,7 +1001,9 @@ func claim_daily_gift() -> bool:
 		return false
 	daily_gift_claimed = true
 	add_cash(250.0)
-	add_gems(5)
+	add_diamonds(5)
+	add_golden_coins(50)
+	add_energy(15)
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("play_sfx"):
 		am.play_sfx("claim")
@@ -854,29 +1013,101 @@ func buy_shop_item(item_id: String) -> bool:
 	match item_id:
 		"daily_gift":
 			return claim_daily_gift()
-		"cash_small":
-			if spend_gems(10):
-				add_cash(500.0)
+		# Permanent Multipliers & Featured Bundles
+		"perm_2x_income":
+			if spend_diamonds(150):
+				if permanent_boosters.has("perm_2x_income"):
+					permanent_boosters["perm_2x_income"]["owned"] = true
+				shop_updated.emit()
+				save_game()
+				var am = get_node_or_null("/root/AudioManager")
+				if am != null and am.has_method("play_sfx"):
+					am.play_sfx("upgrade", 0.0, 3.2)
 				return true
-		"cash_medium":
-			if spend_gems(40):
-				add_cash(2500.0)
+		"vip_auto_collector":
+			if spend_diamonds(100):
+				if permanent_boosters.has("vip_auto_collector"):
+					permanent_boosters["vip_auto_collector"]["owned"] = true
+				shop_updated.emit()
+				save_game()
+				var am = get_node_or_null("/root/AudioManager")
+				if am != null and am.has_method("play_sfx"):
+					am.play_sfx("upgrade", 0.0, 3.2)
 				return true
-		"cash_vault":
-			if spend_gems(120):
-				add_cash(10000.0)
+		# Instant Time Skips
+		"timeskip_1h_diamond":
+			return execute_time_skip(1, 20, 0) > 0.0
+		"timeskip_1h_gold":
+			return execute_time_skip(1, 0, 150) > 0.0
+		"timeskip_4h_diamond":
+			return execute_time_skip(4, 60, 0) > 0.0
+		"timeskip_4h_gold":
+			return execute_time_skip(4, 0, 500) > 0.0
+		"timeskip_24h_diamond":
+			return execute_time_skip(24, 250, 0) > 0.0
+		"timeskip_24h_gold":
+			return execute_time_skip(24, 0, 2000) > 0.0
+		# Temporary Overdrive Boosts
+		"boost_2x_1h":
+			if spend_diamonds(25):
+				apply_overdrive_boost(2.0, 3600.0)
+				return true
+		"boost_5x_15m":
+			if spend_diamonds(45):
+				apply_overdrive_boost(5.0, 900.0)
+				return true
+		"boost_10x_5m":
+			if spend_diamonds(75):
+				apply_overdrive_boost(10.0, 300.0)
 				return true
 		"boost_5m":
-			if spend_gems(15):
-				add_boost_time(300.0)
+			if spend_diamonds(15):
+				apply_overdrive_boost(2.0, 300.0)
 				return true
 		"boost_15m":
-			if spend_gems(35):
-				add_boost_time(900.0)
+			if spend_diamonds(35):
+				apply_overdrive_boost(2.0, 900.0)
+				return true
+		# Diamond, Golden Coin & Energy Exchange
+		"cash_chest_small", "cash_small":
+			if spend_diamonds(10):
+				add_cash(1000.0)
+				return true
+		"cash_chest_medium", "cash_medium":
+			if spend_diamonds(40):
+				add_cash(6500.0)
+				return true
+		"cash_chest_grand", "cash_vault":
+			if spend_diamonds(150):
+				add_cash(35000.0)
+				return true
+		"gold_pouch":
+			if spend_diamonds(15):
+				add_golden_coins(100)
+				return true
+		"gold_chest":
+			if spend_diamonds(60):
+				add_golden_coins(500)
+				return true
+		"gold_trove":
+			if spend_diamonds(150):
+				add_golden_coins(1500)
+				return true
+		"energy_pack", "energy_small":
+			if spend_diamonds(10):
+				add_energy(25)
+				return true
+		"energy_full":
+			if spend_diamonds(20):
+				add_energy(50)
 				return true
 		"buy_gems":
-			if spend_cash(1000.0):
-				add_gems(50)
+			if spend_cash(2500.0):
+				add_diamonds(50)
+				return true
+		"buy_gems_large":
+			if spend_cash(10000.0):
+				add_diamonds(250)
 				return true
 		_:
 			if permanent_boosters.has(item_id):
@@ -938,6 +1169,8 @@ func get_station_income(station_id: String) -> float:
 	var cfg = get_station_config(station_id)
 	var rev: float = round(cfg.base_rev * pow(cfg.rev_mult, lvl - 1))
 	if is_boosted:
+		rev *= boost_multiplier
+	if is_permanent_booster_owned("perm_2x_income"):
 		rev *= 2.0
 	if vip_revenue_multiplier_timer > 0.0:
 		rev *= 1.5
@@ -1005,6 +1238,15 @@ func upgrade_station_multi(station_id: String, mode: String, consecutive_step: i
 		station_upgraded.emit(station_id, new_lvl)
 		add_xp(info.cost * 0.25)
 		_progress_quest("upgrade_stations", info.levels)
+
+		# Milestone Diamond Rewards (Levels 10, 25, 50)
+		if current_lvl < 10 and new_lvl >= 10:
+			add_diamonds(5)
+		if current_lvl < 25 and new_lvl >= 25:
+			add_diamonds(10)
+		if current_lvl < 50 and new_lvl >= 50:
+			add_diamonds(25)
+
 		save_game()
 		
 		var am = get_node_or_null("/root/AudioManager")
@@ -1123,6 +1365,7 @@ func award_critic_review(is_positive: bool, bounty: float = 0.0) -> void:
 		star_rating = min(5.0, star_rating + 0.1)
 		reputation_changed.emit(round(star_rating * 10))
 		add_xp(120.0)
+		add_golden_coins(25)
 		if bounty > 0.0:
 			add_cash(bounty)
 		critic_review_awarded.emit(star_rating, true)
@@ -1399,7 +1642,8 @@ func claim_quest(quest_id: String) -> bool:
 			var r_cash = q.get("reward_cash", 100.0)
 			var r_gems = q.get("reward_gems", 5)
 			add_cash(r_cash)
-			add_gems(r_gems)
+			add_diamonds(r_gems)
+			add_golden_coins(15)
 			
 			# Scale up next milestone goal
 			q["current"] = 0
@@ -1440,6 +1684,8 @@ func get_spawn_rate_multiplier() -> float:
 func get_dish_price_multiplier() -> float:
 	var mult = 1.35 if is_campaign_active("social_ad") else 1.0
 	if is_boosted:
+		mult *= boost_multiplier
+	if is_permanent_booster_owned("perm_2x_income"):
 		mult *= 2.0
 	if vip_revenue_multiplier_timer > 0.0:
 		mult *= 1.5
@@ -1486,6 +1732,7 @@ func award_vip_investor_reward(world_pos: Vector3 = Vector3.ZERO) -> float:
 	var grant = max(3500.0, get_effective_cash_per_sec() * 120.0)
 	grant = round(grant)
 	add_cash(grant, world_pos)
+	add_diamonds(10, world_pos)
 	vip_revenue_multiplier_timer = 60.0
 	add_xp(350.0)
 	vip_investor_awarded.emit(grant)
@@ -1545,7 +1792,7 @@ static func format_currency(amount: float) -> String:
 	if amount < 1000.0:
 		return "$%d" % round(amount)
 
-	var suffixes: Array[String] = ["K", "M", "B", "T", "aa", "ab", "ac", "ad"]
+	var suffixes: Array[String] = ["K", "M", "B", "T", "AA", "AB", "AC", "AD"]
 	var tier: int = int(floor(log(amount) / log(1000.0)))
 	var s_idx: int = clampi(tier - 1, 0, suffixes.size() - 1)
 	var div: float = pow(1000.0, s_idx + 1)
@@ -1677,3 +1924,32 @@ func buy_permanent_booster(booster_id: String) -> bool:
 	if am != null and am.has_method("play_sfx"):
 		am.play_sfx("upgrade", 0.0, 3.2)
 	return true
+
+# ─── Operational Alerts & Diagnostics ───────────────────────────────────────
+func register_restaurant(node: Node3D) -> void:
+	restaurant_node = node
+
+func get_restaurant() -> Node3D:
+	if restaurant_node != null and is_instance_valid(restaurant_node):
+		return restaurant_node
+	var tree = get_tree()
+	if tree != null and tree.current_scene != null:
+		var found = tree.current_scene.find_child("Restaurant", true, false)
+		if found != null:
+			restaurant_node = found
+			return restaurant_node
+	return null
+
+func notify_vip_arrival(vip_node: Node3D, title: String, type: String, duration: float) -> void:
+	vip_arrived.emit(vip_node, title, type, duration)
+
+func get_bottleneck_status() -> Dictionary:
+	var r = get_restaurant()
+	if r != null and r.has_method("get_sector_bottleneck_status"):
+		return r.get_sector_bottleneck_status()
+	return {
+		"text": "Optimal Flow",
+		"color": Color(0.18, 0.78, 0.35, 1.0),
+		"code": "OPTIMAL",
+		"icon": "🟢"
+	}
