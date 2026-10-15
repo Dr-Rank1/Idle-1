@@ -476,7 +476,7 @@ func update_level_display(lvl: int) -> void:
 	var upgrade_cost: float = 90.0
 	if gm != null:
 		upgrade_cost = gm.get_upgrade_cost(table_id)
-		can_upgrade = gm.cash >= upgrade_cost and lvl < gm.max_level
+		can_upgrade = gm.cash >= upgrade_cost and lvl < gm.get_station_max_level(table_id)
 		
 	if is_dirty:
 		if badge_root != null:

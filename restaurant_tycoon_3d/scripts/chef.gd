@@ -44,6 +44,11 @@ func _process(delta: float) -> void:
 	# Sizzling flame flicker effect for cooking chef
 	if flame_light != null and not is_prep_chef:
 		flame_light.light_energy = 1.1 + sin(time_passed * 14.0 + float(chef_index)) * 0.35 + randf_range(-0.1, 0.1)
+		# Trigger occasional sizzle sound effect for active cooking stoves
+		if chef_index == 0 and fmod(time_passed, 5.5) < delta:
+			var am = get_node_or_null("/root/AudioManager")
+			if am != null and am.has_method("play_sfx"):
+				am.play_sfx("sizzle", 0.08, -6.0)
 	
 	# Animated cooking progress arc over chef's head (matching res1_38s.jpg)
 	if cooking_ring != null:

@@ -20,6 +20,13 @@ signal stall_unlocked(stall_idx: int)
 signal offline_earnings_available(amount: float, elapsed_seconds: float)
 signal world_restaurants_updated()
 
+# ─── Developer Debug & Presets ──────────────────────────────────────────────
+@export var preview_all_max_levels: bool = false:
+	set(val):
+		preview_all_max_levels = val
+		if preview_all_max_levels and is_inside_tree():
+			set_all_stations_max_level(true)
+
 # ─── Economy State ──────────────────────────────────────────────────────────
 var cash: float = 650.0
 var gems: int = 50
@@ -148,8 +155,35 @@ var table_unlock_costs: Dictionary = {
 	"table_12": 1200.0,
 }
 
+# ─── Station Configurations & Exponential Economy Formulas ───────────────────
+# Formula: Cost = BaseCost * CostMultiplier^(L - 1)
+# Formula: Revenue = BaseRevenue * RevenueMultiplier^(L - 1)
+const STATION_CONFIGS: Dictionary = {
+	"table_1": {"base_cost": 45.0, "cost_mult": 1.15, "base_rev": 12.0, "rev_mult": 1.10, "max_level": 50},
+	"table_2": {"base_cost": 45.0, "cost_mult": 1.15, "base_rev": 12.0, "rev_mult": 1.10, "max_level": 50},
+	"table_3": {"base_cost": 45.0, "cost_mult": 1.15, "base_rev": 12.0, "rev_mult": 1.10, "max_level": 50},
+	"table_4": {"base_cost": 120.0, "cost_mult": 1.16, "base_rev": 28.0, "rev_mult": 1.11, "max_level": 50},
+	"table_5": {"base_cost": 120.0, "cost_mult": 1.16, "base_rev": 28.0, "rev_mult": 1.11, "max_level": 50},
+	"table_6": {"base_cost": 120.0, "cost_mult": 1.16, "base_rev": 28.0, "rev_mult": 1.11, "max_level": 50},
+	"table_7": {"base_cost": 320.0, "cost_mult": 1.18, "base_rev": 65.0, "rev_mult": 1.12, "max_level": 50},
+	"table_8": {"base_cost": 320.0, "cost_mult": 1.18, "base_rev": 65.0, "rev_mult": 1.12, "max_level": 50},
+	"table_9": {"base_cost": 320.0, "cost_mult": 1.18, "base_rev": 65.0, "rev_mult": 1.12, "max_level": 50},
+	"table_10": {"base_cost": 650.0, "cost_mult": 1.20, "base_rev": 140.0, "rev_mult": 1.13, "max_level": 50},
+	"table_11": {"base_cost": 650.0, "cost_mult": 1.20, "base_rev": 140.0, "rev_mult": 1.13, "max_level": 50},
+	"table_12": {"base_cost": 650.0, "cost_mult": 1.20, "base_rev": 140.0, "rev_mult": 1.13, "max_level": 50},
+	"kitchen_cook": {"base_cost": 80.0, "cost_mult": 1.16, "base_rev": 15.0, "rev_mult": 1.12, "max_level": 50},
+	"stove": {"base_cost": 80.0, "cost_mult": 1.16, "base_rev": 15.0, "rev_mult": 1.12, "max_level": 50},
+	"milkshake_bar": {"base_cost": 250.0, "cost_mult": 1.17, "base_rev": 45.0, "rev_mult": 1.12, "max_level": 50},
+	"parking_lot": {"base_cost": 180.0, "cost_mult": 1.19, "base_rev": 25.0, "rev_mult": 1.08, "spawn_rate_per_level": 0.15, "max_level": 25},
+	"parking": {"base_cost": 180.0, "cost_mult": 1.19, "base_rev": 25.0, "rev_mult": 1.08, "spawn_rate_per_level": 0.15, "max_level": 25},
+	"milkshake_blender": {"base_cost": 180.0, "cost_mult": 1.16, "base_rev": 30.0, "rev_mult": 1.11, "max_level": 50},
+	"jukebox": {"base_cost": 150.0, "cost_mult": 1.15, "base_rev": 20.0, "rev_mult": 1.10, "max_level": 50},
+	"host_desk": {"base_cost": 100.0, "cost_mult": 1.15, "base_rev": 15.0, "rev_mult": 1.10, "max_level": 50},
+}
+
 # ─── Station Levels ────────────────────────────────────────────────────────
 var station_levels: Dictionary = {
+	"kitchen_cook": 1,
 	"stove": 1,
 	"table_1": 1,
 	"table_2": 1,
@@ -167,9 +201,11 @@ var station_levels: Dictionary = {
 	"milkshake_bar": 1,
 	"milkshake_blender": 1,
 	"jukebox": 1,
+	"parking_lot": 1,
+	"parking": 1,
 }
 
-var max_level: int = 25
+var max_level: int = 50
 
 # ─── Menu / Recipes ─────────────────────────────────────────────────────────
 var menu_items: Dictionary = {
@@ -353,6 +389,8 @@ var autosave_timer: float = 0.0
 
 func _ready() -> void:
 	load_game()
+	if preview_all_max_levels:
+		set_all_stations_max_level(true)
 	level_updated.emit(restaurant_level, restaurant_xp, xp_to_next_level)
 
 func _notification(what: int) -> void:
@@ -376,6 +414,7 @@ func save_game() -> void:
 		"staff_roster": staff_roster,
 		"active_quests": active_quests,
 		"active_restaurant_id": active_restaurant_id,
+		"cash_per_sec": cash_per_sec,
 		"world_restaurants_unlocked": {
 			"idle_diner": world_restaurants["idle_diner"].get("unlocked", true),
 			"idles_chain": world_restaurants["idles_chain"].get("unlocked", false),
@@ -413,6 +452,7 @@ func load_game() -> void:
 	unlocked_stalls = int(parsed.get("unlocked_stalls", unlocked_stalls))
 	terrace_unlocked = bool(parsed.get("terrace_unlocked", terrace_unlocked))
 	xp_to_next_level = 250.0 * pow(1.35, restaurant_level - 1)
+	cash_per_sec = float(parsed.get("cash_per_sec", cash_per_sec))
 	
 	active_restaurant_id = parsed.get("active_restaurant_id", active_restaurant_id)
 	var unlocked_map = parsed.get("world_restaurants_unlocked", {})
@@ -426,16 +466,20 @@ func load_game() -> void:
 		var now = Time.get_unix_time_from_system()
 		var elapsed = max(0.0, now - last_ts)
 		if elapsed >= 30.0:
-			var capped = min(elapsed, 7200.0)
-			var base_rate = 14.0 + (restaurant_level * 5.0)
-			var earned = round(capped * (base_rate / 60.0))
-			if earned >= 15.0:
+			var capped = min(elapsed, 28800.0) # Up to 8 hours (28,800s)
+			var effective_rate = get_effective_cash_per_sec()
+			var earned = round(capped * effective_rate * 0.85) # Reference formula
+			if earned >= 10.0:
 				pending_offline_earnings = earned
 				call_deferred("_notify_offline_earnings", earned, capped)
 
 	if parsed.has("unlocked_tables") and typeof(parsed["unlocked_tables"]) == TYPE_DICTIONARY:
 		for k in parsed["unlocked_tables"].keys():
 			unlocked_tables[k] = parsed["unlocked_tables"][k]
+
+	if parsed.has("station_levels") and typeof(parsed["station_levels"]) == TYPE_DICTIONARY:
+		for k in parsed["station_levels"].keys():
+			station_levels[k] = int(parsed["station_levels"][k])
 
 	if parsed.has("station_levels") and typeof(parsed["station_levels"]) == TYPE_DICTIONARY:
 		for k in parsed["station_levels"].keys():
@@ -626,21 +670,50 @@ func add_xp(amount: float) -> void:
 	level_updated.emit(restaurant_level, restaurant_xp, xp_to_next_level)
 
 # ─── Multiplier Station Upgrades ────────────────────────────────────────────
-func get_station_level(station_id: String) -> int:
-	return station_levels.get(station_id, 1)
+func get_station_config(station_id: String) -> Dictionary:
+	var sid = station_id
+	if sid == "kitchen_cook" or sid == "stove":
+		return STATION_CONFIGS["kitchen_cook"]
+	if sid == "parking" or sid == "parking_lot":
+		return STATION_CONFIGS["parking_lot"]
+	if STATION_CONFIGS.has(sid):
+		return STATION_CONFIGS[sid]
+	return {"base_cost": 50.0, "cost_mult": 1.15, "base_rev": 15.0, "rev_mult": 1.10, "max_level": 50}
 
+func get_station_max_level(station_id: String) -> int:
+	return int(get_station_config(station_id).get("max_level", 50))
+
+func get_station_level(station_id: String) -> int:
+	var sid = station_id
+	if sid == "kitchen_cook" and not station_levels.has("kitchen_cook"):
+		return station_levels.get("stove", 1)
+	if sid == "stove" and not station_levels.has("stove"):
+		return station_levels.get("kitchen_cook", 1)
+	if sid == "parking" and not station_levels.has("parking"):
+		return station_levels.get("parking_lot", 1)
+	if sid == "parking_lot" and not station_levels.has("parking_lot"):
+		return station_levels.get("parking", 1)
+	return station_levels.get(sid, 1)
+
+# Formula: Cost = BaseCost * CostMultiplier^(L - 1)
 func get_upgrade_cost(station_id: String) -> float:
 	var lvl: int = get_station_level(station_id)
-	var base_cost: float = 75.0
-	if station_id.begins_with("stove"):
-		base_cost = 140.0
-	elif station_id.begins_with("table"):
-		base_cost = 90.0
-	return round(base_cost * pow(1.20, lvl - 1))
+	var cfg = get_station_config(station_id)
+	var station_max = int(cfg.get("max_level", 50))
+	if lvl >= station_max:
+		return 0.0
+	return round(cfg.base_cost * pow(cfg.cost_mult, lvl - 1))
+
+# Formula: Revenue = BaseRevenue * RevenueMultiplier^(L - 1)
+func get_station_income(station_id: String) -> float:
+	var lvl: int = get_station_level(station_id)
+	var cfg = get_station_config(station_id)
+	return round(cfg.base_rev * pow(cfg.rev_mult, lvl - 1))
 
 func get_upgrade_multi_info(station_id: String, mode: String) -> Dictionary:
 	var current_lvl: int = get_station_level(station_id)
-	var max_avail: int = max_level - current_lvl
+	var station_max: int = get_station_max_level(station_id)
+	var max_avail: int = station_max - current_lvl
 	if max_avail <= 0:
 		return {"cost": 0.0, "levels": 0, "can_afford": false}
 	
@@ -650,17 +723,13 @@ func get_upgrade_multi_info(station_id: String, mode: String) -> Dictionary:
 	elif mode == "MAX":
 		target_levels = max_avail
 		
+	var cfg = get_station_config(station_id)
 	var total_cost: float = 0.0
 	var affordable_levels: int = 0
 	var temp_lvl = current_lvl
 	
 	for i in range(target_levels):
-		var base_cost: float = 75.0
-		if station_id.begins_with("stove"):
-			base_cost = 140.0
-		elif station_id.begins_with("table"):
-			base_cost = 90.0
-		var c = round(base_cost * pow(1.20, temp_lvl - 1))
+		var c = round(cfg.base_cost * pow(cfg.cost_mult, temp_lvl - 1))
 		if mode == "MAX":
 			if cash >= total_cost + c:
 				total_cost += c
@@ -674,12 +743,7 @@ func get_upgrade_multi_info(station_id: String, mode: String) -> Dictionary:
 			temp_lvl += 1
 			
 	if mode == "MAX" and affordable_levels == 0:
-		var base_cost: float = 75.0
-		if station_id.begins_with("stove"):
-			base_cost = 140.0
-		elif station_id.begins_with("table"):
-			base_cost = 90.0
-		total_cost = round(base_cost * pow(1.20, current_lvl - 1))
+		total_cost = round(cfg.base_cost * pow(cfg.cost_mult, current_lvl - 1))
 		return {"cost": total_cost, "levels": 1, "can_afford": cash >= total_cost}
 		
 	return {"cost": total_cost, "levels": affordable_levels, "can_afford": cash >= total_cost and affordable_levels > 0}
@@ -688,8 +752,17 @@ func upgrade_station_multi(station_id: String, mode: String) -> bool:
 	var info = get_upgrade_multi_info(station_id, mode)
 	if info.can_afford and spend_cash(info.cost):
 		var current_lvl = get_station_level(station_id)
-		station_levels[station_id] = current_lvl + info.levels
-		station_upgraded.emit(station_id, station_levels[station_id])
+		var new_lvl = current_lvl + info.levels
+		station_levels[station_id] = new_lvl
+		if station_id == "stove":
+			station_levels["kitchen_cook"] = new_lvl
+		elif station_id == "kitchen_cook":
+			station_levels["stove"] = new_lvl
+		elif station_id == "parking":
+			station_levels["parking_lot"] = new_lvl
+		elif station_id == "parking_lot":
+			station_levels["parking"] = new_lvl
+		station_upgraded.emit(station_id, new_lvl)
 		add_xp(info.cost * 0.25)
 		_progress_quest("upgrade_stations", info.levels)
 		save_game()
@@ -703,14 +776,31 @@ func upgrade_station_multi(station_id: String, mode: String) -> bool:
 func upgrade_station(station_id: String) -> bool:
 	return upgrade_station_multi(station_id, "1")
 
-func get_station_income(station_id: String) -> float:
-	var lvl: int = get_station_level(station_id)
-	var base_income: float = 30.0
-	if station_id.begins_with("table"):
-		base_income = 45.0 + (lvl * 14.0)
-	elif station_id.begins_with("stove"):
-		base_income = 35.0 + (lvl * 12.0)
-	return base_income
+func get_effective_cash_per_sec() -> float:
+	if cash_per_sec >= 1.0:
+		return cash_per_sec
+	var total_sec_rev: float = 0.0
+	for i in range(1, 13):
+		var tid = "table_%d" % i
+		if is_table_unlocked(tid):
+			var inc = get_station_income(tid)
+			total_sec_rev += (inc / 12.0)
+	total_sec_rev += get_station_income("kitchen_cook") / 6.0
+	total_sec_rev += get_station_income("milkshake_bar") / 8.0
+	return max(total_sec_rev, 14.0)
+
+func set_all_stations_max_level(enable: bool = true) -> void:
+	for sid in STATION_CONFIGS.keys():
+		var max_lvl = get_station_max_level(sid)
+		station_levels[sid] = max_lvl if enable else 1
+		station_upgraded.emit(sid, station_levels[sid])
+	if enable:
+		terrace_unlocked = true
+		unlocked_tables["table_10"] = true
+		unlocked_tables["table_11"] = true
+		unlocked_tables["table_12"] = true
+		unlocked_stalls = 5
+	save_game()
 
 func is_table_unlocked(table_id: String) -> bool:
 	return unlocked_tables.get(table_id, true)
@@ -1012,7 +1102,10 @@ func is_campaign_active(camp_id: String) -> bool:
 	return campaigns.get(camp_id, {}).get("time_left", 0.0) > 0.0
 
 func get_spawn_rate_multiplier() -> float:
-	return 1.6 if is_campaign_active("flyers") else 1.0
+	var park_lvl = get_station_level("parking_lot")
+	var park_bonus = 1.0 + (park_lvl - 1) * 0.15
+	var flyer_bonus = 1.6 if is_campaign_active("flyers") else 1.0
+	return park_bonus * flyer_bonus
 
 func get_dish_price_multiplier() -> float:
 	return 1.35 if is_campaign_active("social_ad") else 1.0

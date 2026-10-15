@@ -47,9 +47,12 @@ func _init():
 	var err = img.save_png(out_path)
 	print("Snapshot result:", err)
 
+	var gm = root.get_node_or_null("/root/GameManager")
+	if gm != null:
+		gm.set_all_stations_max_level(true)
 	var hud_node = root.find_child("HUD", true, false)
 	if hud_node != null and hud_node.has_method("open_upgrade"):
-		hud_node.open_upgrade("milkshake_bar", "Bar Top", 200)
+		hud_node.open_upgrade("milkshake_bar", "Bar Top", 50)
 	for i in range(15):
 		await process_frame
 	var img_modal = root.get_viewport().get_texture().get_image()

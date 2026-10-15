@@ -51,7 +51,7 @@ func update_level_display(lvl: int) -> void:
 	var upgrade_cost: float = 140.0
 	if gm != null:
 		upgrade_cost = gm.get_upgrade_cost(station_id)
-		can_upgrade = gm.cash >= upgrade_cost and lvl < gm.max_level
+		can_upgrade = gm.cash >= upgrade_cost and lvl < gm.get_station_max_level(station_id)
 
 	if level_label != null:
 		level_label.font_size = 22

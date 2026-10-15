@@ -61,7 +61,7 @@ class Station {
     this.widthTiles = 1,
     this.heightTiles = 1,
     this.level = 1,
-    this.maxLevel = 20,
+    this.maxLevel = 50,
     required this.baseCostFn,
     required this.baseIncomeFn,
     required this.baseSpeedFn,

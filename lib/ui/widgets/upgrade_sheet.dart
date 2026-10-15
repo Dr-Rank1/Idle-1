@@ -272,11 +272,11 @@ class _UpgradeSheetState extends State<UpgradeSheet> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2979FF),
+                              color: const Color(0xFFF57F17),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
-                              'MAX',
+                              '⭐ MAX LEVEL',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w900,
@@ -538,12 +538,12 @@ class _UpgradeActionBtn extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
         ),
         child: const Text(
-          'MAX LEVEL\nUPGRADE',
+          'MAX LEVEL',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w900,
-            fontSize: 10,
+            fontSize: 11,
           ),
         ),
       );

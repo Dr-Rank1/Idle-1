@@ -154,9 +154,8 @@ class _GameScreenState extends State<GameScreen>
       barrierDismissible: false,
       builder: (_) => OfflineEarningsDialog(
         earnings: gs.offlineEarnings,
-        onClaim: () {
-          gs.cash += gs.offlineEarnings;
-          gs.offlineEarnings = 0;
+        onClaim: (mult) {
+          gs.claimOfflineEarnings(mult);
           Navigator.of(context).pop();
         },
       ),

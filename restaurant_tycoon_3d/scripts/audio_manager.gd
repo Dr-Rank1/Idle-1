@@ -14,6 +14,8 @@ func _ready() -> void:
 	sounds["upgrade"] = load("res://assets/audio/upgrade_fanfare.wav")
 	sounds["angry"] = load("res://assets/audio/angry_exit.wav")
 	sounds["ambience"] = load("res://assets/audio/restaurant_ambience.wav")
+	sounds["ambient"] = sounds.get("ambience")
+	sounds["sizzle"] = load("res://assets/audio/cooking_sizzle.wav")
 	sounds["click"] = load("res://assets/audio/button_click.wav")
 	sounds["claim"] = load("res://assets/audio/quest_claim.wav")
 	

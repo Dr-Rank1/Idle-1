@@ -744,7 +744,7 @@ class _FloatingBoostPill extends StatelessWidget {
 /// Offline earnings dialog — shown on resume after save.
 class OfflineEarningsDialog extends StatelessWidget {
   final double earnings;
-  final VoidCallback onClaim;
+  final void Function(double multiplier) onClaim;
 
   const OfflineEarningsDialog({
     super.key,
@@ -784,7 +784,7 @@ class OfflineEarningsDialog extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Your restaurant earned while you were away:',
+              'Your staff kept cooking while you were away\n(capped at 8h, 85% offline rate):',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.6),
                 fontSize: 13,
@@ -811,28 +811,52 @@ class OfflineEarningsDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: onClaim,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4CAF50),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => onClaim(1.0),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4CAF50),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 6,
+                    ),
+                    child: const Text(
+                      'COLLECT (1X)',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
-                  elevation: 8,
-                  shadowColor: const Color(0xFF4CAF50).withValues(alpha: 0.5),
                 ),
-                child: const Text(
-                  '✅ Claim Earnings',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => onClaim(2.0),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFA000),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 6,
+                    ),
+                    child: const Text(
+                      '⚡ 2X PROMO BOOST!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ],
         ),

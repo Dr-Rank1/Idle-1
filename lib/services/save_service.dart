@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../logic/game_state.dart';
 
@@ -73,16 +74,13 @@ class SaveService {
         }
       }
 
-      // Calculate offline earnings
+      // Calculate offline earnings: min(ElapsedSeconds, 28800) * CashPerSecond * 0.85
       if (ts != null) {
         final elapsed = DateTime.now().millisecondsSinceEpoch - ts;
         final elapsedSeconds = elapsed / 1000.0;
-        // Cap at 8 hours
-        final cappedSeconds = elapsedSeconds.clamp(0, 8 * 3600).toDouble();
-        // Rough offline rate: sum of all station incomes
-        final incomeRate = gs.stations.fold(
-            0.0, (sum, s) => sum + s.income / s.actionDuration);
-        gs.offlineEarnings = incomeRate * cappedSeconds * 0.25; // 25% efficiency offline
+        final cappedSeconds = min(elapsedSeconds, 28800.0); // Up to 8 hours
+        final rate = gs.cashPerSecond > 0 ? gs.cashPerSecond : 14.0;
+        gs.offlineEarnings = (cappedSeconds * rate * 0.85).roundToDouble();
       }
     } catch (_) {
       // Corrupted save — just continue fresh

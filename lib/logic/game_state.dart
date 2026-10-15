@@ -84,15 +84,16 @@ class GameState extends ChangeNotifier {
 
   void _buildStations() {
     stations = [
-      // ── Reception desks (Zone: reception, row 3) ──────────────────────────
+      // ── Reception desks (Zone: reception) ──────────────────────────
       Station(
         id: 'reception_1',
         zone: ZoneType.reception,
         name: 'Reception Desk',
         gx: 4, gy: 3,
-        baseCostFn: (l) => 150 * pow(1.15, l).toDouble(),
-        baseIncomeFn: (l) => 25 + l * 10.0,
-        baseSpeedFn: (l) => max(1.5, 4.0 - l * 0.12),
+        maxLevel: 50,
+        baseCostFn: (l) => (100 * pow(1.15, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (15 * pow(1.10, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(1.5, 4.0 - l * 0.05),
         queuePoint: const Offset(2.5, 3.5),
       ),
       Station(
@@ -100,74 +101,214 @@ class GameState extends ChangeNotifier {
         zone: ZoneType.reception,
         name: 'Reception Desk',
         gx: 4, gy: 5,
-        baseCostFn: (l) => 300 * pow(1.15, l).toDouble(),
-        baseIncomeFn: (l) => 30 + l * 12.0,
-        baseSpeedFn: (l) => max(1.5, 4.0 - l * 0.12),
+        maxLevel: 50,
+        baseCostFn: (l) => (100 * pow(1.15, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (15 * pow(1.10, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(1.5, 4.0 - l * 0.05),
         queuePoint: const Offset(2.5, 5.5),
       ),
 
-      // ── Kitchen stoves ────────────────────────────────────────────────────
+      // ── Kitchen cook / stoves (Base Cost $80, Cost Mult 1.16, Base Rev $15, Rev Mult 1.12, Max 50) ────────────────────
+      Station(
+        id: 'kitchen_cook',
+        zone: ZoneType.kitchen,
+        name: 'Master Chef Stove',
+        gx: 11, gy: 2,
+        maxLevel: 50,
+        baseCostFn: (l) => (80 * pow(1.16, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (15 * pow(1.12, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(1.0, 5.0 - l * 0.08),
+        queuePoint: const Offset(10.0, 2.5),
+      ),
       Station(
         id: 'stove_1',
         zone: ZoneType.kitchen,
-        name: 'Chef\'s Stove',
+        name: 'Master Chef Stove',
         gx: 11, gy: 2,
-        baseCostFn: (l) => 200 * pow(1.15, l).toDouble(),
-        baseIncomeFn: (l) => 40 + l * 15.0,
-        baseSpeedFn: (l) => max(1.0, 5.0 - l * 0.15),
+        maxLevel: 50,
+        baseCostFn: (l) => (80 * pow(1.16, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (15 * pow(1.12, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(1.0, 5.0 - l * 0.08),
         queuePoint: const Offset(10.0, 2.5),
       ),
       Station(
         id: 'stove_2',
         zone: ZoneType.kitchen,
-        name: 'Chef\'s Stove',
+        name: 'Master Chef Stove',
         gx: 11, gy: 4,
-        baseCostFn: (l) => 400 * pow(1.15, l).toDouble(),
-        baseIncomeFn: (l) => 50 + l * 18.0,
-        baseSpeedFn: (l) => max(1.0, 5.0 - l * 0.15),
+        maxLevel: 50,
+        baseCostFn: (l) => (80 * pow(1.16, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (15 * pow(1.12, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(1.0, 5.0 - l * 0.08),
         queuePoint: const Offset(10.0, 4.5),
       ),
 
-      // ── Dining tables ─────────────────────────────────────────────────────
+      // ── 50s Milkshake & Soda Bar (Base Cost $250, Cost Mult 1.17, Base Rev $45, Rev Mult 1.12, Max 50) ──
+      Station(
+        id: 'milkshake_bar',
+        zone: ZoneType.reception,
+        name: 'Soda Fountain Bar',
+        gx: 6, gy: 3,
+        maxLevel: 50,
+        baseCostFn: (l) => (250 * pow(1.17, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (45 * pow(1.12, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(1.2, 4.5 - l * 0.06),
+        queuePoint: const Offset(5.0, 3.5),
+      ),
+
+      // ── Exterior Parking Lot (Base Cost $180, Cost Mult 1.19, +15% Spawn Rate, Mult 1.08, Max Level 25) ──
+      Station(
+        id: 'parking_lot',
+        zone: ZoneType.reception,
+        name: 'Parking Lot',
+        gx: 1, gy: 14,
+        widthTiles: 3,
+        heightTiles: 2,
+        maxLevel: 25,
+        baseCostFn: (l) => (180 * pow(1.19, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (25 * pow(1.08, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(2.0, 6.0 - (l - 1) * 0.15),
+        queuePoint: const Offset(1.0, 13.0),
+      ),
+
+      // ── Tables 1–3 (Base Cost $45, Cost Mult 1.15, Base Rev $12, Rev Mult 1.10, Max 50) ──
       Station(
         id: 'table_1',
         zone: ZoneType.diningRoom,
-        name: 'Dining Table',
+        name: 'Booth Table 1',
         gx: 8, gy: 7,
-        baseCostFn: (l) => 100 * pow(1.12, l).toDouble(),
-        baseIncomeFn: (l) => 60 + l * 20.0,
-        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.2),
+        maxLevel: 50,
+        baseCostFn: (l) => (45 * pow(1.15, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (12 * pow(1.10, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.1),
         queuePoint: const Offset(7.0, 7.5),
       ),
       Station(
         id: 'table_2',
         zone: ZoneType.diningRoom,
-        name: 'Dining Table',
+        name: 'Booth Table 2',
         gx: 10, gy: 7,
-        baseCostFn: (l) => 100 * pow(1.12, l).toDouble(),
-        baseIncomeFn: (l) => 60 + l * 20.0,
-        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.2),
+        maxLevel: 50,
+        baseCostFn: (l) => (45 * pow(1.15, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (12 * pow(1.10, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.1),
         queuePoint: const Offset(9.0, 7.5),
       ),
       Station(
         id: 'table_3',
         zone: ZoneType.diningRoom,
-        name: 'Dining Table',
+        name: 'Booth Table 3',
         gx: 12, gy: 7,
-        baseCostFn: (l) => 150 * pow(1.12, l).toDouble(),
-        baseIncomeFn: (l) => 70 + l * 22.0,
-        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.2),
+        maxLevel: 50,
+        baseCostFn: (l) => (45 * pow(1.15, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (12 * pow(1.10, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.1),
         queuePoint: const Offset(11.0, 7.5),
       ),
+
+      // ── Tables 4–6 (Base Cost $120, Cost Mult 1.16, Base Rev $28, Rev Mult 1.11, Max 50) ──
       Station(
         id: 'table_4',
         zone: ZoneType.diningRoom,
-        name: 'Dining Table',
+        name: 'Booth Table 4',
         gx: 8, gy: 9,
-        baseCostFn: (l) => 200 * pow(1.12, l).toDouble(),
-        baseIncomeFn: (l) => 80 + l * 25.0,
-        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.2),
+        maxLevel: 50,
+        baseCostFn: (l) => (120 * pow(1.16, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (28 * pow(1.11, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.1),
         queuePoint: const Offset(7.0, 9.5),
+      ),
+      Station(
+        id: 'table_5',
+        zone: ZoneType.diningRoom,
+        name: 'Booth Table 5',
+        gx: 10, gy: 9,
+        maxLevel: 50,
+        baseCostFn: (l) => (120 * pow(1.16, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (28 * pow(1.11, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.1),
+        queuePoint: const Offset(9.0, 9.5),
+      ),
+      Station(
+        id: 'table_6',
+        zone: ZoneType.diningRoom,
+        name: 'Booth Table 6',
+        gx: 12, gy: 9,
+        maxLevel: 50,
+        baseCostFn: (l) => (120 * pow(1.16, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (28 * pow(1.11, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.1),
+        queuePoint: const Offset(11.0, 9.5),
+      ),
+
+      // ── Tables 7–9 (Base Cost $320, Cost Mult 1.18, Base Rev $65, Rev Mult 1.12, Max 50) ──
+      Station(
+        id: 'table_7',
+        zone: ZoneType.diningRoom,
+        name: 'Booth Table 7',
+        gx: 8, gy: 11,
+        maxLevel: 50,
+        baseCostFn: (l) => (320 * pow(1.18, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (65 * pow(1.12, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.1),
+        queuePoint: const Offset(7.0, 11.5),
+      ),
+      Station(
+        id: 'table_8',
+        zone: ZoneType.diningRoom,
+        name: 'Booth Table 8',
+        gx: 10, gy: 11,
+        maxLevel: 50,
+        baseCostFn: (l) => (320 * pow(1.18, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (65 * pow(1.12, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.1),
+        queuePoint: const Offset(9.0, 11.5),
+      ),
+      Station(
+        id: 'table_9',
+        zone: ZoneType.diningRoom,
+        name: 'Booth Table 9',
+        gx: 12, gy: 11,
+        maxLevel: 50,
+        baseCostFn: (l) => (320 * pow(1.18, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (65 * pow(1.12, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.1),
+        queuePoint: const Offset(11.0, 11.5),
+      ),
+
+      // ── Tables 10–12 Sunset Terrace (Base Cost $650, Cost Mult 1.20, Base Rev $140, Rev Mult 1.13, Max 50) ──
+      Station(
+        id: 'table_10',
+        zone: ZoneType.diningRoom,
+        name: 'Terrace Cabana 10',
+        gx: 14, gy: 7,
+        maxLevel: 50,
+        baseCostFn: (l) => (650 * pow(1.20, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (140 * pow(1.13, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.1),
+        queuePoint: const Offset(13.0, 7.5),
+      ),
+      Station(
+        id: 'table_11',
+        zone: ZoneType.diningRoom,
+        name: 'Terrace Cabana 11',
+        gx: 14, gy: 9,
+        maxLevel: 50,
+        baseCostFn: (l) => (650 * pow(1.20, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (140 * pow(1.13, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.1),
+        queuePoint: const Offset(13.0, 9.5),
+      ),
+      Station(
+        id: 'table_12',
+        zone: ZoneType.diningRoom,
+        name: 'Terrace Cabana 12',
+        gx: 14, gy: 11,
+        maxLevel: 50,
+        baseCostFn: (l) => (650 * pow(1.20, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (140 * pow(1.13, l - 1)).roundToDouble(),
+        baseSpeedFn: (l) => max(3.0, 10.0 - l * 0.1),
+        queuePoint: const Offset(13.0, 11.5),
       ),
 
       // ── Hotel rooms ───────────────────────────────────────────────────────
@@ -177,8 +318,9 @@ class GameState extends ChangeNotifier {
         name: 'Standard Room',
         gx: 2, gy: 10,
         widthTiles: 2,
-        baseCostFn: (l) => 500 * pow(1.18, l).toDouble(),
-        baseIncomeFn: (l) => 120 + l * 30.0,
+        maxLevel: 50,
+        baseCostFn: (l) => (500 * pow(1.18, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (120 * pow(1.12, l - 1)).roundToDouble(),
         baseSpeedFn: (l) => max(5.0, 15.0 - l * 0.25),
         queuePoint: const Offset(3.0, 9.0),
       ),
@@ -188,8 +330,9 @@ class GameState extends ChangeNotifier {
         name: 'Standard Room',
         gx: 5, gy: 10,
         widthTiles: 2,
-        baseCostFn: (l) => 600 * pow(1.18, l).toDouble(),
-        baseIncomeFn: (l) => 130 + l * 32.0,
+        maxLevel: 50,
+        baseCostFn: (l) => (600 * pow(1.18, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (130 * pow(1.12, l - 1)).roundToDouble(),
         baseSpeedFn: (l) => max(5.0, 15.0 - l * 0.25),
         queuePoint: const Offset(6.0, 9.0),
       ),
@@ -199,8 +342,9 @@ class GameState extends ChangeNotifier {
         name: 'Deluxe Suite',
         gx: 8, gy: 12,
         widthTiles: 2,
-        baseCostFn: (l) => 1200 * pow(1.20, l).toDouble(),
-        baseIncomeFn: (l) => 250 + l * 60.0,
+        maxLevel: 50,
+        baseCostFn: (l) => (1200 * pow(1.20, l - 1)).roundToDouble(),
+        baseIncomeFn: (l) => (250 * pow(1.13, l - 1)).roundToDouble(),
         baseSpeedFn: (l) => max(5.0, 18.0 - l * 0.3),
         queuePoint: const Offset(9.0, 11.0),
       ),
@@ -936,6 +1080,22 @@ class GameState extends ChangeNotifier {
 
     notifyListeners();
     return true;
+  }
+
+  double claimOfflineEarnings([double multiplier = 1.0]) {
+    final payout = offlineEarnings * multiplier;
+    cash += payout;
+    totalEarned += payout;
+    offlineEarnings = 0.0;
+    notifyListeners();
+    return payout;
+  }
+
+  void setAllStationsMaxLevel([bool enable = true]) {
+    for (final s in stations) {
+      s.level = enable ? s.maxLevel : 1;
+    }
+    notifyListeners();
   }
 
   bool assignManager(String managerId) {

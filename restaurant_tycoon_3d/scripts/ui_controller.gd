@@ -35,7 +35,7 @@ extends CanvasLayer
 # ─── Modals ─────────────────────────────────────────────────────────────────
 @onready var upgrade_panel: PanelContainer = get_node_or_null("UpgradePanel")
 @onready var upgrade_title: Label = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/HeaderHBox/TitleLabel")
-@onready var upgrade_level: Label = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/HeaderHBox/LevelLabel")
+@onready var upgrade_level: Label = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/HeaderHBox/LevelBadge") if get_node_or_null("UpgradePanel/VBox/StationCard/VBox/HeaderHBox/LevelBadge") != null else get_node_or_null("UpgradePanel/VBox/StationCard/VBox/HeaderHBox/LevelLabel")
 @onready var upgrade_max_badge: Label = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/HeaderHBox/MaxBadge")
 @onready var upgrade_icon: Label = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/BodyHBox/IconLabel")
 @onready var upgrade_desc: Label = get_node_or_null("UpgradePanel/VBox/StationCard/VBox/BodyHBox/InfoVBox/DescLabel")
@@ -543,11 +543,29 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 	if gm == null:
 		return
 	
+	var actual_level = max(level, gm.get_station_level(station_id))
+	var station_max = gm.get_station_max_level(station_id)
+	var is_max = actual_level >= station_max
+	
 	if upgrade_title != null: upgrade_title.text = station_name
-	if upgrade_level != null: upgrade_level.text = "Level %d / %d" % [level, gm.max_level]
+	if upgrade_level != null: upgrade_level.text = "Level %d / %d" % [actual_level, station_max]
 	var inc = gm.get_station_income(station_id)
-	if upgrade_income != null: upgrade_income.text = "💵 +$%d / cust   ⚡ +%d" % [round(inc), max(5, level * 2)]
+	if upgrade_income != null: upgrade_income.text = "💵 +$%d / cust   ⚡ +%d" % [round(inc), max(5, actual_level * 2)]
 	if upgrade_desc != null: upgrade_desc.text = "Upgrade the %s to increase cash earned by the restaurant." % station_name
+	
+	if upgrade_max_badge != null:
+		upgrade_max_badge.visible = is_max
+		if is_max:
+			upgrade_max_badge.text = "⭐ MAX LEVEL"
+			var sb = StyleBoxFlat.new()
+			sb.bg_color = Color(0.96, 0.65, 0.12, 1.0)
+			sb.set_corner_radius_all(6)
+			sb.content_margin_left = 6.0
+			sb.content_margin_right = 6.0
+			sb.content_margin_top = 2.0
+			sb.content_margin_bottom = 2.0
+			upgrade_max_badge.add_theme_stylebox_override("normal", sb)
+			upgrade_max_badge.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
 	
 	var icon_char = "🍳"
 	if station_id.begins_with("table"):
@@ -559,6 +577,8 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 		icon_char = "🥤"
 	elif station_id == "jukebox":
 		icon_char = "🎵"
+	elif station_id.begins_with("parking"):
+		icon_char = "🚗"
 	if upgrade_icon != null:
 		upgrade_icon.text = icon_char
 	
@@ -566,11 +586,11 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 	if zone_title_label != null:
 		if station_id.begins_with("milkshake"):
 			zone_title_label.text = "🥤 Milkshake Bar"
-		elif station_id == "stove":
+		elif station_id == "stove" or station_id == "kitchen_cook":
 			zone_title_label.text = "🍳 Kitchen"
 		elif station_id == "host_desk":
 			zone_title_label.text = "🛎️ Lobby"
-		elif station_id == "parking":
+		elif station_id.begins_with("parking"):
 			zone_title_label.text = "🚗 Parking"
 		else:
 			zone_title_label.text = "🪑 Dining"
@@ -578,17 +598,22 @@ func open_upgrade(station_id: String, station_name: String, level: int) -> void:
 	if hours_badge_label != null:
 		if station_id.begins_with("milkshake"):
 			hours_badge_label.text = "☀️ Opens: 11:00 AM"
-		elif station_id == "parking":
+		elif station_id.begins_with("parking"):
 			hours_badge_label.text = "☀️ 24 Hours Open"
 		else:
 			hours_badge_label.text = "🌙 Closes: 11:00 PM"
 
-	var next_milestone = 5 if level < 5 else (10 if level < 10 else 25)
-	var prev_milestone = 1 if level < 5 else (5 if level < 10 else 10)
 	if upgrade_milestone_bar != null:
-		upgrade_milestone_bar.min_value = prev_milestone
-		upgrade_milestone_bar.max_value = next_milestone
-		upgrade_milestone_bar.value = level
+		if is_max:
+			upgrade_milestone_bar.min_value = 0
+			upgrade_milestone_bar.max_value = station_max
+			upgrade_milestone_bar.value = station_max
+		else:
+			var next_milestone = 5 if level < 5 else (10 if level < 10 else (25 if level < 25 else station_max))
+			var prev_milestone = 1 if level < 5 else (5 if level < 10 else (10 if level < 25 else 25))
+			upgrade_milestone_bar.min_value = prev_milestone
+			upgrade_milestone_bar.max_value = next_milestone
+			upgrade_milestone_bar.value = level
 	
 	if stat_cash_lbl != null: stat_cash_lbl.text = "💵 %s" % _format_money(gm.cash)
 	if stat_gem_lbl != null: stat_gem_lbl.text = "💎 %d" % gm.gems
@@ -679,7 +704,9 @@ func _refresh_upgrade_tiles(gm: Node) -> void:
 			sb.border_color = Color(0.28, 0.10, 0.06, 1.0)
 		tile_btn.add_theme_stylebox_override("normal", sb)
 
-		var badge_str = "MAX" if lvl >= gm.max_level else ("Lv. %d" % lvl if is_unlocked else "🔒 Lock")
+		var station_max = gm.get_station_max_level(sid)
+		var is_max = lvl >= station_max
+		var badge_str = "⭐ MAX" if is_max else ("Lv. %d" % lvl if is_unlocked else "🔒 Lock")
 		tile_btn.text = "%s %s\n%s" % [st["icon"], st["short"], badge_str]
 		tile_btn.add_theme_font_size_override("font_size", 10)
 		tile_btn.add_theme_color_override("font_color", Color(1, 1, 1, 1) if is_unlocked else Color(0.7, 0.7, 0.7, 0.7))
@@ -703,15 +730,21 @@ func _refresh_upgrade_btn() -> void:
 	if gm == null or current_station_id == "" or upgrade_btn == null:
 		return
 	var lvl = gm.get_station_level(current_station_id)
+	var station_max = gm.get_station_max_level(current_station_id)
+	var is_max = lvl >= station_max
 	var info = gm.get_upgrade_multi_info(current_station_id, current_multiplier)
-	if lvl >= gm.max_level or info.levels <= 0:
-		upgrade_btn.text = "MAX LEVEL UPGRADE"
+	if is_max or info.levels <= 0:
+		upgrade_btn.text = "MAX LEVEL"
 		upgrade_btn.disabled = true
-		if upgrade_max_badge != null: upgrade_max_badge.visible = true
+		if upgrade_max_badge != null:
+			upgrade_max_badge.visible = true
+			upgrade_max_badge.text = "⭐ MAX LEVEL"
+			upgrade_max_badge.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
 	else:
 		upgrade_btn.text = "UPGRADE +%d LVL\n($%d)" % [info.levels, round(info.cost)]
 		upgrade_btn.disabled = not info.can_afford
-		if upgrade_max_badge != null: upgrade_max_badge.visible = false
+		if upgrade_max_badge != null:
+			upgrade_max_badge.visible = false
 
 func _on_upgrade_pressed() -> void:
 	_play_click_sfx()
@@ -723,10 +756,23 @@ func _on_station_upgraded(station_id: String, new_lvl: int) -> void:
 	if station_id == current_station_id and upgrade_panel != null and upgrade_panel.visible:
 		var gm = get_node_or_null("/root/GameManager")
 		if gm != null:
-			if upgrade_level != null: upgrade_level.text = "Level %d / %d" % [new_lvl, gm.max_level]
+			var station_max = gm.get_station_max_level(station_id)
+			var is_max = new_lvl >= station_max
+			if upgrade_level != null: upgrade_level.text = "Level %d / %d" % [new_lvl, station_max]
 			var inc = gm.get_station_income(station_id)
 			if upgrade_income != null: upgrade_income.text = "💵 +$%d / cust   ⚡ +%d" % [round(inc), max(5, new_lvl * 2)]
-			if upgrade_milestone_bar != null: upgrade_milestone_bar.value = new_lvl
+			if upgrade_max_badge != null:
+				upgrade_max_badge.visible = is_max
+				if is_max:
+					upgrade_max_badge.text = "⭐ MAX LEVEL"
+					upgrade_max_badge.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
+			if upgrade_milestone_bar != null:
+				if is_max:
+					upgrade_milestone_bar.min_value = 0
+					upgrade_milestone_bar.max_value = station_max
+					upgrade_milestone_bar.value = station_max
+				else:
+					upgrade_milestone_bar.value = new_lvl
 			_refresh_upgrade_btn()
 			_refresh_upgrade_tiles(gm)
 	if dining_panel != null and dining_panel.visible:
@@ -1265,7 +1311,7 @@ func _on_offline_earnings_available(earned: float, elapsed: float) -> void:
 
 	var mins = max(1, int(elapsed / 60.0))
 	var desc = Label.new()
-	desc.text = "While you were away for %d minutes,\nyour staff kept cooking and earned:" % mins
+	desc.text = "While you were away for %d min (capped at 8h),\nyour staff kept cooking at 85%% efficiency:" % mins
 	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	desc.add_theme_font_size_override("font_size", 15)
 	desc.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
@@ -1295,8 +1341,8 @@ func _on_offline_earnings_available(earned: float, elapsed: float) -> void:
 	hb.add_child(collect_btn)
 
 	var double_btn = Button.new()
-	double_btn.text = "⚡ 2X DOUBLE!"
-	double_btn.custom_minimum_size = Vector2(160, 44)
+	double_btn.text = "⚡ 2X PROMO BOOST!"
+	double_btn.custom_minimum_size = Vector2(170, 44)
 	var double_style = StyleBoxFlat.new()
 	double_style.bg_color = Color(0.92, 0.65, 0.12, 1.0)
 	double_style.set_corner_radius_all(10)
