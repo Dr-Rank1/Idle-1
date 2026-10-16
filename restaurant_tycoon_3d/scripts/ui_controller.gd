@@ -133,6 +133,8 @@ var milestone_labels_hbox: HBoxContainer:
 @onready var close_world_map_btn: Button = get_node_or_null("WorldMapPanel/VBox/TopHBox/CloseWorldMapBtn")
 
 @onready var floating_boost_btn: Button = get_node_or_null("HUD/FloatingBoostBanner")
+@onready var activate_all_managers_btn: Button = get_node_or_null("HUD/ActivateAllManagersBtn")
+var staff_refresh_timer: float = 0.0
 @onready var ribbon_marketing: PanelContainer = get_node_or_null("HUD/StatusRibbons/RibbonMarketing")
 @onready var ribbon_marketing_lbl: Label = get_node_or_null("HUD/StatusRibbons/RibbonMarketing/Label")
 @onready var ribbon_parking: PanelContainer = get_node_or_null("HUD/StatusRibbons/RibbonParking")
@@ -538,6 +540,9 @@ func _ready() -> void:
 			floating_boost_btn.add_child(boost_timer_bar)
 			boost_timer_bar.visible = false
 
+	if activate_all_managers_btn != null:
+		activate_all_managers_btn.pressed.connect(_on_activate_all_managers_pressed)
+
 	if ribbon_marketing != null:
 		ribbon_marketing.gui_input.connect(func(event: InputEvent):
 			if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -679,6 +684,26 @@ func _ready() -> void:
 		gm.station_upgraded.connect(_on_station_upgraded)
 		gm.boost_toggled.connect(_on_boost_toggled)
 		gm.staff_updated.connect(_on_staff_updated)
+		if gm.has_signal("manager_skill_activated"):
+			gm.manager_skill_activated.connect(func(_sec):
+				if staff_panel != null and staff_panel.visible:
+					_refresh_staff_panel()
+			)
+		if gm.has_signal("manager_skill_ended"):
+			gm.manager_skill_ended.connect(func(_sec):
+				if staff_panel != null and staff_panel.visible:
+					_refresh_staff_panel()
+			)
+		if gm.has_signal("manager_skill_ready"):
+			gm.manager_skill_ready.connect(func(_sec):
+				if staff_panel != null and staff_panel.visible:
+					_refresh_staff_panel()
+			)
+		if gm.has_signal("manager_assigned"):
+			gm.manager_assigned.connect(func(_sec, _tier):
+				if staff_panel != null and staff_panel.visible:
+					_refresh_staff_panel()
+			)
 		gm.table_unlocked.connect(_on_table_unlocked)
 		gm.quests_updated.connect(_on_quests_updated)
 		gm.campaign_updated.connect(_on_campaign_updated)
@@ -1281,6 +1306,7 @@ func _process(delta: float) -> void:
 				boost_timer_bar.visible = false
 			if boost_btn != null:
 				boost_btn.text = "⚡ 2X"
+		_update_activate_all_managers_button(delta)
 
 	_update_status_ribbons()
 	_update_rush_hour_button()
@@ -1289,6 +1315,11 @@ func _process(delta: float) -> void:
 		if analytics_refresh_timer >= 0.5:
 			analytics_refresh_timer = 0.0
 			_refresh_analytics_panel()
+	if staff_panel != null and staff_panel.visible:
+		staff_refresh_timer += delta
+		if staff_refresh_timer >= 1.0:
+			staff_refresh_timer = 0.0
+			_refresh_staff_panel()
 
 	# ─── VIP Arrival Alert Toast Countdown ─────────────────────────────────────
 	if active_vip_toast != null and is_instance_valid(active_vip_toast):
@@ -2194,6 +2225,13 @@ func _refresh_staff_panel() -> void:
 	if gm == null:
 		return
 
+	# Kolibri Sector Managers (Active Skills)
+	if gm.get("sector_managers") is Dictionary:
+		staff_vbox.add_child(_create_staff_section_header("👑 SECTOR MANAGERS (ACTIVE SKILLS)", "Assign leaders to unlock powerful 60s active boosts & instant table clears"))
+		for sec_id in ["kitchen", "dining", "milkshake", "lounge"]:
+			if gm.sector_managers.has(sec_id):
+				staff_vbox.add_child(_create_sector_manager_card(sec_id, gm.sector_managers[sec_id], gm))
+
 	var sections = [
 		{
 			"title": "🍳 KITCHEN CHEFS (4 SLOTS)",
@@ -2350,6 +2388,176 @@ func _create_staff_card(st: Dictionary, gm: Node) -> PanelContainer:
 		btn.add_theme_stylebox_override("normal", _get_gold_btn_style())
 	hbox.add_child(btn)
 	return p
+
+func _create_sector_manager_card(sec_id: String, mgr: Dictionary, gm: Node) -> PanelContainer:
+	var p = PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _get_card_style())
+
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 12)
+	p.add_child(hbox)
+
+	var icon = Label.new()
+	icon.text = mgr.get("skill_icon", "⚡")
+	icon.add_theme_font_size_override("font_size", 30)
+	hbox.add_child(icon)
+
+	var vb = VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(vb)
+
+	# Name + Tier badge
+	var header_hbox = HBoxContainer.new()
+	header_hbox.add_theme_constant_override("separation", 6)
+	vb.add_child(header_hbox)
+
+	var name_lbl = Label.new()
+	name_lbl.text = mgr.get("manager_name", "Sector Manager")
+	name_lbl.add_theme_font_size_override("font_size", 16)
+	name_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	header_hbox.add_child(name_lbl)
+
+	var tier = mgr.get("tier", "junior")
+	var tier_badge = Label.new()
+	var tier_color = Color(0.75, 0.82, 0.90, 0.95)
+	if tier == "executive":
+		tier_badge.text = "[👑 EXECUTIVE]"
+		tier_color = Color(1.0, 0.85, 0.2, 1.0)
+	elif tier == "senior":
+		tier_badge.text = "[⭐ SENIOR]"
+		tier_color = Color(0.4, 0.85, 1.0, 1.0)
+	else:
+		tier_badge.text = "[JUNIOR]"
+		tier_color = Color(0.8, 0.85, 0.9, 0.85)
+	tier_badge.add_theme_font_size_override("font_size", 11)
+	tier_badge.add_theme_color_override("font_color", tier_color)
+	header_hbox.add_child(tier_badge)
+
+	var sec_lbl = Label.new()
+	sec_lbl.text = mgr.get("sector_name", "Sector")
+	sec_lbl.add_theme_font_size_override("font_size", 12)
+	sec_lbl.add_theme_color_override("font_color", Color(0.96, 0.75, 0.2, 0.9))
+	vb.add_child(sec_lbl)
+
+	var skill_lbl = Label.new()
+	skill_lbl.text = "⚡ %s: %s" % [mgr.get("skill_name", "Skill"), mgr.get("skill_desc", "")]
+	skill_lbl.add_theme_font_size_override("font_size", 11)
+	skill_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95, 0.85))
+	skill_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(skill_lbl)
+
+	var status_lbl = Label.new()
+	var is_act = mgr.get("is_active", false)
+	var cd_timer = float(mgr.get("cooldown_timer", 0.0))
+	var act_timer = float(mgr.get("active_timer", 0.0))
+
+	if is_act:
+		status_lbl.text = "🟢 ACTIVE! (%ds remaining)" % int(ceil(act_timer))
+		status_lbl.add_theme_color_override("font_color", Color(0.2, 0.95, 0.4, 1.0))
+	elif cd_timer > 0.0:
+		var mins = int(cd_timer) / 60
+		var secs = int(cd_timer) % 60
+		status_lbl.text = "⏳ Cooldown: %02d:%02d" % [mins, secs]
+		status_lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.8))
+	else:
+		status_lbl.text = "✨ Skill Ready To Activate"
+		status_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
+	status_lbl.add_theme_font_size_override("font_size", 11)
+	vb.add_child(status_lbl)
+
+	# Action Buttons (Activate & Promote)
+	var btn_vbox = VBoxContainer.new()
+	btn_vbox.add_theme_constant_override("separation", 6)
+	hbox.add_child(btn_vbox)
+
+	var act_btn = Button.new()
+	act_btn.custom_minimum_size = Vector2(104, 34)
+	if is_act:
+		act_btn.text = "ACTIVE\n(%ds)" % int(ceil(act_timer))
+		act_btn.disabled = true
+		apply_mobile_button_theme(act_btn, Color(0.18, 0.65, 0.28, 1.0), Color(0.10, 0.42, 0.18, 1.0), 12)
+	elif cd_timer > 0.0:
+		var mins = int(cd_timer) / 60
+		var secs = int(cd_timer) % 60
+		act_btn.text = "COOLDOWN\n%02d:%02d" % [mins, secs]
+		act_btn.disabled = true
+		apply_mobile_button_theme(act_btn, Color(0.4, 0.44, 0.5, 1.0), Color(0.25, 0.28, 0.32, 1.0), 12)
+	else:
+		act_btn.text = "⚡ ACTIVATE\n(60s)"
+		act_btn.disabled = false
+		apply_mobile_button_theme(act_btn, Color(0.22, 0.847, 0.282, 1.0), Color(0.12, 0.52, 0.18, 1.0), 12)
+		act_btn.pressed.connect(func():
+			_play_click_sfx()
+			gm.activate_manager_skill(sec_id)
+			_refresh_staff_panel()
+		)
+	btn_vbox.add_child(act_btn)
+
+	if tier != "executive":
+		var prom_btn = Button.new()
+		prom_btn.custom_minimum_size = Vector2(104, 30)
+		var prom_cost = 500.0 if tier == "junior" else 1200.0
+		prom_btn.text = "PROMOTE\n(%s)" % _format_money(prom_cost)
+		prom_btn.disabled = gm.cash < prom_cost
+		apply_mobile_button_theme(prom_btn, Color(1.0, 0.624, 0.11, 1.0), Color(0.72, 0.35, 0.05, 1.0), 12)
+		prom_btn.pressed.connect(func():
+			_play_click_sfx()
+			if gm.promote_sector_manager(sec_id):
+				_refresh_staff_panel()
+		)
+		btn_vbox.add_child(prom_btn)
+
+	return p
+
+func _update_activate_all_managers_button(_delta: float) -> void:
+	if activate_all_managers_btn == null:
+		return
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("get_ready_manager_skills_count"):
+		return
+	
+	var ready_count = gm.get_ready_manager_skills_count()
+	if ready_count > 0:
+		activate_all_managers_btn.visible = true
+		activate_all_managers_btn.disabled = false
+		activate_all_managers_btn.text = "⚡%d" % ready_count
+		var pulse = 1.0 + 0.05 * sin(Time.get_ticks_msec() * 0.006)
+		activate_all_managers_btn.scale = Vector2(pulse, pulse)
+		activate_all_managers_btn.pivot_offset = activate_all_managers_btn.size * 0.5
+		activate_all_managers_btn.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	else:
+		var any_active = false
+		if gm.has_method("is_manager_skill_active") and gm.get("sector_managers") is Dictionary:
+			for sec_id in gm.sector_managers.keys():
+				if gm.is_manager_skill_active(sec_id):
+					any_active = true
+					break
+		activate_all_managers_btn.scale = Vector2.ONE
+		if any_active:
+			activate_all_managers_btn.visible = true
+			activate_all_managers_btn.disabled = true
+			activate_all_managers_btn.text = "⚡⏳"
+			activate_all_managers_btn.modulate = Color(0.4, 0.95, 0.5, 0.9)
+		else:
+			activate_all_managers_btn.visible = true
+			activate_all_managers_btn.disabled = true
+			activate_all_managers_btn.text = "⚡"
+			activate_all_managers_btn.modulate = Color(0.7, 0.75, 0.8, 0.6)
+
+func _on_activate_all_managers_pressed() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("activate_all_manager_skills"):
+		return
+	if gm.is_any_manager_skill_ready():
+		_play_click_sfx()
+		var count = gm.activate_all_manager_skills()
+		if count > 0:
+			_punch_ui_element(activate_all_managers_btn)
+			var am = get_node_or_null("/root/AudioManager")
+			if am != null and am.has_method("play_sfx"):
+				am.play_sfx("upgrade", 0.0, 1.25)
+			if staff_panel != null and staff_panel.visible:
+				_refresh_staff_panel()
 
 # ─── Marketing Campaigns Modal ──────────────────────────────────────────────
 func _on_campaign_updated(_cid: String, _active: bool, _time_left: float) -> void:
@@ -2826,6 +3034,8 @@ func _apply_mobile_kolibri_ui_styling() -> void:
 	# Bottom-Center Floating x2 Boost Pill Button
 	if floating_boost_btn != null:
 		apply_mobile_typography(floating_boost_btn, 6, Color(1.0, 0.88, 0.25, 1.0))
+	if activate_all_managers_btn != null:
+		apply_mobile_typography(activate_all_managers_btn, 6, Color(1.0, 0.95, 0.4, 1.0))
 
 	# 6. UpgradePanel Drawer & Inner Station Card
 	if upgrade_panel != null:

@@ -56,6 +56,11 @@ var manager_tour_waypoints: Array = []
 var manager_aura_light: OmniLight3D = null
 var manager_status_label: Label3D = null
 
+# ─── Sector Managers & Floating 3D Skill Badges ─────────────────────────────
+var sector_managers_root: Node3D = null
+var sector_manager_characters: Dictionary = {}
+var sector_manager_badges: Dictionary = {}
+
 var janitor_character: Node3D = null
 var janitor_patrol_timer: float = 12.0
 var janitor_waypoints: Array = []
@@ -395,6 +400,7 @@ func _setup_custom_textures() -> void:
 	_setup_breakroom_fidelity()
 	_setup_manager_office_fidelity()
 	_setup_courtyard_fidelity()
+	_setup_sector_managers()
 
 func _setup_lounge_fidelity() -> void:
 	var rec_room = find_child("ReceptionRoom", true, false)
@@ -1990,6 +1996,7 @@ func _process(delta: float) -> void:
 	_process_lounge_bartender(delta)
 	_process_diner_barista(delta)
 	_process_floor_manager(delta)
+	_process_sector_managers(delta)
 	_process_janitor(delta)
 	_process_breakroom_routine(delta)
 	_process_sliding_doors(delta)
@@ -3115,9 +3122,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
 		_check_swipe_cash_collection(event.position)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		_check_swipe_cash_collection(event.position)
+		if not _check_manager_badge_click(event.position):
+			_check_swipe_cash_collection(event.position)
 	elif event is InputEventScreenTouch and event.pressed:
-		_check_swipe_cash_collection(event.position)
+		if not _check_manager_badge_click(event.position):
+			_check_swipe_cash_collection(event.position)
 
 func _on_milkshake_bar_clicked(_cam: Node, event: InputEvent, _pos: Vector3, _normal: Vector3, _idx: int) -> void:
 	if (event is InputEventMouseButton and (event.button_index == MOUSE_BUTTON_LEFT or event.button_index == 1) and event.pressed) or (event is InputEventScreenTouch and event.pressed):
@@ -3711,6 +3720,413 @@ func _on_rapid_sanitation_triggered(_cost: float) -> void:
 		for w in waiters:
 			if is_instance_valid(w) and w.has_method("set_bubble_text"):
 				w.set_bubble_text("✨ 🧹")
+
+# ─── Kolibri Games Sector Manager Active Skills & Floating Badges ───────────
+const SECTOR_MANAGER_CONFIGS: Dictionary = {
+	"kitchen": {
+		"sector_id": "kitchen",
+		"pos": Vector3(12.6, 0.0, -2.8),
+		"rot_y": 180.0,
+		"model": "res://assets/models/characters/character-male-e.glb",
+		"prop": "headset",
+		"scale": Vector3(1.15, 1.15, 1.15),
+		"color": Color(0.92, 0.95, 1.0, 1.0)
+	},
+	"dining": {
+		"sector_id": "dining",
+		"pos": Vector3(0.5, 0.0, 3.8),
+		"rot_y": 35.0,
+		"model": "res://assets/models/characters/character-female-d.glb",
+		"prop": "clipboard",
+		"scale": Vector3(1.15, 1.15, 1.15),
+		"color": Color(0.24, 0.32, 0.55, 1.0)
+	},
+	"milkshake": {
+		"sector_id": "milkshake",
+		"pos": Vector3(5.8, 0.0, 8.2),
+		"rot_y": 45.0,
+		"model": "res://assets/models/characters/character-male-c.glb",
+		"prop": "clipboard",
+		"scale": Vector3(1.15, 1.15, 1.15),
+		"color": Color(0.85, 0.35, 0.45, 1.0)
+	},
+	"lounge": {
+		"sector_id": "lounge",
+		"pos": Vector3(5.2, 0.0, -2.2),
+		"rot_y": -45.0,
+		"model": "res://assets/models/characters/character-female-b.glb",
+		"prop": "headset",
+		"scale": Vector3(1.15, 1.15, 1.15),
+		"color": Color(0.18, 0.18, 0.25, 1.0)
+	}
+}
+
+func _setup_sector_managers() -> void:
+	if sector_managers_root == null:
+		sector_managers_root = Node3D.new()
+		sector_managers_root.name = "SectorManagers"
+		add_child(sector_managers_root)
+	
+	var gm = get_node_or_null("/root/GameManager")
+	for sec_id in SECTOR_MANAGER_CONFIGS.keys():
+		_spawn_sector_manager(sec_id)
+		
+	if gm != null:
+		if not gm.is_connected("manager_assigned", _on_manager_assigned):
+			gm.manager_assigned.connect(_on_manager_assigned)
+		if not gm.is_connected("manager_skill_activated", _on_manager_skill_activated):
+			gm.manager_skill_activated.connect(_on_manager_skill_activated)
+
+func _spawn_sector_manager(sec_id: String) -> void:
+	if not SECTOR_MANAGER_CONFIGS.has(sec_id):
+		return
+	var cfg = SECTOR_MANAGER_CONFIGS[sec_id]
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null or not gm.is_manager_assigned(sec_id):
+		return
+
+	if sector_manager_characters.has(sec_id) and is_instance_valid(sector_manager_characters[sec_id]):
+		return
+
+	var char_scn = load(cfg["model"])
+	if char_scn == null:
+		char_scn = load("res://assets/models/characters/character-male-a.glb")
+	if char_scn == null:
+		return
+
+	var char_node: Node3D = char_scn.instantiate()
+	char_node.name = "Manager_" + sec_id.capitalize()
+	char_node.position = cfg["pos"]
+	char_node.rotation_degrees = Vector3(0, cfg["rot_y"], 0)
+	char_node.scale = cfg["scale"]
+	sector_managers_root.add_child(char_node)
+	sector_manager_characters[sec_id] = char_node
+	_apply_toy_mobile_styling_to_node(char_node)
+
+	# Attach prop (clipboard or headset)
+	if cfg["prop"] == "clipboard":
+		var clipboard = _create_clipboard_prop()
+		char_node.add_child(clipboard)
+	elif cfg["prop"] == "headset":
+		var headset = _create_headset_prop()
+		char_node.add_child(headset)
+
+	# Idle animation if available
+	var anim = _find_anim_player_in(char_node)
+	if anim != null and anim.has_animation("idle"):
+		anim.play("idle")
+
+	# Attach Floating 3D Skill Activation Badge
+	var badge = _create_floating_skill_badge(sec_id)
+	char_node.add_child(badge)
+
+func _create_clipboard_prop() -> Node3D:
+	var clip_root = Node3D.new()
+	clip_root.name = "ClipboardProp"
+	clip_root.position = Vector3(0.26, 0.82, 0.22)
+	clip_root.rotation_degrees = Vector3(25.0, -10.0, 5.0)
+
+	var board = MeshInstance3D.new()
+	var b_mesh = BoxMesh.new()
+	b_mesh.size = Vector3(0.24, 0.34, 0.015)
+	var b_mat = StandardMaterial3D.new()
+	b_mat.albedo_color = Color(0.42, 0.26, 0.14, 1.0)
+	b_mat.roughness = 0.55
+	board.mesh = b_mesh
+	board.material_override = b_mat
+	clip_root.add_child(board)
+
+	var paper = MeshInstance3D.new()
+	var p_mesh = BoxMesh.new()
+	p_mesh.size = Vector3(0.20, 0.28, 0.005)
+	var p_mat = StandardMaterial3D.new()
+	p_mat.albedo_color = Color(0.96, 0.95, 0.90, 1.0)
+	p_mat.roughness = 0.8
+	paper.mesh = p_mesh
+	paper.material_override = p_mat
+	paper.position = Vector3(0, 0, 0.008)
+	clip_root.add_child(paper)
+
+	var clip = MeshInstance3D.new()
+	var c_mesh = BoxMesh.new()
+	c_mesh.size = Vector3(0.10, 0.035, 0.02)
+	var c_mat = StandardMaterial3D.new()
+	c_mat.albedo_color = Color(0.85, 0.85, 0.92, 1.0)
+	c_mat.metallic = 0.9
+	c_mat.roughness = 0.25
+	clip.mesh = c_mesh
+	clip.material_override = c_mat
+	clip.position = Vector3(0, 0.14, 0.014)
+	clip_root.add_child(clip)
+
+	return clip_root
+
+func _create_headset_prop() -> Node3D:
+	var headset_root = Node3D.new()
+	headset_root.name = "HeadsetProp"
+	headset_root.position = Vector3(0, 1.48, 0.02)
+
+	var ear_mat = StandardMaterial3D.new()
+	ear_mat.albedo_color = Color(0.12, 0.15, 0.20, 1.0)
+	ear_mat.roughness = 0.4
+	ear_mat.metallic = 0.5
+
+	var cup_l = MeshInstance3D.new()
+	var c_mesh = CylinderMesh.new()
+	c_mesh.top_radius = 0.045
+	c_mesh.bottom_radius = 0.045
+	c_mesh.height = 0.03
+	cup_l.mesh = c_mesh
+	cup_l.material_override = ear_mat
+	cup_l.position = Vector3(-0.16, 0.0, 0.0)
+	cup_l.rotation_degrees = Vector3(0, 0, 90)
+	headset_root.add_child(cup_l)
+
+	var cup_r = MeshInstance3D.new()
+	cup_r.mesh = c_mesh
+	cup_r.material_override = ear_mat
+	cup_r.position = Vector3(0.16, 0.0, 0.0)
+	cup_r.rotation_degrees = Vector3(0, 0, 90)
+	headset_root.add_child(cup_r)
+
+	var band = MeshInstance3D.new()
+	var band_mesh = BoxMesh.new()
+	band_mesh.size = Vector3(0.34, 0.018, 0.03)
+	band.mesh = band_mesh
+	band.material_override = ear_mat
+	band.position = Vector3(0, 0.08, 0.0)
+	headset_root.add_child(band)
+
+	var mic = MeshInstance3D.new()
+	var mic_mesh = BoxMesh.new()
+	mic_mesh.size = Vector3(0.012, 0.012, 0.14)
+	mic.mesh = mic_mesh
+	mic.material_override = ear_mat
+	mic.position = Vector3(0.15, -0.04, 0.08)
+	mic.rotation_degrees = Vector3(-20, 30, 0)
+	headset_root.add_child(mic)
+
+	return headset_root
+
+func _create_floating_skill_badge(sec_id: String) -> Node3D:
+	var badge_root = Node3D.new()
+	badge_root.name = "FloatingSkillBadge"
+	badge_root.position = Vector3(0, 2.45, 0)
+
+	# 1. Radial Timer Ring Mesh
+	var ring_mesh = MeshInstance3D.new()
+	ring_mesh.name = "RadialRingMesh"
+	var q_mesh = QuadMesh.new()
+	q_mesh.size = Vector2(0.88, 0.88)
+	ring_mesh.mesh = q_mesh
+
+	var shader = load("res://shaders/radial_timer.gdshader")
+	if shader != null:
+		var smat = ShaderMaterial.new()
+		smat.shader = shader
+		smat.set_shader_parameter("progress", 1.0)
+		smat.set_shader_parameter("fill_color", Color(1.0, 0.85, 0.18, 1.0))
+		smat.set_shader_parameter("bg_color", Color(0.12, 0.15, 0.20, 0.75))
+		smat.set_shader_parameter("inner_radius", 0.30)
+		smat.set_shader_parameter("outer_radius", 0.48)
+		ring_mesh.material_override = smat
+	badge_root.add_child(ring_mesh)
+
+	# 2. Central Skill Icon and Status Label
+	var center_lbl = Label3D.new()
+	center_lbl.name = "CenterLabel"
+	center_lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	center_lbl.font_size = 28
+	center_lbl.pixel_size = 0.005
+	center_lbl.outline_size = 6
+	center_lbl.outline_modulate = Color(0.08, 0.06, 0.04, 1.0)
+	center_lbl.position = Vector3(0, 0, 0.02)
+	center_lbl.text = "⚡\nREADY"
+	center_lbl.modulate = Color(1.0, 0.92, 0.35, 1.0)
+	badge_root.add_child(center_lbl)
+
+	# 3. Manager Name and Tier Title Banner
+	var title_lbl = Label3D.new()
+	title_lbl.name = "TitleLabel"
+	title_lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	title_lbl.font_size = 18
+	title_lbl.pixel_size = 0.004
+	title_lbl.outline_size = 5
+	title_lbl.outline_modulate = Color(0.05, 0.05, 0.08, 1.0)
+	title_lbl.position = Vector3(0, 0.58, 0)
+	badge_root.add_child(title_lbl)
+
+	# 4. Interactive Click / Touch Area
+	var area = Area3D.new()
+	area.name = "BadgeClickArea"
+	var col = CollisionShape3D.new()
+	var sphere = SphereShape3D.new()
+	sphere.radius = 0.55
+	col.shape = sphere
+	area.add_child(col)
+	badge_root.add_child(area)
+
+	area.input_event.connect(func(_cam, event, _pos, _normal, _idx):
+		if (event is InputEventMouseButton and (event.button_index == MOUSE_BUTTON_LEFT or event.button_index == 1) and event.pressed) or (event is InputEventScreenTouch and event.pressed):
+			var gm = get_node_or_null("/root/GameManager")
+			if gm != null:
+				if gm.can_activate_manager_skill(sec_id):
+					gm.activate_manager_skill(sec_id)
+					_animate_badge_activation(sec_id)
+				else:
+					var am = get_node_or_null("/root/AudioManager")
+					if am != null and am.has_method("play_sfx"):
+						am.play_sfx("click")
+	)
+
+	sector_manager_badges[sec_id] = {
+		"root": badge_root,
+		"ring_mesh": ring_mesh,
+		"center_lbl": center_lbl,
+		"title_lbl": title_lbl
+	}
+
+	return badge_root
+
+func _animate_badge_activation(sec_id: String) -> void:
+	if not sector_manager_badges.has(sec_id):
+		return
+	var b_data = sector_manager_badges[sec_id]
+	var badge = b_data.get("root") as Node3D
+	if badge != null and is_instance_valid(badge):
+		var tw = create_tween()
+		tw.tween_property(badge, "scale", Vector3(1.35, 1.35, 1.35), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(badge, "scale", Vector3.ONE, 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+func _on_manager_assigned(sec_id: String, _tier: String) -> void:
+	if not sector_manager_characters.has(sec_id):
+		_spawn_sector_manager(sec_id)
+
+func _on_manager_skill_activated(sec_id: String) -> void:
+	_animate_badge_activation(sec_id)
+
+func _check_manager_badge_click(screen_pos: Vector2) -> bool:
+	var cam = get_viewport().get_camera_3d()
+	if cam == null:
+		return false
+	var from = cam.project_ray_origin(screen_pos)
+	var dir = cam.project_ray_normal(screen_pos)
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return false
+
+	for sec_id in sector_manager_badges.keys():
+		var b_data = sector_manager_badges[sec_id]
+		var b_root = b_data.get("root") as Node3D
+		if b_root != null and is_instance_valid(b_root):
+			var b_pos = b_root.global_position
+			var to_b = b_pos - from
+			var proj = to_b.dot(dir)
+			if proj > 0.0:
+				var closest = from + dir * proj
+				if closest.distance_to(b_pos) < 0.65:
+					if gm.can_activate_manager_skill(sec_id):
+						gm.activate_manager_skill(sec_id)
+						_animate_badge_activation(sec_id)
+						return true
+	return false
+
+func _process_sector_managers(_delta: float) -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+
+	for sec_id in SECTOR_MANAGER_CONFIGS.keys():
+		if not sector_manager_badges.has(sec_id):
+			if gm.is_manager_assigned(sec_id):
+				_spawn_sector_manager(sec_id)
+			continue
+
+		var mgr = gm.get_sector_manager(sec_id)
+		var b_data = sector_manager_badges[sec_id]
+		var ring_mesh = b_data.get("ring_mesh") as MeshInstance3D
+		var center_lbl = b_data.get("center_lbl") as Label3D
+		var title_lbl = b_data.get("title_lbl") as Label3D
+		var badge_root = b_data.get("root") as Node3D
+
+		if ring_mesh == null or not is_instance_valid(ring_mesh):
+			continue
+
+		var tier_name = str(mgr.get("tier", "junior")).capitalize()
+		var tier_icon = "⭐"
+		if mgr.get("tier") == "executive":
+			tier_icon = "👑"
+		elif mgr.get("tier") == "senior":
+			tier_icon = "🌟"
+
+		var mgr_name = str(mgr.get("manager_name", "Manager"))
+		var skill_title = str(mgr.get("skill_name", "Skill"))
+		var skill_icon = str(mgr.get("skill_icon", "⚡"))
+
+		title_lbl.text = "%s %s (%s)\n⚡ %s" % [tier_icon, mgr_name, tier_name, skill_title]
+
+		if mgr.get("is_active", false):
+			var act_time = float(mgr.get("active_timer", 0.0))
+			var act_dur = float(mgr.get("active_duration", 60.0))
+			var frac = clampf(act_time / max(0.1, act_dur), 0.0, 1.0)
+
+			if ring_mesh.material_override is ShaderMaterial:
+				var mat = ring_mesh.material_override as ShaderMaterial
+				mat.set_shader_parameter("progress", frac)
+				mat.set_shader_parameter("fill_color", Color(0.18, 0.88, 0.35, 1.0))
+				mat.set_shader_parameter("bg_color", Color(0.06, 0.20, 0.10, 0.75))
+
+			center_lbl.text = "%s\n%ds" % [skill_icon, int(ceil(act_time))]
+			center_lbl.modulate = Color(0.25, 1.0, 0.45, 1.0)
+			badge_root.scale = Vector3.ONE
+
+		elif mgr.get("cooldown_timer", 0.0) > 0.0:
+			var cd_time = float(mgr.get("cooldown_timer", 0.0))
+			var cd_dur = float(mgr.get("cooldown_duration", 300.0))
+			if mgr.get("tier") == "executive":
+				cd_dur = 220.0
+			elif mgr.get("tier") == "senior":
+				cd_dur = 260.0
+			var frac = clampf(1.0 - (cd_time / max(0.1, cd_dur)), 0.0, 1.0)
+
+			if ring_mesh.material_override is ShaderMaterial:
+				var mat = ring_mesh.material_override as ShaderMaterial
+				mat.set_shader_parameter("progress", frac)
+				mat.set_shader_parameter("fill_color", Color(0.55, 0.62, 0.72, 0.85))
+				mat.set_shader_parameter("bg_color", Color(0.12, 0.15, 0.18, 0.75))
+
+			var mins = int(cd_time) / 60
+			var secs = int(cd_time) % 60
+			center_lbl.text = "%s\n%02d:%02d" % [skill_icon, mins, secs]
+			center_lbl.modulate = Color(0.75, 0.80, 0.88, 0.85)
+			badge_root.scale = Vector3.ONE
+
+		else:
+			if ring_mesh.material_override is ShaderMaterial:
+				var mat = ring_mesh.material_override as ShaderMaterial
+				mat.set_shader_parameter("progress", 1.0)
+				mat.set_shader_parameter("fill_color", Color(1.0, 0.85, 0.18, 1.0))
+				mat.set_shader_parameter("bg_color", Color(0.22, 0.18, 0.06, 0.75))
+
+			center_lbl.text = "%s\nREADY" % skill_icon
+			center_lbl.modulate = Color(1.0, 0.92, 0.35, 1.0)
+
+			var pulse = 1.0 + 0.07 * sin(Time.get_ticks_msec() * 0.005 + float(sec_id.hash() % 10))
+			badge_root.scale = Vector3(pulse, pulse, pulse)
+
+func clean_all_dirty_tables() -> void:
+	if tables_container == null:
+		return
+	var count = 0
+	for t in tables_container.get_children():
+		if is_instance_valid(t) and t.get("is_dirty") == true:
+			if t.has_method("clean_table"):
+				t.clean_table()
+				count += 1
+	if count > 0:
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("coin", 0.0, 1.2)
 
 
 

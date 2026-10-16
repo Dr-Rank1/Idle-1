@@ -56,6 +56,10 @@ func _ready() -> void:
 		gm.staff_updated.connect(_on_staff_updated)
 		if gm.has_signal("cards_updated"):
 			gm.cards_updated.connect(_update_speed)
+		if gm.has_signal("manager_skill_activated"):
+			gm.manager_skill_activated.connect(func(_sec): _update_speed())
+		if gm.has_signal("manager_skill_ended"):
+			gm.manager_skill_ended.connect(func(_sec): _update_speed())
 
 func _find_anim_player(node: Node) -> AnimationPlayer:
 	if node is AnimationPlayer:

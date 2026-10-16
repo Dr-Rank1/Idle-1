@@ -48,8 +48,80 @@ signal franchise_prestiged(prestige_level: int, keys_earned: int, diamonds_earne
 signal franchise_keys_changed(new_amount: int)
 signal prestige_updated(prestige_level: int, franchise_keys: int, multiplier: float)
 signal valuation_updated(new_valuation: float)
+signal manager_skill_activated(sector_id: String)
+signal manager_skill_ended(sector_id: String)
+signal manager_skill_ready(sector_id: String)
+signal manager_assigned(sector_id: String, tier: String)
 
 var restaurant_node: Node3D = null
+
+# ─── Kolibri Games Sector Manager Active Skills ─────────────────────────────
+var sector_managers: Dictionary = {
+	"kitchen": {
+		"sector_id": "kitchen",
+		"sector_name": "Commercial Kitchen",
+		"assigned": true,
+		"tier": "senior",
+		"manager_name": "Chef Marcus",
+		"skill_id": "cooking_speed_2x",
+		"skill_name": "2x Cooking Speed",
+		"skill_desc": "All kitchen chefs prepare orders twice as fast.",
+		"skill_icon": "🍳",
+		"is_active": false,
+		"active_timer": 0.0,
+		"cooldown_timer": 0.0,
+		"active_duration": 60.0,
+		"cooldown_duration": 300.0,
+	},
+	"dining": {
+		"sector_id": "dining",
+		"sector_name": "Main Dining Hall",
+		"assigned": true,
+		"tier": "executive",
+		"manager_name": "Maître Valerie",
+		"skill_id": "instant_table_clean",
+		"skill_name": "Instant Table Clean",
+		"skill_desc": "Immediately wipes all dirty tables and accelerates bussing.",
+		"skill_icon": "🧽",
+		"is_active": false,
+		"active_timer": 0.0,
+		"cooldown_timer": 0.0,
+		"active_duration": 60.0,
+		"cooldown_duration": 300.0,
+	},
+	"milkshake": {
+		"sector_id": "milkshake",
+		"sector_name": "50s Milkshake Cafe",
+		"assigned": true,
+		"tier": "junior",
+		"manager_name": "Supervisor Dex",
+		"skill_id": "upgrade_cost_discount",
+		"skill_name": "-30% Upgrade Cost",
+		"skill_desc": "Grants a 30% discount across all station and furniture upgrades.",
+		"skill_icon": "🏷️",
+		"is_active": false,
+		"active_timer": 0.0,
+		"cooldown_timer": 0.0,
+		"active_duration": 60.0,
+		"cooldown_duration": 300.0,
+	},
+	"lounge": {
+		"sector_id": "lounge",
+		"sector_name": "Cocktail Lounge",
+		"assigned": true,
+		"tier": "senior",
+		"manager_name": "Director Evelyn",
+		"skill_id": "walk_speed_boost",
+		"skill_name": "+100% Walk Speed",
+		"skill_desc": "Waiters and servers sprint at +100% walk speed.",
+		"skill_icon": "👟",
+		"is_active": false,
+		"active_timer": 0.0,
+		"cooldown_timer": 0.0,
+		"active_duration": 60.0,
+		"cooldown_duration": 300.0,
+	}
+}
 
 # ─── Developer Debug & Presets ──────────────────────────────────────────────
 @export var preview_all_max_levels: bool = false:
@@ -1072,6 +1144,7 @@ func save_game() -> void:
 		"station_levels": station_levels,
 		"menu_items": menu_items,
 		"staff_roster": staff_roster,
+		"sector_managers": sector_managers,
 		"active_quests": active_quests,
 		"active_restaurant_id": active_restaurant_id,
 		"marketing_level": marketing_level,
@@ -1180,6 +1253,13 @@ func load_game() -> void:
 			if staff_roster.has(k) and typeof(parsed["staff_roster"][k]) == TYPE_DICTIONARY:
 				for prop in parsed["staff_roster"][k].keys():
 					staff_roster[k][prop] = parsed["staff_roster"][k][prop]
+
+	if parsed.has("sector_managers") and typeof(parsed["sector_managers"]) == TYPE_DICTIONARY:
+		for k in parsed["sector_managers"].keys():
+			if sector_managers.has(k) and typeof(parsed["sector_managers"][k]) == TYPE_DICTIONARY:
+				for field in ["assigned", "tier", "manager_name"]:
+					if parsed["sector_managers"][k].has(field):
+						sector_managers[k][field] = parsed["sector_managers"][k][field]
 					
 	if parsed.has("active_quests") and typeof(parsed["active_quests"]) == TYPE_ARRAY:
 		for q in parsed["active_quests"]:
@@ -1250,6 +1330,8 @@ func _process(delta: float) -> void:
 	if autosave_timer >= 20.0:
 		autosave_timer = 0.0
 		save_game()
+
+	_process_manager_skills(delta)
 
 	# Lightning Energy Regeneration: 1 unit every 60 seconds up to max_energy (50)
 	if energy < max_energy:
@@ -1639,6 +1721,8 @@ func get_upgrade_cost(station_id: String) -> float:
 	if lvl >= station_max:
 		return 0.0
 	var disc: float = 1.0 - (get_card_upgrade_discount() if has_method("get_card_upgrade_discount") else 0.0)
+	if has_method("get_manager_upgrade_discount"):
+		disc *= (1.0 - get_manager_upgrade_discount())
 	return max(1.0, round(cfg.base_cost * pow(cfg.cost_mult, lvl - 1) * disc))
 
 # Formula: Revenue = BaseRevenue * RevenueMultiplier^(L - 1)
@@ -2056,6 +2140,8 @@ func get_staff_speed_multiplier(staff_id: String) -> float:
 	var mult = 1.0 + (lvl - 1) * 0.15
 	if staff_id.begins_with("waiter") and has_method("get_card_waiter_speed_multiplier"):
 		mult *= get_card_waiter_speed_multiplier()
+	if has_method("get_manager_walk_speed_multiplier"):
+		mult *= get_manager_walk_speed_multiplier()
 	return mult
 
 func get_staff_cooking_multiplier(staff_id: String) -> float:
@@ -2063,6 +2149,8 @@ func get_staff_cooking_multiplier(staff_id: String) -> float:
 	var mult = 1.0 + (lvl - 1) * 0.20
 	if has_method("get_card_cook_speed_multiplier"):
 		mult *= get_card_cook_speed_multiplier()
+	if has_method("get_manager_cooking_speed_multiplier"):
+		mult *= get_manager_cooking_speed_multiplier()
 	return mult
 
 func get_staff_serving_multiplier(staff_id: String) -> float:
@@ -2089,6 +2177,169 @@ func set_manager_inspection_active(active: bool) -> void:
 	if is_manager_inspection_active != active:
 		is_manager_inspection_active = active
 		manager_inspection_changed.emit(active)
+
+# ─── Sector Manager Active Skills (Kolibri Games System) ───────────────────
+func is_manager_assigned(sector_id: String) -> bool:
+	return sector_managers.get(sector_id, {}).get("assigned", false)
+
+func get_sector_manager(sector_id: String) -> Dictionary:
+	return sector_managers.get(sector_id, {})
+
+func get_sector_manager_tier(sector_id: String) -> String:
+	return sector_managers.get(sector_id, {}).get("tier", "junior")
+
+func assign_sector_manager(sector_id: String, tier: String, mgr_name: String = "") -> void:
+	if not sector_managers.has(sector_id):
+		return
+	var mgr = sector_managers[sector_id]
+	mgr["assigned"] = true
+	mgr["tier"] = tier
+	if mgr_name != "":
+		mgr["manager_name"] = mgr_name
+	manager_assigned.emit(sector_id, tier)
+	save_game()
+
+func promote_sector_manager(sector_id: String) -> bool:
+	if not sector_managers.has(sector_id):
+		return false
+	var mgr = sector_managers[sector_id]
+	var current_tier = mgr.get("tier", "junior")
+	var target_tier = ""
+	var cost = 500.0
+	if current_tier == "junior":
+		target_tier = "senior"
+		cost = 500.0
+	elif current_tier == "senior":
+		target_tier = "executive"
+		cost = 1200.0
+	else:
+		return false
+	
+	if spend_cash(cost):
+		mgr["tier"] = target_tier
+		manager_assigned.emit(sector_id, target_tier)
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("upgrade")
+		save_game()
+		return true
+	return false
+
+func can_activate_manager_skill(sector_id: String) -> bool:
+	if not sector_managers.has(sector_id):
+		return false
+	var mgr = sector_managers[sector_id]
+	return mgr.get("assigned", false) and not mgr.get("is_active", false) and mgr.get("cooldown_timer", 0.0) <= 0.0
+
+func is_manager_skill_active(sector_id: String) -> bool:
+	if not sector_managers.has(sector_id):
+		return false
+	return sector_managers[sector_id].get("is_active", false)
+
+func activate_manager_skill(sector_id: String) -> bool:
+	if not can_activate_manager_skill(sector_id):
+		return false
+	var mgr = sector_managers[sector_id]
+	mgr["is_active"] = true
+	var act_dur = float(mgr.get("active_duration", 60.0))
+	mgr["active_timer"] = act_dur
+	mgr["cooldown_timer"] = 0.0
+	manager_skill_activated.emit(sector_id)
+
+	# Special immediate trigger logic for Instant Table Clean
+	if mgr.get("skill_id") == "instant_table_clean":
+		_trigger_instant_table_clean()
+
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("chime", 0.0, 1.2)
+
+	save_game()
+	return true
+
+func activate_all_manager_skills() -> int:
+	var activated_count = 0
+	for sec_id in sector_managers.keys():
+		if can_activate_manager_skill(sec_id):
+			if activate_manager_skill(sec_id):
+				activated_count += 1
+	if activated_count > 0:
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("purchase", 0.0, 1.1)
+	return activated_count
+
+func is_any_manager_skill_ready() -> bool:
+	for sec_id in sector_managers.keys():
+		if can_activate_manager_skill(sec_id):
+			return true
+	return false
+
+func get_ready_manager_skills_count() -> int:
+	var count = 0
+	for sec_id in sector_managers.keys():
+		if can_activate_manager_skill(sec_id):
+			count += 1
+	return count
+
+func get_manager_upgrade_discount() -> float:
+	if is_manager_skill_active("milkshake"):
+		var tier = get_sector_manager_tier("milkshake")
+		if tier == "executive":
+			return 0.40
+		elif tier == "senior":
+			return 0.35
+		return 0.30
+	return 0.0
+
+func get_manager_cooking_speed_multiplier() -> float:
+	if is_manager_skill_active("kitchen"):
+		var tier = get_sector_manager_tier("kitchen")
+		if tier == "executive":
+			return 2.5
+		elif tier == "senior":
+			return 2.2
+		return 2.0
+	return 1.0
+
+func get_manager_walk_speed_multiplier() -> float:
+	if is_manager_skill_active("lounge"):
+		var tier = get_sector_manager_tier("lounge")
+		if tier == "executive":
+			return 2.5
+		elif tier == "senior":
+			return 2.2
+		return 2.0
+	return 1.0
+
+func _trigger_instant_table_clean() -> void:
+	if restaurant_node != null and restaurant_node.has_method("clean_all_dirty_tables"):
+		restaurant_node.clean_all_dirty_tables()
+	elif is_inside_tree():
+		var rest = get_tree().current_scene.find_child("Restaurant", true, false)
+		if rest != null and rest.has_method("clean_all_dirty_tables"):
+			rest.clean_all_dirty_tables()
+
+func _process_manager_skills(delta: float) -> void:
+	for sec_id in sector_managers.keys():
+		var mgr = sector_managers[sec_id]
+		if mgr.get("is_active", false):
+			mgr["active_timer"] -= delta
+			if mgr["active_timer"] <= 0.0:
+				mgr["active_timer"] = 0.0
+				mgr["is_active"] = false
+				var cd_dur = float(mgr.get("cooldown_duration", 300.0))
+				if mgr.get("tier") == "executive":
+					cd_dur = 220.0
+				elif mgr.get("tier") == "senior":
+					cd_dur = 260.0
+				mgr["cooldown_timer"] = cd_dur
+				manager_skill_ended.emit(sec_id)
+		elif mgr.get("cooldown_timer", 0.0) > 0.0:
+			mgr["cooldown_timer"] -= delta
+			if mgr["cooldown_timer"] <= 0.0:
+				mgr["cooldown_timer"] = 0.0
+				manager_skill_ready.emit(sec_id)
 
 func hire_staff(staff_id: String) -> bool:
 	if not staff_roster.has(staff_id):

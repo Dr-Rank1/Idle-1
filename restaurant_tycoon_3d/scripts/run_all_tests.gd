@@ -407,7 +407,45 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 	gm.vip_arrived.disconnect(vip_callback)
 	dummy_vip.free()
 
-	print("✓ Frame 20 completed: Customer FSM and all operational bottleneck alert states validated.")
+	# 6. Sector Manager Active Skills & 3D Badges (Kolibri System)
+	_assert_test(gm.is_manager_assigned("kitchen") == true, "Kitchen manager is assigned")
+	_assert_test(gm.is_manager_assigned("dining") == true, "Dining manager is assigned")
+	_assert_test(gm.is_manager_assigned("milkshake") == true, "Milkshake manager is assigned")
+	_assert_test(gm.is_manager_assigned("lounge") == true, "Lounge manager is assigned")
+	_assert_test(gm.get_sector_manager_tier("dining") == "executive", "Dining manager default tier is executive")
+	_assert_test(gm.can_activate_manager_skill("kitchen") == true, "Kitchen manager skill can be activated")
+	_assert_test(gm.is_any_manager_skill_ready() == true, "At least one manager skill is ready")
+	_assert_test(gm.get_ready_manager_skills_count() == 4, "All 4 sector manager skills ready initially")
+
+	# Test 3D Manager Characters & Floating Badges
+	_assert_test(rest.sector_manager_characters.size() >= 4, "All 4 sector manager 3D characters spawned")
+	_assert_test(rest.sector_manager_badges.size() >= 4, "All 4 sector manager 3D floating badges spawned")
+
+	# Test Skill Activation
+	var activated = gm.activate_manager_skill("kitchen")
+	_assert_test(activated == true, "Kitchen manager skill activated successfully")
+	_assert_test(gm.is_manager_skill_active("kitchen") == true, "Kitchen manager skill is now active")
+	_assert_test(is_equal_approx(gm.get_manager_cooking_speed_multiplier(), 2.2), "Cooking speed multiplier active (2.2x for senior)")
+	_assert_test(gm.can_activate_manager_skill("kitchen") == false, "Cannot activate already active manager skill")
+
+	# Test Cooldown & Reset
+	gm.sector_managers["kitchen"]["is_active"] = false
+	gm.sector_managers["kitchen"]["active_timer"] = 0.0
+	gm.sector_managers["kitchen"]["cooldown_timer"] = 0.0
+	_assert_test(gm.can_activate_manager_skill("kitchen") == true, "Kitchen manager skill reset to ready")
+
+	# Test Global Activation
+	var all_act_count = gm.activate_all_manager_skills()
+	_assert_test(all_act_count == 4, "Global activate_all_manager_skills triggered all 4 sectors")
+	_assert_test(gm.is_manager_skill_active("dining") == true, "Dining manager skill active after global trigger")
+
+	# Restore clean state
+	for sec in gm.sector_managers.keys():
+		gm.sector_managers[sec]["is_active"] = false
+		gm.sector_managers[sec]["active_timer"] = 0.0
+		gm.sector_managers[sec]["cooldown_timer"] = 0.0
+
+	print("✓ Frame 20 completed: Customer FSM, alerts, and Kolibri manager skills validated.")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Frame 25: Teardown & Summary
