@@ -422,6 +422,7 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 	_assert_test(rest.sector_manager_badges.size() >= 4, "All 4 sector manager 3D floating badges spawned")
 
 	# Test Skill Activation
+	gm.sector_managers["kitchen"]["tier"] = "senior"
 	var activated = gm.activate_manager_skill("kitchen")
 	_assert_test(activated == true, "Kitchen manager skill activated successfully")
 	_assert_test(gm.is_manager_skill_active("kitchen") == true, "Kitchen manager skill is now active")

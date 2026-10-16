@@ -84,16 +84,19 @@ func _init():
 		var err = img.save_png(base_dir + "/gameplay_view.png")
 		print("Snapshot result:", err)
 
+	# 3. Capture Upgrade Bottom Sheet View over highlighted Booth 1 (table_1)
 	if gm != null:
 		gm.set_all_stations_max_level(true)
 	var hud_node = root.find_child("HUD", true, false)
 	if hud_node != null and hud_node.has_method("open_upgrade"):
-		hud_node.open_upgrade("milkshake_bar", "Bar Top", 50)
-	for i in range(15):
+		hud_node.open_upgrade("table_1", "Booth Table 1", 1)
+	for i in range(25):
 		await process_frame
-	var img_modal = root.get_viewport().get_texture().get_image()
-	if img_modal != null:
-		img_modal.save_png(base_dir + "/upgrade_modal_view.png")
+	var img_sheet = root.get_viewport().get_texture().get_image()
+	if img_sheet != null:
+		var err_sheet = img_sheet.save_png(base_dir + "/upgrade_sheet_view.png")
+		print("Upgrade sheet snapshot result:", err_sheet)
+		img_sheet.save_png(base_dir + "/upgrade_modal_view.png")
 	if hud_node != null and hud_node.has_method("_hide_all_modals"):
 		hud_node._hide_all_modals()
 

@@ -13,6 +13,8 @@ class HudOverlay extends StatefulWidget {
   final VoidCallback? onWorldMapTap;
   final VoidCallback? onShopTap;
   final VoidCallback? onBoostTap;
+  final VoidCallback? onPiggyBankTap;
+  final VoidCallback? onRecipeBookTap;
 
   const HudOverlay({
     super.key,
@@ -21,6 +23,8 @@ class HudOverlay extends StatefulWidget {
     this.onWorldMapTap,
     this.onShopTap,
     this.onBoostTap,
+    this.onPiggyBankTap,
+    this.onRecipeBookTap,
   });
 
   @override
@@ -65,9 +69,12 @@ class _HudOverlayState extends State<HudOverlay> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Full-width dark grey progress bar across the very top edge with 5 silver stars
-                  _TopMilestoneStarBar(
-                    progress: (gs.starRating / 5.0).clamp(0.0, 1.0),
-                    starRating: gs.starRating,
+                  GestureDetector(
+                    onTap: widget.onRecipeBookTap,
+                    child: _TopMilestoneStarBar(
+                      progress: (gs.starRating / 5.0).clamp(0.0, 1.0),
+                      starRating: gs.starRating,
+                    ),
                   ),
 
                   const SizedBox(height: 6),
@@ -221,6 +228,21 @@ class _HudOverlayState extends State<HudOverlay> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Golden Piggy Bank
+                    _PiggyBankButton(
+                      balance: gs.piggyBankBalance,
+                      cap: GameState.piggyBankCap,
+                      onTap: widget.onPiggyBankTap,
+                    ),
+                    const SizedBox(height: 10),
+
+                    // 5-Star Recipe Book
+                    _CircleOrangeButton(
+                      emoji: '📖',
+                      onTap: widget.onRecipeBookTap ?? () {},
+                    ),
+                    const SizedBox(height: 8),
+
                     // World Map
                     _CircleOrangeButton(
                       emoji: '🌍',
@@ -709,6 +731,84 @@ class _CircleOrangeButton extends StatelessWidget {
             style: TextStyle(fontSize: size * 0.44),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Golden Piggy Bank Button ────────────────────────────────────────────────
+class _PiggyBankButton extends StatelessWidget {
+  final int balance;
+  final int cap;
+  final VoidCallback? onTap;
+
+  const _PiggyBankButton({
+    required this.balance,
+    required this.cap,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFFFD54F), Color(0xFFFF8F00)],
+              ),
+              border: Border.all(color: const Color(0xFFFFF9C4), width: 2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black45,
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Text(
+                '🐷',
+                style: TextStyle(fontSize: 22),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D1220),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFFD54F), width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('💎', style: TextStyle(fontSize: 8)),
+                  const SizedBox(width: 2),
+                  Text(
+                    '$balance',
+                    style: const TextStyle(
+                      color: Color(0xFFFFD54F),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

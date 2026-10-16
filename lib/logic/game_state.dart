@@ -6,6 +6,8 @@ import '../models/enums.dart';
 import '../models/franchise.dart';
 import '../models/manager.dart';
 import '../models/particles.dart';
+import '../models/recipe.dart';
+import '../models/sector_manager.dart';
 import '../models/station.dart';
 import '../utils/iso_math.dart';
 
@@ -77,6 +79,195 @@ class GameState extends ChangeNotifier {
   int get starsToEarnOnPrestige {
     final potential = (sqrt(totalEarned / 4000.0)).floor();
     return max(1, potential - prestigeStars);
+  }
+
+  // ─── Golden Piggy Bank System (Google Play Store Parity) ───────────────────
+  static const int piggyBankCap = 250;
+  int piggyBankDiamonds = 0;
+  int get piggyBankBalance => piggyBankDiamonds;
+  bool get isPiggyBankFull => piggyBankDiamonds >= piggyBankCap;
+
+  void depositPiggyBank([int amount = 1]) {
+    if (piggyBankDiamonds < piggyBankCap) {
+      piggyBankDiamonds = min(piggyBankCap, piggyBankDiamonds + amount);
+      notifyListeners();
+    }
+  }
+
+  int smashPiggyBank() {
+    final claim = piggyBankDiamonds;
+    if (claim > 0) {
+      gems += claim;
+      piggyBankDiamonds = 0;
+      notifyListeners();
+    }
+    return claim;
+  }
+
+  // ─── 5-Star Recipe Book Progression (Play Store Parity) ────────────────────
+  final List<int> unlockedStarTiers = [1];
+  final List<int> claimedStarRewards = [];
+
+  bool isStarDishUnlocked(int starTier) => unlockedStarTiers.contains(starTier);
+  bool isStarRewardClaimed(int starTier) => claimedStarRewards.contains(starTier);
+
+  double get activeRecipeMultiplier {
+    double mult = 1.0;
+    for (final tier in unlockedStarTiers) {
+      final dish = defaultStarDishTiers[tier];
+      if (dish != null && dish.multiplier > mult) {
+        mult = dish.multiplier;
+      }
+    }
+    return mult;
+  }
+
+  void checkStarDishUnlocks() {
+    for (final entry in defaultStarDishTiers.entries) {
+      final tier = entry.key;
+      final dish = entry.value;
+      if (restaurantLevel >= dish.requiredLevel && !unlockedStarTiers.contains(tier)) {
+        unlockedStarTiers.add(tier);
+      }
+    }
+    notifyListeners();
+  }
+
+  bool claimStarDishReward(int starTier) {
+    if (!unlockedStarTiers.contains(starTier) || claimedStarRewards.contains(starTier)) {
+      return false;
+    }
+    claimedStarRewards.add(starTier);
+    gems += 25; // +25 Diamonds
+    notifyListeners();
+    return true;
+  }
+
+  double get xpToNextLevel => (250.0 * pow(1.35, restaurantLevel - 1)).roundToDouble();
+
+  void addXp(double amount) {
+    restaurantXp += amount;
+    bool leveledUp = false;
+    while (restaurantXp >= xpToNextLevel) {
+      restaurantXp -= xpToNextLevel;
+      restaurantLevel++;
+      starRating = min(5.0, starRating + 0.05);
+      gems += 5;
+      leveledUp = true;
+    }
+    if (leveledUp) {
+      checkStarDishUnlocks();
+    }
+    notifyListeners();
+  }
+
+  // ─── Kolibri Games Sector Manager Active Skills ───────────────────────────
+  final Map<String, SectorManager> sectorManagers = createDefaultSectorManagers();
+
+  bool canActivateManagerSkill(String sectorId) {
+    final mgr = sectorManagers[sectorId];
+    return mgr != null && mgr.canActivate;
+  }
+
+  bool isManagerSkillActive(String sectorId) {
+    return sectorManagers[sectorId]?.isActive ?? false;
+  }
+
+  bool activateManagerSkill(String sectorId) {
+    if (!canActivateManagerSkill(sectorId)) return false;
+    final mgr = sectorManagers[sectorId]!;
+    mgr.isActive = true;
+    mgr.activeTimer = mgr.activeDuration;
+    mgr.cooldownTimer = 0.0;
+
+    if (mgr.skillId == 'instant_table_clean') {
+      cleanAllDirtyStations();
+    }
+
+    _applyManagerBoosts();
+    notifyListeners();
+    return true;
+  }
+
+  int activateAllManagerSkills() {
+    int activated = 0;
+    for (final secId in sectorManagers.keys) {
+      if (canActivateManagerSkill(secId)) {
+        if (activateManagerSkill(secId)) {
+          activated++;
+        }
+      }
+    }
+    return activated;
+  }
+
+  bool isAnyManagerSkillReady() {
+    return sectorManagers.values.any((m) => m.canActivate);
+  }
+
+  int get readyManagerSkillsCount {
+    return sectorManagers.values.where((m) => m.canActivate).length;
+  }
+
+  double getManagerUpgradeDiscount() {
+    if (isManagerSkillActive('milkshake')) {
+      final tier = sectorManagers['milkshake']?.tier.toLowerCase() ?? 'junior';
+      if (tier == 'executive') return 0.40;
+      if (tier == 'senior') return 0.35;
+      return 0.30;
+    }
+    return 0.0;
+  }
+
+  double getManagerCookingSpeedMultiplier() {
+    if (isManagerSkillActive('kitchen')) {
+      final tier = sectorManagers['kitchen']?.tier.toLowerCase() ?? 'junior';
+      if (tier == 'executive') return 2.5;
+      if (tier == 'senior') return 2.2;
+      return 2.0;
+    }
+    return 1.0;
+  }
+
+  double getManagerWalkSpeedMultiplier() {
+    if (isManagerSkillActive('lounge')) {
+      final tier = sectorManagers['lounge']?.tier.toLowerCase() ?? 'junior';
+      if (tier == 'executive') return 2.5;
+      if (tier == 'senior') return 2.2;
+      return 2.0;
+    }
+    return 1.0;
+  }
+
+  void cleanAllDirtyStations() {
+    for (final s in stations) {
+      if (s.isDirty) {
+        s.isDirty = false;
+        s.cleanTimer = 0.0;
+        s.occupiedByCharacterId = null;
+      }
+    }
+    notifyListeners();
+  }
+
+  void _processManagerSkills(double dt) {
+    bool stateChanged = false;
+    for (final mgr in sectorManagers.values) {
+      if (mgr.isActive) {
+        mgr.activeTimer -= dt;
+        if (mgr.activeTimer <= 0.0) {
+          mgr.isActive = false;
+          mgr.activeTimer = 0.0;
+          mgr.cooldownTimer = mgr.cooldownDuration;
+          stateChanged = true;
+        }
+      } else if (mgr.cooldownTimer > 0.0) {
+        mgr.cooldownTimer = max(0.0, mgr.cooldownTimer - dt);
+      }
+    }
+    if (stateChanged) {
+      _applyManagerBoosts();
+    }
   }
 
   // ─── Characters ──────────────────────────────────────────────────────────
@@ -528,6 +719,7 @@ class GameState extends ChangeNotifier {
   // ═══════════════════════════════════════════════════════════════════════════
 
   void tick(double dt) {
+    _processManagerSkills(dt);
     _tickGuestSpawn(dt);
     _tickCharacters(dt);
     _tickStations(dt);
@@ -652,7 +844,7 @@ class GameState extends ChangeNotifier {
     for (final c in characters) {
       // Move towards target
       if (c.isMoving) {
-        const speed = 2.0; // tiles per second
+        final speed = 2.0 * (c.isStaff ? getManagerWalkSpeedMultiplier() : 1.0); // tiles per second
         final dx = c.targetGx - c.gx;
         final dy = c.targetGy - c.gy;
         final dist = sqrt(dx * dx + dy * dy);
@@ -855,9 +1047,13 @@ class GameState extends ChangeNotifier {
     if (s != null) s.occupiedByCharacterId = null;
     c.assignedStationId = null;
 
-    // Collect meal payment
-    final mealIncome = (s?.income ?? 60.0) * totalRevenueMultiplier * (c.isVip ? 1.5 : 1.0);
+    // Collect meal payment multiplied by active recipe tier
+    final mealIncome = (s?.income ?? 60.0) * totalRevenueMultiplier * activeRecipeMultiplier * (c.isVip ? 1.5 : 1.0);
     _earnCash(mealIncome, c.gx, c.gy);
+
+    // Deposit diamond to Piggy Bank and grant progression XP
+    depositPiggyBank(1);
+    addXp(5.0);
 
     // After dining: go rest or leave
     final room = _findFreeStation(ZoneType.hotelRoom);
@@ -1197,12 +1393,17 @@ class GameState extends ChangeNotifier {
     final s = _stationById(stationId);
     if (s == null || levelsToBuy <= 0) return false;
     int bought = 0;
-    while (bought < levelsToBuy && s.level < s.maxLevel && cash >= s.upgradeCost) {
-      cash -= s.upgradeCost;
+    final discount = getManagerUpgradeDiscount();
+    while (bought < levelsToBuy && s.level < s.maxLevel) {
+      final actualCost = (s.upgradeCost * (1.0 - discount)).roundToDouble();
+      if (cash < actualCost) break;
+      cash -= actualCost;
       s.level++;
       bought++;
     }
     if (bought > 0) {
+      depositPiggyBank(bought);
+      addXp(15.0 * bought);
       final pos = _gridToViewport(s.gx, s.gy);
       _spawnCashParticles(pos);
       _spawnCashParticles(pos.translate(20, -20));
@@ -1297,6 +1498,14 @@ class GameState extends ChangeNotifier {
       for (final s in stations.where((s) => s.zone == m.affectsZone)) {
         s.incomeMultiplier *= m.incomeBoost;
         s.speedMultiplier *= m.speedBoost;
+      }
+    }
+
+    // Apply sector manager cooking speed boost
+    if (isManagerSkillActive('kitchen')) {
+      final mult = getManagerCookingSpeedMultiplier();
+      for (final s in stations.where((s) => s.zone == ZoneType.kitchen)) {
+        s.speedMultiplier *= mult;
       }
     }
   }

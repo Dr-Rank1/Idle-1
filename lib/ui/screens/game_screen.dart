@@ -10,6 +10,8 @@ import '../../ui/painters/resort_painter.dart';
 import '../../ui/widgets/franchise_sheet.dart';
 import '../../ui/widgets/hud_overlay.dart';
 import '../../ui/widgets/managers_sheet.dart';
+import '../../ui/widgets/piggy_bank_modal.dart';
+import '../../ui/widgets/recipe_book_modal.dart';
 import '../../ui/widgets/upgrade_sheet.dart';
 import '../../utils/iso_math.dart';
 
@@ -233,6 +235,14 @@ class _GameScreenState extends State<GameScreen>
                     backgroundColor: Colors.transparent,
                     isScrollControlled: true,
                     builder: (_) => const ManagersSheet(),
+                  ),
+                  onPiggyBankTap: () => showDialog(
+                    context: context,
+                    builder: (_) => const PiggyBankModal(),
+                  ),
+                  onRecipeBookTap: () => showDialog(
+                    context: context,
+                    builder: (_) => const RecipeBookModal(),
                   ),
                   onStatsTap: () => setState(() => _showStats = !_showStats),
                 ),

@@ -79,6 +79,10 @@ class SaveService {
         'isUnlocked': m.isUnlocked,
         'isAssigned': m.isAssigned,
       }).toList(),
+      'sector_managers': gs.sectorManagers.map((k, v) => MapEntry(k, v.toJson())),
+      'unlocked_star_tiers': gs.unlockedStarTiers,
+      'claimed_star_rewards': gs.claimedStarRewards,
+      'piggy_bank_diamonds': gs.piggyBankDiamonds,
     };
 
     final jsonStr = jsonEncode(data);
@@ -218,6 +222,45 @@ class SaveService {
           }
         }
       }
+
+      // Restore sector managers
+      final sectorMgrData = data['sector_managers'] as Map<String, dynamic>?;
+      if (sectorMgrData != null) {
+        for (final entry in sectorMgrData.entries) {
+          final secId = entry.key;
+          final mdata = entry.value as Map<String, dynamic>;
+          if (gs.sectorManagers.containsKey(secId)) {
+            final mgr = gs.sectorManagers[secId]!;
+            mgr.tier = mdata['tier'] as String? ?? mgr.tier;
+            mgr.assigned = mdata['assigned'] as bool? ?? mgr.assigned;
+            mgr.isActive = mdata['is_active'] as bool? ?? false;
+            mgr.activeTimer = (mdata['active_timer'] as num?)?.toDouble() ?? 0.0;
+            mgr.cooldownTimer = (mdata['cooldown_timer'] as num?)?.toDouble() ?? 0.0;
+          }
+        }
+      }
+
+      // Restore unlocked star dish tiers
+      final unlockedTiers = data['unlocked_star_tiers'] as List<dynamic>?;
+      if (unlockedTiers != null) {
+        gs.unlockedStarTiers.clear();
+        for (final t in unlockedTiers) {
+          if (t is num) gs.unlockedStarTiers.add(t.toInt());
+        }
+        if (gs.unlockedStarTiers.isEmpty) gs.unlockedStarTiers.add(1);
+      }
+
+      // Restore claimed star rewards
+      final claimedRewards = data['claimed_star_rewards'] as List<dynamic>?;
+      if (claimedRewards != null) {
+        gs.claimedStarRewards.clear();
+        for (final r in claimedRewards) {
+          if (r is num) gs.claimedStarRewards.add(r.toInt());
+        }
+      }
+
+      // Restore piggy bank diamonds
+      gs.piggyBankDiamonds = (data['piggy_bank_diamonds'] as num?)?.toInt() ?? gs.piggyBankDiamonds;
 
       // Calculate offline earnings: min(ElapsedSeconds, 28800) * CashPerSecond * 0.85
       savedTs ??= data['saved_timestamp'] as num?;
