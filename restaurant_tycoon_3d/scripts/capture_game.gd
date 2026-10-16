@@ -26,7 +26,7 @@ func _init():
 	var cam = root.find_child("Camera3D", true, false)
 	if cam != null:
 		cam.projection = Camera3D.PROJECTION_ORTHOGONAL
-		cam.size = 18.0
+		cam.size = 12.0
 		cam.position = Vector3(14.2, 15.0, 16.8)
 		cam.rotation_degrees = Vector3(-30.0, 45.0, 0.0)
 		cam.target_position = Vector3(14.2, 15.0, 16.8)

@@ -2,14 +2,24 @@ extends Camera3D
 
 @export var pan_speed: float = 0.025
 @export var key_pan_speed: float = 14.0
-@export var zoom_speed: float = 1.6
+@export var zoom_speed: float = 1.4
+@export var default_ortho_size: float = 12.0
+@export var min_ortho_size: float = 8.5
+@export var max_ortho_size: float = 16.5
 @export var min_zoom_dist: float = 9.0
 @export var max_zoom_dist: float = 32.0
+@export var inertia_friction: float = 5.5
+@export var max_drag_velocity: float = 38.0
 
 var is_dragging: bool = false
 var last_mouse_pos: Vector2 = Vector2.ZERO
 var target_position: Vector3 = Vector3(14.2, 15.0, 16.8)
 var initialized: bool = false
+
+# Touch and Drag Inertia / Momentum
+var drag_velocity: Vector3 = Vector3.ZERO
+var pan_velocity: Vector3 = Vector3.ZERO
+var last_drag_time: float = 0.0
 
 # Camera forward and right vectors projected onto ground XZ plane
 var ground_right: Vector3 = Vector3.RIGHT
@@ -17,7 +27,7 @@ var ground_forward: Vector3 = Vector3.FORWARD
 
 func _ready() -> void:
 	projection = PROJECTION_ORTHOGONAL
-	size = 18.0
+	size = default_ortho_size
 	position = Vector3(14.2, 15.0, 16.8)
 	rotation_degrees = Vector3(-30.0, 45.0, 0.0)
 	target_position = position
@@ -51,24 +61,43 @@ func _process(delta: float) -> void:
 	if move_input != Vector2.ZERO:
 		if pan_tween != null and pan_tween.is_valid():
 			pan_tween.kill()
+		pan_velocity = Vector3.ZERO
 		move_input = move_input.normalized()
 		var move_vec = (ground_right * move_input.x + ground_forward * move_input.y) * key_pan_speed * delta
 		target_position += move_vec
 		_clamp_target()
 	
+	# Inertia / momentum damping when releasing drag gesture
+	if not is_dragging and pan_velocity.length_squared() > 0.005:
+		target_position += pan_velocity * delta
+		_clamp_target()
+		
+		# Smooth deceleration damping
+		pan_velocity = pan_velocity.lerp(Vector3.ZERO, inertia_friction * delta)
+		if pan_velocity.length() < 0.04:
+			pan_velocity = Vector3.ZERO
+	
 	# Smoothly interpolate position towards target if not actively tweening
 	if pan_tween == null or not pan_tween.is_valid() or not pan_tween.is_running():
-		position = position.lerp(target_position, 12.0 * delta)
+		position = position.lerp(target_position, 14.0 * delta)
 
 func _clamp_target() -> void:
+	var prev_x = target_position.x
+	var prev_z = target_position.z
 	target_position.x = clamp(target_position.x, -8.0, 36.0)
 	target_position.z = clamp(target_position.z, 0.0, 38.0)
+	if target_position.x != prev_x:
+		pan_velocity.x = 0.0
+	if target_position.z != prev_z:
+		pan_velocity.z = 0.0
 
 var pan_tween: Tween = null
 
 func pan_to_position(dest_pos: Vector3, duration: float = 0.35, offset_for_drawer: bool = true) -> void:
 	if pan_tween != null and pan_tween.is_valid():
 		pan_tween.kill()
+	pan_velocity = Vector3.ZERO
+	drag_velocity = Vector3.ZERO
 		
 	var dest = dest_pos
 	if offset_for_drawer:
@@ -163,14 +192,27 @@ func _unhandled_input(event: InputEvent) -> void:
 					pan_tween.kill()
 				is_dragging = true
 				last_mouse_pos = event.position
+				pan_velocity = Vector3.ZERO
+				drag_velocity = Vector3.ZERO
+				last_drag_time = Time.get_ticks_usec() / 1000000.0
 			else:
 				is_dragging = false
+				var now = Time.get_ticks_usec() / 1000000.0
+				if now - last_drag_time < 0.08:
+					pan_velocity = drag_velocity.limit_length(max_drag_velocity)
+				else:
+					pan_velocity = Vector3.ZERO
+				drag_velocity = Vector3.ZERO
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_zoom(-zoom_speed)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_zoom(zoom_speed)
 
 	elif event is InputEventMouseMotion and is_dragging:
+		var now: float = Time.get_ticks_usec() / 1000000.0
+		var dt: float = now - last_drag_time
+		last_drag_time = now
+
 		var delta_mouse: Vector2 = event.position - last_mouse_pos
 		last_mouse_pos = event.position
 
@@ -178,24 +220,50 @@ func _unhandled_input(event: InputEvent) -> void:
 		target_position += move_vec
 		_clamp_target()
 
+		if dt > 0.0001:
+			var inst_vel = move_vec / dt
+			drag_velocity = drag_velocity.lerp(inst_vel, 0.55)
+
 	elif event is InputEventScreenTouch:
 		if event.pressed:
 			if pan_tween != null and pan_tween.is_valid():
 				pan_tween.kill()
 			is_dragging = true
 			last_mouse_pos = event.position
+			pan_velocity = Vector3.ZERO
+			drag_velocity = Vector3.ZERO
+			last_drag_time = Time.get_ticks_usec() / 1000000.0
 		else:
 			is_dragging = false
+			var now = Time.get_ticks_usec() / 1000000.0
+			if now - last_drag_time < 0.08:
+				pan_velocity = drag_velocity.limit_length(max_drag_velocity)
+			else:
+				pan_velocity = Vector3.ZERO
+			drag_velocity = Vector3.ZERO
 
 	elif event is InputEventScreenDrag and is_dragging:
+		var now: float = Time.get_ticks_usec() / 1000000.0
+		var dt: float = now - last_drag_time
+		last_drag_time = now
+
 		var delta_touch: Vector2 = event.relative
+		last_mouse_pos = event.position
+
 		var move_vec: Vector3 = (-ground_right * delta_touch.x + -ground_forward * delta_touch.y) * pan_speed
 		target_position += move_vec
 		_clamp_target()
 
+		if dt > 0.0001:
+			var inst_vel = move_vec / dt
+			drag_velocity = drag_velocity.lerp(inst_vel, 0.55)
+
+	elif event is InputEventMagnifyGesture:
+		_zoom(-(event.factor - 1.0) * 10.0)
+
 func _zoom(amount: float) -> void:
 	if projection == PROJECTION_ORTHOGONAL:
-		size = clamp(size + amount * 1.5, 14.0, 36.0)
+		size = clamp(size + amount * 1.2, min_ortho_size, max_ortho_size)
 	else:
 		var cam_dir: Vector3 = transform.basis.z.normalized()
 		var new_pos = target_position + cam_dir * amount

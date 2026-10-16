@@ -46,6 +46,26 @@ var booth_bubble_root: Node3D = null
 var booth_cash_stack: Node3D = null
 var cash_respawn_timer: float = 0.0
 
+# ─── Mobile 3D Floor Idle Widgets ───────────────────────────────────────────
+var floor_level_pad: Node3D = null
+var floor_lvl_label: Label3D = null
+var progress_trough: MeshInstance3D = null
+var progress_fill: MeshInstance3D = null
+var upgrade_arrow: Node3D = null
+var can_upgrade_station: bool = false
+
+# Physical 3D Cash Stacks
+var cash_mat: Node3D = null
+var cash_bricks_container: Node3D = null
+var cash_stack_label: Label3D = null
+var current_cash_bricks: int = 0
+
+# Locked Construction Zone
+var locked_zone_root: Node3D = null
+var locked_price_badge: Node3D = null
+var locked_price_label: Label3D = null
+var current_unlock_cost: float = 0.0
+
 var highlight_ring: MeshInstance3D = null
 var is_highlighted: bool = false
 var highlight_time: float = 0.0
@@ -106,16 +126,45 @@ func _process(delta: float) -> void:
 	if t_idx <= 0:
 		t_idx = 1
 	var phi = float(t_idx) * 0.72
-	if booth_cash_stack != null and booth_cash_stack.visible:
-		booth_cash_stack.position.y = 1.65 + 0.05 * sin(3.2 * time_passed + phi)
-	elif is_unlocked and booth_cash_stack != null and not is_dirty:
-		cash_respawn_timer += delta
-		if cash_respawn_timer >= 15.0:
-			booth_cash_stack.visible = true
-			cash_respawn_timer = 0.0
+	
+	# Idle cash respawn
+	if is_unlocked and booth_cash_stack != null and not is_dirty:
+		if not booth_cash_stack.visible:
+			cash_respawn_timer += delta
+			if cash_respawn_timer >= 15.0:
+				_populate_cash_bricks(randi_range(3, 6))
+				booth_cash_stack.visible = true
+				cash_respawn_timer = 0.0
+		elif cash_stack_label != null:
+			cash_stack_label.position.y = 0.45 + 0.04 * sin(3.0 * time_passed + phi)
 
 	if booth_bubble_root != null and booth_bubble_root.visible:
 		booth_bubble_root.position.y = 1.70 + 0.05 * sin(2.8 * time_passed + float(t_idx) * 0.8)
+
+	# Dynamic animation for locked unlock price button
+	if not is_unlocked and locked_price_badge != null and locked_price_badge.visible:
+		locked_price_badge.position.y = 1.45 + 0.08 * sin(time_passed * 4.5)
+		var gm = get_node_or_null("/root/GameManager")
+		var can_afford = (gm != null and gm.cash >= current_unlock_cost)
+		if can_afford:
+			var pulse = 1.0 + sin(time_passed * 6.0) * 0.06
+			locked_price_badge.scale = Vector3(pulse, pulse, pulse)
+		else:
+			locked_price_badge.scale = Vector3.ONE
+
+	# Dynamic animation for floor level pad & green upgrade arrow
+	if is_unlocked and floor_level_pad != null and floor_level_pad.visible:
+		if can_upgrade_station and not is_dirty:
+			var pad_pulse = 1.0 + sin(time_passed * 5.0) * 0.06
+			floor_level_pad.scale = Vector3(pad_pulse, 1.0, pad_pulse)
+			if upgrade_arrow != null:
+				upgrade_arrow.visible = true
+				upgrade_arrow.position.y = 0.42 + 0.08 * sin(time_passed * 6.5)
+				upgrade_arrow.rotation.y = sin(time_passed * 2.5) * 0.25
+		else:
+			floor_level_pad.scale = Vector3.ONE
+			if upgrade_arrow != null:
+				upgrade_arrow.visible = false
 
 	# Subtle pulsing golden floor ring highlight
 	if is_highlighted and highlight_ring != null and highlight_ring.visible:
@@ -162,18 +211,33 @@ func _create_highlight_ring() -> void:
 func _on_cash_changed(_cash_val: float) -> void:
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
-		if is_unlocked and not is_dirty and not is_occupied:
+		if is_unlocked:
 			var lvl = gm.get_station_level(table_id)
-			update_level_display(lvl)
+			_update_floor_level_pad(lvl)
+			if not is_dirty and not is_occupied:
+				update_level_display(lvl)
 		elif not is_unlocked:
 			var cost = gm.get_table_unlock_cost(table_id)
+			current_unlock_cost = cost
+			var can_afford = (gm.cash >= cost)
+			if locked_price_badge != null:
+				var bg = locked_price_badge.get_node_or_null("ButtonBg")
+				if bg is MeshInstance3D and bg.material_override is StandardMaterial3D:
+					bg.material_override.albedo_color = Color(0.22, 0.88, 0.35) if can_afford else Color(0.88, 0.35, 0.25)
+				var bev = locked_price_badge.get_node_or_null("ButtonBevel")
+				if bev is MeshInstance3D and bev.material_override is StandardMaterial3D:
+					bev.material_override.albedo_color = Color(0.10, 0.52, 0.18) if can_afford else Color(0.55, 0.16, 0.12)
+			if locked_price_label != null:
+				locked_price_label.text = "🔓 UNLOCK  $%d" % round(cost)
+				locked_price_label.outline_modulate = Color(0.06, 0.20, 0.08, 0.95) if can_afford else Color(0.20, 0.06, 0.06, 0.95)
 			if action_badge != null:
 				action_badge.text = "TAP TO UNLOCK ($%d)" % round(cost)
-				action_badge.modulate = Color(0.35, 1.0, 0.55) if gm.cash >= cost else Color(1.0, 0.45, 0.45)
+				action_badge.modulate = Color(0.35, 1.0, 0.55) if can_afford else Color(1.0, 0.45, 0.45)
 
 func _set_locked_visual(cost: float) -> void:
 	is_unlocked = false
 	visible = true
+	current_unlock_cost = cost
 	if table_mesh != null: table_mesh.visible = false
 	if booth_decor != null: booth_decor.visible = false
 	if companion_diners != null: companion_diners.visible = false
@@ -195,19 +259,11 @@ func _set_locked_visual(cost: float) -> void:
 			c.visible = false
 	if booth_bubble_root != null: booth_bubble_root.visible = false
 	if booth_cash_stack != null: booth_cash_stack.visible = false
+	if floor_level_pad != null: floor_level_pad.visible = false
 	if badge_root != null:
-		badge_root.visible = true
-	if level_label != null:
-		level_label.visible = true
-		level_label.text = "🔒 " + table_name
-		level_label.font_size = 18
-		level_label.modulate = Color(0.9, 0.9, 0.9, 0.85)
-	if action_badge != null:
-		action_badge.visible = true
-		var gm = get_node_or_null("/root/GameManager")
-		var can_afford: bool = gm != null and gm.cash >= cost
-		action_badge.text = "TAP TO UNLOCK ($%d)" % round(cost)
-		action_badge.modulate = Color(0.35, 1.0, 0.55) if can_afford else Color(1.0, 0.45, 0.45)
+		badge_root.visible = false
+		
+	_setup_locked_zone(cost)
 
 const BOOTH_CHARACTERS: Dictionary = {
 	"table_1": [
@@ -453,42 +509,496 @@ func _setup_unique_booth_diners() -> void:
 		b_spr.texture = ImageTexture.create_from_image(b_img)
 	booth_bubble_root.add_child(b_spr)
 	
-	# Floating Green Cash Stack Graphic at the aisle edge (matching crop_dining_08s.jpg)
-	if booth_cash_stack == null:
-		booth_cash_stack = Node3D.new()
-		booth_cash_stack.name = "BoothCashStack"
-		add_child(booth_cash_stack)
-	booth_cash_stack.position = Vector3(-1.15, 1.65, 0.0)
+	# Physical 3D Stacking Cash on Collection Mat (Mobile Idle Style)
+	_setup_3d_cash_stack()
+
+func _create_cash_brick() -> Node3D:
+	var brick = Node3D.new()
+	var bill = MeshInstance3D.new()
+	var b_box = BoxMesh.new()
+	b_box.size = Vector3(0.20, 0.042, 0.11)
+	bill.mesh = b_box
+	var bill_mat = StandardMaterial3D.new()
+	bill_mat.albedo_color = Color(0.18, 0.68, 0.30)
+	bill_mat.roughness = 0.45
+	bill.material_override = bill_mat
+	brick.add_child(bill)
 	
-	for c in booth_cash_stack.get_children():
-		c.queue_free()
+	var band = MeshInstance3D.new()
+	var band_box = BoxMesh.new()
+	band_box.size = Vector3(0.05, 0.045, 0.114)
+	band.mesh = band_box
+	var band_mat = StandardMaterial3D.new()
+	band_mat.albedo_color = Color(0.96, 0.94, 0.88)
+	band.material_override = band_mat
+	brick.add_child(band)
+	return brick
+
+func _setup_3d_cash_stack() -> void:
+	if booth_cash_stack != null and is_instance_valid(booth_cash_stack):
+		booth_cash_stack.queue_free()
 		
-	var cash_spr = Sprite3D.new()
-	cash_spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	cash_spr.double_sided = false
-	cash_spr.pixel_size = 0.0022
-	cash_spr.position = Vector3(-0.25, 0.0, 0.0)
-	var c_path = ProjectSettings.globalize_path("res://assets/textures/bubble_cash_stack.png")
-	var c_img = Image.load_from_file(c_path)
-	if c_img != null:
-		cash_spr.texture = ImageTexture.create_from_image(c_img)
-	booth_cash_stack.add_child(cash_spr)
+	booth_cash_stack = Node3D.new()
+	booth_cash_stack.name = "BoothCashStack"
+	booth_cash_stack.position = Vector3(-1.15, 0.02, 0.15)
+	add_child(booth_cash_stack)
 	
-	var cash_lbl = Label3D.new()
-	cash_lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	cash_lbl.double_sided = false
-	cash_lbl.position = Vector3(0.35, 0.0, 0.01)
-	var amounts = ["$100", "$2.8T", "$172T", "$1.03T"]
-	cash_lbl.text = amounts[(t_idx - 1) % amounts.size()]
-	cash_lbl.font_size = 28
-	cash_lbl.outline_size = 7
-	cash_lbl.modulate = Color(1.0, 1.0, 1.0, 1.0)
-	cash_lbl.outline_modulate = Color(0.06, 0.14, 0.06, 0.95)
-	booth_cash_stack.add_child(cash_lbl)
+	# Collection Mat
+	var mat_mesh = MeshInstance3D.new()
+	var m_box = BoxMesh.new()
+	m_box.size = Vector3(0.56, 0.02, 0.44)
+	mat_mesh.mesh = m_box
+	var mat_mat = StandardMaterial3D.new()
+	mat_mat.albedo_color = Color(0.08, 0.30, 0.16)
+	mat_mat.roughness = 0.6
+	mat_mesh.material_override = mat_mat
+	booth_cash_stack.add_child(mat_mesh)
+	
+	# Gold border trim around mat
+	var rim_mesh = MeshInstance3D.new()
+	var r_box = BoxMesh.new()
+	r_box.size = Vector3(0.58, 0.018, 0.46)
+	rim_mesh.mesh = r_box
+	rim_mesh.position = Vector3(0.0, -0.002, 0.0)
+	var rim_mat = StandardMaterial3D.new()
+	rim_mat.albedo_color = Color(0.95, 0.82, 0.22)
+	rim_mat.metallic = 0.8
+	rim_mat.roughness = 0.25
+	rim_mesh.material_override = rim_mat
+	booth_cash_stack.add_child(rim_mesh)
+	
+	# Container for the 3D brick grid
+	cash_bricks_container = Node3D.new()
+	cash_bricks_container.name = "CashBricksContainer"
+	booth_cash_stack.add_child(cash_bricks_container)
+	
+	# Floating cash badge label
+	cash_stack_label = Label3D.new()
+	cash_stack_label.name = "CashStackLabel"
+	cash_stack_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	cash_stack_label.double_sided = false
+	cash_stack_label.font_size = 28
+	cash_stack_label.outline_size = 7
+	cash_stack_label.position = Vector3(0.0, 0.45, 0.0)
+	cash_stack_label.modulate = Color(0.35, 1.0, 0.55)
+	cash_stack_label.outline_modulate = Color(0.04, 0.16, 0.06, 0.95)
+	
+	var t_idx = int(table_id.trim_prefix("table_"))
+	if t_idx <= 0: t_idx = 1
+	var amounts = ["$50", "$120", "$350", "$750"]
+	cash_stack_label.text = amounts[(t_idx - 1) % amounts.size()]
+	booth_cash_stack.add_child(cash_stack_label)
+	
+	_populate_cash_bricks(4)
+
+func _populate_cash_bricks(count: int) -> void:
+	if cash_bricks_container == null:
+		return
+	for c in cash_bricks_container.get_children():
+		c.queue_free()
+	current_cash_bricks = count
+	var grid_slots = [
+		Vector3(-0.11, 0.0, -0.09),
+		Vector3(0.11, 0.0, -0.09),
+		Vector3(-0.11, 0.0, 0.09),
+		Vector3(0.11, 0.0, 0.09)
+	]
+	for i in range(count):
+		var brick = _create_cash_brick()
+		var slot_idx = i % 4
+		var layer = i / 4
+		var base_p = grid_slots[slot_idx]
+		brick.position = Vector3(base_p.x, 0.02 + float(layer) * 0.045, base_p.z)
+		brick.rotation.y = randf_range(-0.08, 0.08)
+		cash_bricks_container.add_child(brick)
+
+func _setup_floor_level_pad() -> void:
+	if floor_level_pad != null and is_instance_valid(floor_level_pad):
+		return
+	floor_level_pad = Node3D.new()
+	floor_level_pad.name = "FloorLevelPad"
+	floor_level_pad.position = Vector3(-1.05, 0.02, -0.65)
+	add_child(floor_level_pad)
+	
+	# 1. Rounded Plaque Base
+	var plaque_mesh = MeshInstance3D.new()
+	var cyl = CylinderMesh.new()
+	cyl.top_radius = 0.34
+	cyl.bottom_radius = 0.36
+	cyl.height = 0.032
+	cyl.radial_segments = 24
+	plaque_mesh.mesh = cyl
+	var slate_mat = StandardMaterial3D.new()
+	slate_mat.albedo_color = Color(0.12, 0.15, 0.22)
+	slate_mat.roughness = 0.4
+	plaque_mesh.material_override = slate_mat
+	floor_level_pad.add_child(plaque_mesh)
+	
+	# Plaque Rim Ring
+	var rim_mesh = MeshInstance3D.new()
+	var torus = TorusMesh.new()
+	torus.inner_radius = 0.33
+	torus.outer_radius = 0.37
+	torus.rings = 24
+	torus.ring_segments = 12
+	rim_mesh.mesh = torus
+	rim_mesh.position = Vector3(0.0, 0.015, 0.0)
+	var rim_mat = StandardMaterial3D.new()
+	rim_mat.albedo_color = Color(1.0, 0.82, 0.22)
+	rim_mat.metallic = 0.85
+	rim_mat.roughness = 0.2
+	rim_mesh.material_override = rim_mat
+	floor_level_pad.add_child(rim_mesh)
+	
+	# 2. 3D Level Label
+	floor_lvl_label = Label3D.new()
+	floor_lvl_label.name = "FloorLevelLabel"
+	floor_lvl_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	floor_lvl_label.double_sided = false
+	floor_lvl_label.position = Vector3(0.0, 0.16, -0.06)
+	floor_lvl_label.font_size = 32
+	floor_lvl_label.outline_size = 8
+	floor_lvl_label.text = "Lv. 1"
+	floor_lvl_label.modulate = Color.WHITE
+	floor_lvl_label.outline_modulate = Color(0.05, 0.05, 0.10, 0.95)
+	floor_level_pad.add_child(floor_lvl_label)
+	
+	# 3. Thick 3D Progress Bar
+	var prog_root = Node3D.new()
+	prog_root.position = Vector3(0.0, 0.026, 0.12)
+	floor_level_pad.add_child(prog_root)
+	
+	progress_trough = MeshInstance3D.new()
+	var trough_box = BoxMesh.new()
+	trough_box.size = Vector3(0.46, 0.024, 0.08)
+	progress_trough.mesh = trough_box
+	var trough_mat = StandardMaterial3D.new()
+	trough_mat.albedo_color = Color(0.08, 0.09, 0.13)
+	progress_trough.material_override = trough_mat
+	prog_root.add_child(progress_trough)
+	
+	progress_fill = MeshInstance3D.new()
+	var fill_box = BoxMesh.new()
+	fill_box.size = Vector3(0.12, 0.028, 0.065)
+	progress_fill.mesh = fill_box
+	var fill_mat = StandardMaterial3D.new()
+	fill_mat.albedo_color = Color(0.12, 0.88, 0.98)
+	fill_mat.emission_enabled = true
+	fill_mat.emission = Color(0.08, 0.65, 0.75)
+	fill_mat.emission_energy_multiplier = 0.5
+	progress_fill.material_override = fill_mat
+	prog_root.add_child(progress_fill)
+	
+	# 4. Chunky 3D Green Upward Arrow
+	upgrade_arrow = Node3D.new()
+	upgrade_arrow.name = "UpgradeArrow"
+	upgrade_arrow.position = Vector3(0.0, 0.42, 0.0)
+	upgrade_arrow.visible = false
+	
+	var arrow_head = MeshInstance3D.new()
+	var head_prism = PrismMesh.new()
+	head_prism.size = Vector3(0.24, 0.22, 0.10)
+	arrow_head.mesh = head_prism
+	
+	var arrow_shaft = MeshInstance3D.new()
+	var shaft_box = BoxMesh.new()
+	shaft_box.size = Vector3(0.09, 0.12, 0.08)
+	arrow_shaft.mesh = shaft_box
+	arrow_shaft.position = Vector3(0.0, -0.11, 0.0)
+	
+	var arrow_mat = StandardMaterial3D.new()
+	arrow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	arrow_mat.albedo_color = Color(0.25, 1.0, 0.35)
+	arrow_head.material_override = arrow_mat
+	arrow_shaft.material_override = arrow_mat
+	
+	upgrade_arrow.add_child(arrow_head)
+	upgrade_arrow.add_child(arrow_shaft)
+	floor_level_pad.add_child(upgrade_arrow)
+
+func _update_floor_level_pad(lvl: int) -> void:
+	if floor_level_pad == null:
+		_setup_floor_level_pad()
+	if floor_lvl_label != null:
+		floor_lvl_label.text = "Lv. %d" % lvl
+		
+	var ratio: float = 1.0
+	if lvl < 10:
+		ratio = float(lvl) / 10.0
+	elif lvl < 25:
+		ratio = float(lvl - 10) / 15.0
+	elif lvl < 50:
+		ratio = float(lvl - 25) / 25.0
+	ratio = clamp(ratio, 0.08, 1.0)
+	
+	var fill_width = 0.44 * ratio
+	if progress_fill != null and progress_fill.mesh is BoxMesh:
+		progress_fill.mesh.size.x = fill_width
+		progress_fill.position.x = -0.22 + fill_width * 0.5
+		if progress_fill.material_override is StandardMaterial3D:
+			var mat = progress_fill.material_override
+			if lvl >= 50:
+				mat.albedo_color = Color(1.0, 0.84, 0.18)
+				mat.emission = Color(0.85, 0.65, 0.10)
+			elif lvl >= 25:
+				mat.albedo_color = Color(1.0, 0.72, 0.20)
+				mat.emission = Color(0.80, 0.50, 0.10)
+			else:
+				mat.albedo_color = Color(0.12, 0.88, 0.98)
+				mat.emission = Color(0.08, 0.65, 0.75)
+				
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null:
+		var cost = gm.get_upgrade_cost(table_id)
+		var max_lvl = gm.get_station_max_level(table_id)
+		can_upgrade_station = (gm.cash >= cost and lvl < max_lvl)
+	else:
+		can_upgrade_station = false
+		
+	if upgrade_arrow != null:
+		upgrade_arrow.visible = can_upgrade_station and is_unlocked and not is_dirty
+
+func _setup_locked_zone(cost: float) -> void:
+	if locked_zone_root != null and is_instance_valid(locked_zone_root):
+		locked_zone_root.queue_free()
+		
+	current_unlock_cost = cost
+	locked_zone_root = Node3D.new()
+	locked_zone_root.name = "LockedZoneRoot"
+	add_child(locked_zone_root)
+	
+	# 1. Hazard-Bordered Floor Pad
+	var hazard_pad = MeshInstance3D.new()
+	var pad_box = BoxMesh.new()
+	pad_box.size = Vector3(2.5, 0.025, 2.1)
+	hazard_pad.mesh = pad_box
+	
+	var h_mat = ShaderMaterial.new()
+	var h_shader = Shader.new()
+	h_shader.code = """
+	shader_type spatial;
+	render_mode unshaded;
+	void fragment() {
+		float stripe = fract((UV.x * 2.5 + UV.y * 2.1) * 8.0);
+		ALBEDO = stripe < 0.5 ? vec3(1.0, 0.82, 0.0) : vec3(0.08, 0.08, 0.10);
+	}
+	"""
+	h_mat.shader = h_shader
+	hazard_pad.material_override = h_mat
+	hazard_pad.position = Vector3(0.0, 0.012, 0.0)
+	locked_zone_root.add_child(hazard_pad)
+	
+	var inner_pad = MeshInstance3D.new()
+	var in_box = BoxMesh.new()
+	in_box.size = Vector3(2.2, 0.028, 1.8)
+	inner_pad.mesh = in_box
+	var in_mat = StandardMaterial3D.new()
+	in_mat.albedo_color = Color(0.18, 0.18, 0.20)
+	in_mat.roughness = 0.75
+	inner_pad.material_override = in_mat
+	inner_pad.position = Vector3(0.0, 0.014, 0.0)
+	locked_zone_root.add_child(inner_pad)
+	
+	# 2. Safety Pylons & Caution Ribbon at 4 Corners
+	var corners = [
+		Vector3(-1.12, 0.0, -0.92),
+		Vector3(1.12, 0.0, -0.92),
+		Vector3(1.12, 0.0, 0.92),
+		Vector3(-1.12, 0.0, 0.92)
+	]
+	for cp in corners:
+		var pylon = Node3D.new()
+		pylon.position = cp
+		
+		var base_m = MeshInstance3D.new()
+		var b_cyl = CylinderMesh.new()
+		b_cyl.top_radius = 0.08
+		b_cyl.bottom_radius = 0.11
+		b_cyl.height = 0.04
+		base_m.mesh = b_cyl
+		var o_mat = StandardMaterial3D.new()
+		o_mat.albedo_color = Color(1.0, 0.38, 0.06)
+		base_m.material_override = o_mat
+		base_m.position.y = 0.02
+		pylon.add_child(base_m)
+		
+		var post_m = MeshInstance3D.new()
+		var p_cyl = CylinderMesh.new()
+		p_cyl.top_radius = 0.035
+		p_cyl.bottom_radius = 0.045
+		p_cyl.height = 0.55
+		post_m.mesh = p_cyl
+		var y_mat = StandardMaterial3D.new()
+		y_mat.albedo_color = Color(1.0, 0.85, 0.05)
+		post_m.material_override = y_mat
+		post_m.position.y = 0.28
+		pylon.add_child(post_m)
+		
+		var ref_m = MeshInstance3D.new()
+		var r_cyl = CylinderMesh.new()
+		r_cyl.top_radius = 0.037
+		r_cyl.bottom_radius = 0.041
+		r_cyl.height = 0.10
+		ref_m.mesh = r_cyl
+		var w_mat = StandardMaterial3D.new()
+		w_mat.albedo_color = Color(0.96, 0.96, 0.96)
+		ref_m.material_override = w_mat
+		ref_m.position.y = 0.30
+		pylon.add_child(ref_m)
+		
+		locked_zone_root.add_child(pylon)
+		
+	for i in range(4):
+		var p1 = corners[i]
+		var p2 = corners[(i + 1) % 4]
+		var mid = (p1 + p2) * 0.5
+		var dist = p1.distance_to(p2)
+		var ribbon = MeshInstance3D.new()
+		var r_box = BoxMesh.new()
+		r_box.size = Vector3(dist, 0.04, 0.012)
+		ribbon.mesh = r_box
+		var rib_mat = StandardMaterial3D.new()
+		rib_mat.albedo_color = Color(1.0, 0.88, 0.10)
+		rib_mat.roughness = 0.5
+		ribbon.material_override = rib_mat
+		ribbon.position = Vector3(mid.x, 0.42, mid.z)
+		ribbon.look_at(Vector3(p2.x, 0.42, p2.z), Vector3.UP)
+		locked_zone_root.add_child(ribbon)
+		
+	# 3. Wooden Construction Crates
+	var crate_main = Node3D.new()
+	crate_main.position = Vector3(0.0, 0.36, 0.0)
+	var c_box = BoxMesh.new()
+	c_box.size = Vector3(0.85, 0.72, 0.85)
+	var c_mesh = MeshInstance3D.new()
+	c_mesh.mesh = c_box
+	var wood_mat = StandardMaterial3D.new()
+	wood_mat.albedo_color = Color(0.68, 0.48, 0.28)
+	wood_mat.roughness = 0.85
+	c_mesh.material_override = wood_mat
+	crate_main.add_child(c_mesh)
+	
+	var steel_mat = StandardMaterial3D.new()
+	steel_mat.albedo_color = Color(0.35, 0.38, 0.42)
+	steel_mat.metallic = 0.7
+	steel_mat.roughness = 0.3
+	
+	for cx in [-0.425, 0.425]:
+		for cz in [-0.425, 0.425]:
+			var bracket = MeshInstance3D.new()
+			var b_box = BoxMesh.new()
+			b_box.size = Vector3(0.04, 0.73, 0.04)
+			bracket.mesh = b_box
+			bracket.material_override = steel_mat
+			bracket.position = Vector3(cx, 0.0, cz)
+			crate_main.add_child(bracket)
+			
+	var brace1 = MeshInstance3D.new()
+	var br_box = BoxMesh.new()
+	br_box.size = Vector3(0.98, 0.06, 0.02)
+	brace1.mesh = br_box
+	brace1.material_override = wood_mat
+	brace1.position = Vector3(0.0, 0.0, 0.43)
+	brace1.rotation_degrees = Vector3(0, 0, 40)
+	crate_main.add_child(brace1)
+	
+	var brace2 = MeshInstance3D.new()
+	brace2.mesh = br_box
+	brace2.material_override = wood_mat
+	brace2.position = Vector3(0.0, 0.0, 0.43)
+	brace2.rotation_degrees = Vector3(0, 0, -40)
+	crate_main.add_child(brace2)
+	
+	locked_zone_root.add_child(crate_main)
+	
+	var crate_small = MeshInstance3D.new()
+	var cs_box = BoxMesh.new()
+	cs_box.size = Vector3(0.48, 0.42, 0.48)
+	crate_small.mesh = cs_box
+	crate_small.material_override = wood_mat
+	crate_small.position = Vector3(0.28, 0.85, 0.08)
+	crate_small.rotation_degrees = Vector3(0, 16, 0)
+	locked_zone_root.add_child(crate_small)
+	
+	# 4. Floating 3D Beveled Green Price Button
+	locked_price_badge = Node3D.new()
+	locked_price_badge.name = "LockedPriceBadge"
+	locked_price_badge.position = Vector3(0.0, 1.45, 0.0)
+	
+	var gm = get_node_or_null("/root/GameManager")
+	var can_afford = (gm != null and gm.cash >= cost)
+	
+	var btn_bg = MeshInstance3D.new()
+	btn_bg.name = "ButtonBg"
+	var btn_box = BoxMesh.new()
+	btn_box.size = Vector3(1.5, 0.38, 0.08)
+	btn_bg.mesh = btn_box
+	var btn_mat = StandardMaterial3D.new()
+	btn_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	btn_mat.albedo_color = Color(0.22, 0.88, 0.35) if can_afford else Color(0.88, 0.35, 0.25)
+	btn_bg.material_override = btn_mat
+	locked_price_badge.add_child(btn_bg)
+	
+	var bevel = MeshInstance3D.new()
+	bevel.name = "ButtonBevel"
+	var bevel_box = BoxMesh.new()
+	bevel_box.size = Vector3(1.5, 0.08, 0.082)
+	bevel.mesh = bevel_box
+	bevel.position = Vector3(0.0, -0.15, 0.0)
+	var bev_mat = StandardMaterial3D.new()
+	bev_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bev_mat.albedo_color = Color(0.10, 0.52, 0.18) if can_afford else Color(0.55, 0.16, 0.12)
+	bevel.material_override = bev_mat
+	locked_price_badge.add_child(bevel)
+	
+	locked_price_label = Label3D.new()
+	locked_price_label.name = "LockedPriceLabel"
+	locked_price_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	locked_price_label.double_sided = false
+	locked_price_label.font_size = 32
+	locked_price_label.outline_size = 8
+	locked_price_label.text = "🔓 UNLOCK  $%d" % round(cost)
+	locked_price_label.modulate = Color.WHITE
+	locked_price_label.outline_modulate = Color(0.06, 0.20, 0.08, 0.95) if can_afford else Color(0.20, 0.06, 0.06, 0.95)
+	locked_price_label.position = Vector3(0.0, 0.02, 0.05)
+	locked_price_badge.add_child(locked_price_label)
+	
+	locked_zone_root.add_child(locked_price_badge)
+
+func _spawn_unlock_particles() -> void:
+	var burst = CPUParticles3D.new()
+	burst.name = "UnlockBurstParticles"
+	burst.emitting = true
+	burst.one_shot = true
+	burst.amount = 36
+	burst.lifetime = 1.4
+	burst.explosiveness = 0.95
+	burst.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	burst.emission_sphere_radius = 0.5
+	burst.direction = Vector3(0, 1, 0)
+	burst.spread = 80.0
+	burst.gravity = Vector3(0.0, -3.2, 0.0)
+	burst.initial_velocity_min = 3.0
+	burst.initial_velocity_max = 6.0
+	burst.scale_amount_min = 0.08
+	burst.scale_amount_max = 0.24
+	burst.color = Color(1.0, 0.88, 0.22)
+	burst.position = Vector3(0.0, 0.6, 0.0)
+	add_child(burst)
+	
+	var t = get_tree().create_timer(2.0)
+	t.timeout.connect(func():
+		if is_instance_valid(burst):
+			burst.queue_free()
+	)
 
 func _set_unlocked_visual(lvl: int) -> void:
 	is_unlocked = true
 	visible = true
+	if locked_zone_root != null and is_instance_valid(locked_zone_root):
+		locked_zone_root.queue_free()
+		locked_zone_root = null
+		
 	if table_mesh != null: table_mesh.visible = true
 	if booth_decor != null: booth_decor.visible = true
 	if companion_diners != null:
@@ -519,12 +1029,16 @@ func _set_unlocked_visual(lvl: int) -> void:
 		booth_bubble_root.visible = not is_occupied
 	if booth_cash_stack != null:
 		booth_cash_stack.visible = true
+	_setup_floor_level_pad()
+	_update_floor_level_pad(lvl)
 	update_level_display(lvl)
 
 func update_level_display(lvl: int) -> void:
 	if not is_unlocked:
 		return
 		
+	_update_floor_level_pad(lvl)
+	
 	var gm = get_node_or_null("/root/GameManager")
 	var can_upgrade: bool = false
 	var upgrade_cost: float = 90.0
@@ -570,13 +1084,31 @@ func _on_table_unlocked(id: String) -> void:
 	if id == table_id:
 		var gm = get_node_or_null("/root/GameManager")
 		var lvl = gm.get_station_level(table_id) if gm != null else 1
+		
+		# 1. Spawn smoke & star burst particle explosion
+		_spawn_unlock_particles()
+		
+		# 2. Pop-shrink locked zone root
+		if locked_zone_root != null and is_instance_valid(locked_zone_root):
+			var lz = locked_zone_root
+			locked_zone_root = null
+			var tw_lz = create_tween()
+			tw_lz.tween_property(lz, "scale", Vector3(1.2, 1.2, 1.2), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tw_lz.tween_property(lz, "scale", Vector3.ZERO, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+			tw_lz.tween_callback(lz.queue_free)
+			
 		_set_unlocked_visual(lvl)
-		if upgrade_particles != null:
-			upgrade_particles.restart()
+		
+		# 3. Scale-pop bounce animation as the booth spawns in
+		scale = Vector3(0.2, 0.2, 0.2)
 		var tween: Tween = create_tween()
-		scale = Vector3(0.3, 0.3, 0.3)
-		tween.tween_property(self, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(self, "scale", Vector3(1.18, 1.18, 1.18), 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(self, "scale", Vector3.ONE, 0.16)
+		
 		_spawn_floating_text("★ TABLE UNLOCKED! ★", Color(0.25, 1.0, 0.5, 1.0))
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("upgrade", 0.0, 3.0)
 
 func _on_station_upgraded(id: String, new_lvl: int) -> void:
 	if id == table_id and is_unlocked:
@@ -900,6 +1432,11 @@ func vacate() -> void:
 	
 	is_dirty = true
 	_spawn_dirty_dishes()
+	
+	# Spawn fresh cash bundle stack on customer payment
+	if booth_cash_stack != null:
+		_populate_cash_bricks(randi_range(3, 6))
+		booth_cash_stack.visible = true
 		
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null and gm.has_method("record_dirty_table"):
@@ -964,17 +1501,64 @@ func has_visible_cash_stack() -> bool:
 func get_cash_stack_world_pos() -> Vector3:
 	if booth_cash_stack != null and is_instance_valid(booth_cash_stack):
 		return booth_cash_stack.global_position
-	return global_position + Vector3(-1.15, 1.65, 0.0)
+	return global_position + Vector3(-1.15, 0.02, 0.15)
+
+func _fly_brick_in_arc(brick: Node3D, delay: float) -> void:
+	var start_pos = brick.global_position
+	var cam = get_viewport().get_camera_3d() if get_viewport() != null else null
+	var target_pos = start_pos + Vector3(0.0, 3.2, 1.2)
+	if cam != null:
+		target_pos = cam.global_position + (cam.global_transform.basis.y * 1.2) - (cam.global_transform.basis.z * 1.5)
+		
+	var tw = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(brick, "scale", Vector3(1.2, 1.2, 1.2), 0.12).set_delay(delay)
+	tw.tween_property(brick, "scale", Vector3.ZERO, 0.48).set_delay(delay + 0.12)
+	
+	tw.tween_property(brick, "global_position:x", target_pos.x, 0.6).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(brick, "global_position:z", target_pos.z, 0.6).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	
+	var apex_y = max(start_pos.y, target_pos.y) + 1.8
+	tw.tween_method(func(t: float):
+		if is_instance_valid(brick):
+			brick.global_position.y = lerp(start_pos.y, target_pos.y, t) + 4.0 * t * (1.0 - t) * (apex_y - start_pos.y)
+	, 0.0, 1.0, 0.6).set_delay(delay)
+	
+	tw.tween_property(brick, "rotation:y", brick.rotation.y + randf_range(3.0, 6.0), 0.6).set_delay(delay)
+	tw.tween_property(brick, "rotation:x", randf_range(1.0, 3.0), 0.6).set_delay(delay)
+	
+	tw.set_parallel(false)
+	tw.tween_interval(0.62 + delay)
+	tw.tween_callback(func():
+		if is_instance_valid(brick):
+			brick.queue_free()
+	)
 
 func collect_booth_cash() -> float:
 	if not has_visible_cash_stack():
 		return 0.0
-	booth_cash_stack.visible = false
+		
 	var amount: float = 50.0
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null and gm.has_method("get_card_tip_multiplier"):
 		amount = round(amount * gm.get_card_tip_multiplier())
 	var c_pos: Vector3 = get_cash_stack_world_pos()
+	
+	# Animate physical 3D dollar bill bricks flying in a parabolic arc
+	if cash_bricks_container != null:
+		var bricks = cash_bricks_container.get_children()
+		var delay_idx = 0
+		for b in bricks:
+			if b is Node3D:
+				var gpos = b.global_position
+				cash_bricks_container.remove_child(b)
+				get_tree().root.add_child(b)
+				b.global_position = gpos
+				_fly_brick_in_arc(b, float(delay_idx) * 0.04)
+				delay_idx += 1
+		current_cash_bricks = 0
+		
+	booth_cash_stack.visible = false
 	
 	var rest = find_parent("Restaurant")
 	if rest != null and rest.has_method("register_cash_collection"):
@@ -1006,7 +1590,14 @@ func _on_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vect
 		if gm == null:
 			return
 		if not is_unlocked:
-			gm.unlock_table(table_id)
+			var success = gm.unlock_table(table_id)
+			if not success:
+				if locked_price_badge != null:
+					var tw = create_tween()
+					tw.tween_property(locked_price_badge, "position:x", 0.08, 0.05)
+					tw.tween_property(locked_price_badge, "position:x", -0.08, 0.05)
+					tw.tween_property(locked_price_badge, "position:x", 0.0, 0.05)
+				_spawn_floating_text("Need $%d to Unlock!" % round(current_unlock_cost), Color(1.0, 0.4, 0.4))
 			return
 		if is_dirty:
 			clean_table()

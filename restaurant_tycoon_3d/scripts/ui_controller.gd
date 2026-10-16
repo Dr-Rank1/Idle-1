@@ -19,7 +19,7 @@ extends CanvasLayer
 @onready var add_gold_btn: Button = get_node_or_null("HUD/TopBar/GoldCoinPanel/HBox/AddGoldBtn")
 @onready var energy_panel: PanelContainer = get_node_or_null("HUD/TopBar/EnergyPanel")
 @onready var add_energy_btn: Button = get_node_or_null("HUD/TopBar/EnergyPanel/HBox/AddEnergyBtn")
-@onready var boost_btn: Button = $HUD/TopBar/BoostBtn
+@onready var boost_btn: Button = get_node_or_null("HUD/TopBar/BoostBtn") if get_node_or_null("HUD/TopBar/BoostBtn") != null else (get_node_or_null("HUD/RightDock/SideAdBtn") if get_node_or_null("HUD/RightDock/SideAdBtn") != null else get_node_or_null("HUD/FloatingBoostBanner"))
 @onready var rush_hour_btn: Button = get_node_or_null("HUD/TopBar/RushHourBtn")
 
 # ─── Left Objectives / Quest Banner ─────────────────────────────────────────
@@ -115,8 +115,8 @@ var milestone_labels_hbox: HBoxContainer:
 @onready var close_quests_btn: Button = $QuestsPanel/VBox/CloseBtn
 
 # ─── World Map & Right Action Dock ──────────────────────────────────────────
-@onready var map_btn: Button = get_node_or_null("HUD/TopBar/MapBtn")
-@onready var side_map_btn: Button = get_node_or_null("HUD/RightDock/SideMapBtn")
+@onready var map_btn: Button = get_node_or_null("HUD/LeftDock/MapBtn") if get_node_or_null("HUD/LeftDock/MapBtn") != null else (get_node_or_null("HUD/TopBar/MapBtn") if get_node_or_null("HUD/TopBar/MapBtn") != null else get_node_or_null("HUD/RightDock/SideMapBtn"))
+@onready var side_map_btn: Button = get_node_or_null("HUD/LeftDock/MapBtn") if get_node_or_null("HUD/LeftDock/MapBtn") != null else get_node_or_null("HUD/RightDock/SideMapBtn")
 @onready var side_ad_btn: Button = get_node_or_null("HUD/RightDock/SideAdBtn")
 @onready var side_settings_btn: Button = get_node_or_null("HUD/RightDock/SideSettingsBtn")
 @onready var side_lightbulb_btn: Button = get_node_or_null("HUD/RightDock/SideLightbulbBtn")
@@ -140,7 +140,7 @@ var milestone_labels_hbox: HBoxContainer:
 @onready var ribbon_cleaning: PanelContainer = get_node_or_null("HUD/StatusRibbons/RibbonCleaning")
 @onready var ribbon_cleaning_lbl: Label = get_node_or_null("HUD/StatusRibbons/RibbonCleaning/Label")
 var boost_timer_bar: Panel = null
-@onready var shop_btn: Button = get_node_or_null("HUD/ShopBtn")
+@onready var shop_btn: Button = get_node_or_null("HUD/LeftDock/ShopBtn") if get_node_or_null("HUD/LeftDock/ShopBtn") != null else get_node_or_null("HUD/ShopBtn")
 @onready var shop_panel: PanelContainer = get_node_or_null("ShopPanel")
 @onready var shop_vbox: VBoxContainer = get_node_or_null("ShopPanel/VBox/Scroll/ItemsVBox")
 @onready var close_shop_btn: Button = get_node_or_null("ShopPanel/VBox/HeaderBanner/BannerHBox/CloseShopBtn") if get_node_or_null("ShopPanel/VBox/HeaderBanner/BannerHBox/CloseShopBtn") != null else get_node_or_null("ShopPanel/VBox/TopHBox/CloseShopBtn")
@@ -277,8 +277,30 @@ func _get_audio_manager() -> Node:
 	return null
 
 func _setup_currency_hud_icons() -> void:
+	var cash_tex = get_custom_texture("res://assets/textures/bubble_cash_stack.png")
+	if cash_tex != null:
+		var cash_p = get_node_or_null("HUD/TopBar/CashPanel")
+		if cash_p is Control:
+			cash_p.clip_contents = false
+		var cash_icon_lbl = get_node_or_null("HUD/TopBar/CashPanel/HBox/Icon")
+		if cash_icon_lbl is Label and cash_icon_lbl.get_parent() != null:
+			var p = cash_icon_lbl.get_parent()
+			var idx = cash_icon_lbl.get_index()
+			cash_icon_lbl.queue_free()
+			var tr = TextureRect.new()
+			tr.name = "Icon"
+			tr.texture = cash_tex
+			tr.custom_minimum_size = Vector2(30, 30)
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			p.add_child(tr)
+			p.move_child(tr, idx)
+
 	var dia_tex = get_custom_texture("res://assets/textures/icon_diamond.png")
 	if dia_tex != null:
+		var gem_p = get_node_or_null("HUD/TopBar/GemPanel")
+		if gem_p is Control:
+			gem_p.clip_contents = false
 		var gem_icon_lbl = get_node_or_null("HUD/TopBar/GemPanel/HBox/Icon")
 		if gem_icon_lbl is Label and gem_icon_lbl.get_parent() != null:
 			var p = gem_icon_lbl.get_parent()
@@ -287,7 +309,7 @@ func _setup_currency_hud_icons() -> void:
 			var tr = TextureRect.new()
 			tr.name = "Icon"
 			tr.texture = dia_tex
-			tr.custom_minimum_size = Vector2(18, 18)
+			tr.custom_minimum_size = Vector2(28, 28)
 			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			p.add_child(tr)
@@ -295,6 +317,9 @@ func _setup_currency_hud_icons() -> void:
 
 	var gold_tex = get_custom_texture("res://assets/textures/icon_gold_coin.png")
 	if gold_tex != null:
+		var gold_p = get_node_or_null("HUD/TopBar/GoldCoinPanel")
+		if gold_p is Control:
+			gold_p.clip_contents = false
 		var gold_icon_lbl = get_node_or_null("HUD/TopBar/GoldCoinPanel/HBox/Icon")
 		if gold_icon_lbl is Label and gold_icon_lbl.get_parent() != null:
 			var p = gold_icon_lbl.get_parent()
@@ -303,7 +328,7 @@ func _setup_currency_hud_icons() -> void:
 			var tr = TextureRect.new()
 			tr.name = "Icon"
 			tr.texture = gold_tex
-			tr.custom_minimum_size = Vector2(18, 18)
+			tr.custom_minimum_size = Vector2(28, 28)
 			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			p.add_child(tr)
@@ -311,6 +336,9 @@ func _setup_currency_hud_icons() -> void:
 
 	var energy_tex_res = get_custom_texture("res://assets/textures/icon_energy.png")
 	if energy_tex_res != null:
+		var energy_p = get_node_or_null("HUD/TopBar/EnergyPanel")
+		if energy_p is Control:
+			energy_p.clip_contents = false
 		var energy_icon_lbl = get_node_or_null("HUD/TopBar/EnergyPanel/HBox/Icon")
 		if energy_icon_lbl is Label and energy_icon_lbl.get_parent() != null:
 			var p = energy_icon_lbl.get_parent()
@@ -319,7 +347,7 @@ func _setup_currency_hud_icons() -> void:
 			var tr = TextureRect.new()
 			tr.name = "Icon"
 			tr.texture = energy_tex_res
-			tr.custom_minimum_size = Vector2(18, 18)
+			tr.custom_minimum_size = Vector2(28, 28)
 			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			p.add_child(tr)
@@ -328,8 +356,10 @@ func _setup_currency_hud_icons() -> void:
 func _ready() -> void:
 	_hide_all_modals()
 	_setup_currency_hud_icons()
+	_apply_mobile_kolibri_ui_styling()
 	
-	boost_btn.pressed.connect(_on_boost_pressed)
+	if boost_btn != null and not boost_btn.pressed.is_connected(_on_boost_pressed):
+		boost_btn.pressed.connect(_on_boost_pressed)
 	_ensure_rush_hour_button()
 	if add_gem_btn != null: add_gem_btn.pressed.connect(func(): _open_shop_at_section("currencies"))
 	if add_gold_btn != null: add_gold_btn.pressed.connect(func(): _open_shop_at_section("currencies"))
@@ -387,55 +417,42 @@ func _ready() -> void:
 		)
 	
 	# Quest Banner Click & Styles
-	quest_banner_style_normal = StyleBoxFlat.new()
-	quest_banner_style_normal.bg_color = Color(0.08, 0.12, 0.18, 0.92)
-	quest_banner_style_normal.border_width_left = 1
-	quest_banner_style_normal.border_width_top = 1
-	quest_banner_style_normal.border_width_right = 1
-	quest_banner_style_normal.border_width_bottom = 2
-	quest_banner_style_normal.border_color = Color(0.2, 0.45, 0.7, 0.8)
-	quest_banner_style_normal.set_corner_radius_all(12)
-	quest_banner_style_normal.content_margin_left = 10.0
-	quest_banner_style_normal.content_margin_top = 6.0
-	quest_banner_style_normal.content_margin_right = 10.0
-	quest_banner_style_normal.content_margin_bottom = 6.0
+	quest_banner_style_normal = create_mobile_inner_card_style()
 
 	quest_banner_style_completed = StyleBoxFlat.new()
-	quest_banner_style_completed.bg_color = Color(0.08, 0.38, 0.18, 0.96)
+	quest_banner_style_completed.bg_color = Color(0.22, 0.847, 0.282, 0.98)
 	quest_banner_style_completed.border_width_left = 2
 	quest_banner_style_completed.border_width_top = 2
 	quest_banner_style_completed.border_width_right = 2
-	quest_banner_style_completed.border_width_bottom = 3
-	quest_banner_style_completed.border_color = Color(0.35, 0.95, 0.55, 1.0)
-	quest_banner_style_completed.set_corner_radius_all(12)
-	quest_banner_style_completed.content_margin_left = 10.0
-	quest_banner_style_completed.content_margin_top = 6.0
-	quest_banner_style_completed.content_margin_right = 10.0
-	quest_banner_style_completed.content_margin_bottom = 6.0
-	quest_banner_style_completed.shadow_color = Color(0.1, 0.85, 0.3, 0.35)
+	quest_banner_style_completed.border_width_bottom = 5
+	quest_banner_style_completed.border_color = Color(0.12, 0.52, 0.18, 1.0)
+	quest_banner_style_completed.set_corner_radius_all(18)
+	quest_banner_style_completed.content_margin_left = 14.0
+	quest_banner_style_completed.content_margin_top = 8.0
+	quest_banner_style_completed.content_margin_right = 14.0
+	quest_banner_style_completed.content_margin_bottom = 8.0
+	quest_banner_style_completed.shadow_color = Color(0.1, 0.5, 0.2, 0.4)
 	quest_banner_style_completed.shadow_size = 8
 
 	quest_banner.gui_input.connect(_on_quest_banner_input)
 	quest_claim_btn.pressed.connect(_on_banner_claim_pressed)
 	
 	# Upgrade Modal & Multiplier Buttons
-	style_multi_active = StyleBoxFlat.new()
-	style_multi_active.bg_color = Color(0.96, 0.65, 0.12, 1.0)
-	style_multi_active.border_width_bottom = 2
-	style_multi_active.border_color = Color(0.7, 0.42, 0.05, 1.0)
-	style_multi_active.set_corner_radius_all(8)
-	style_multi_active.content_margin_left = 8.0
-	style_multi_active.content_margin_top = 3.0
-	style_multi_active.content_margin_right = 8.0
-	style_multi_active.content_margin_bottom = 3.0
+	style_multi_active = create_mobile_action_button_style(Color(1.0, 0.624, 0.11, 1.0), Color(0.72, 0.35, 0.05, 1.0), false, 10)
+	style_multi_active.content_margin_left = 10.0
+	style_multi_active.content_margin_top = 4.0
+	style_multi_active.content_margin_right = 10.0
+	style_multi_active.content_margin_bottom = 4.0
 
 	style_multi_inactive = StyleBoxFlat.new()
-	style_multi_inactive.bg_color = Color(0.12, 0.15, 0.22, 0.8)
-	style_multi_inactive.set_corner_radius_all(8)
-	style_multi_inactive.content_margin_left = 8.0
-	style_multi_inactive.content_margin_top = 3.0
-	style_multi_inactive.content_margin_right = 8.0
-	style_multi_inactive.content_margin_bottom = 3.0
+	style_multi_inactive.bg_color = Color(0.88, 0.82, 0.72, 0.85)
+	style_multi_inactive.border_width_bottom = 2
+	style_multi_inactive.border_color = Color(0.72, 0.65, 0.55, 0.8)
+	style_multi_inactive.set_corner_radius_all(10)
+	style_multi_inactive.content_margin_left = 10.0
+	style_multi_inactive.content_margin_top = 4.0
+	style_multi_inactive.content_margin_right = 10.0
+	style_multi_inactive.content_margin_bottom = 4.0
 
 	if multi_1_btn != null: multi_1_btn.pressed.connect(func(): _set_multiplier("1"))
 	if multi_10_btn != null: multi_10_btn.pressed.connect(func(): _set_multiplier("10"))
@@ -987,20 +1004,55 @@ func _open_modal(panel: PanelContainer) -> void:
 	if panel == null: return
 	_play_click_sfx()
 	_hide_all_modals()
+	_format_node_mobile_recursive(panel)
 	_wire_all_buttons_in_tree(panel)
 	_update_affordability_badges()
 	panel.visible = true
-	panel.scale = Vector2(0.88, 0.88)
-	var tw = create_tween()
-	tw.tween_property(panel, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	
+	if panel == upgrade_panel:
+		# Slide up bottom sheet drawer covering lower 45% - 48% of screen
+		var vp_h: float = 648.0
+		var vp = panel.get_viewport()
+		if vp != null:
+			var vrect = vp.get_visible_rect()
+			if vrect.size.y > 0.0:
+				vp_h = vrect.size.y
+		var drawer_h = panel.size.y if panel.size.y > 0.0 else 308.0
+		var resting_y = vp_h - drawer_h
+		panel.position.y = vp_h + 20.0
+		panel.scale = Vector2.ONE
+		var tw = create_tween()
+		tw.tween_property(panel, "position:y", resting_y, 0.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	else:
+		panel.scale = Vector2(0.88, 0.88)
+		var tw = create_tween()
+		tw.tween_property(panel, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _close_modal(panel: PanelContainer) -> void:
 	if panel == null: return
 	_play_click_sfx()
 	_clear_3d_highlights()
-	var tw = create_tween()
-	tw.tween_property(panel, "scale", Vector2(0.9, 0.9), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_callback(func(): panel.visible = false)
+	
+	if panel == upgrade_panel:
+		# Slide down bottom sheet drawer off-screen
+		var vp_h: float = 648.0
+		var vp = panel.get_viewport()
+		if vp != null:
+			var vrect = vp.get_visible_rect()
+			if vrect.size.y > 0.0:
+				vp_h = vrect.size.y
+		var drawer_h = panel.size.y if panel.size.y > 0.0 else 308.0
+		var resting_y = vp_h - drawer_h
+		var tw = create_tween()
+		tw.tween_property(panel, "position:y", vp_h + 30.0, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_callback(func():
+			panel.visible = false
+			panel.position.y = resting_y
+		)
+	else:
+		var tw = create_tween()
+		tw.tween_property(panel, "scale", Vector2(0.9, 0.9), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_callback(func(): panel.visible = false)
 
 func _toggle_modal(panel: PanelContainer, refresh_func: Callable) -> void:
 	if panel == null: return
@@ -1189,7 +1241,8 @@ func _process(delta: float) -> void:
 
 			if floating_boost_btn != null:
 				floating_boost_btn.text = "🔥 %s BOOST (%s)" % [mult_str, time_str]
-				floating_boost_btn.add_theme_color_override("font_color", Color(1.0, 0.88, 0.2, 1.0))
+				floating_boost_btn.add_theme_color_override("font_color", Color(1.0, 0.95, 0.3, 1.0))
+				floating_boost_btn.scale = Vector2.ONE
 			if boost_timer_bar != null:
 				boost_timer_bar.visible = true
 				var progress = clamp(gm.boost_timer / 60.0, 0.0, 1.0)
@@ -1199,7 +1252,10 @@ func _process(delta: float) -> void:
 		else:
 			if floating_boost_btn != null:
 				floating_boost_btn.text = "▶️  x2 BOOST!"
-				floating_boost_btn.add_theme_color_override("font_color", Color(0.12, 0.65, 0.25, 1.0))
+				floating_boost_btn.add_theme_color_override("font_color", Color(1.0, 0.88, 0.25, 1.0))
+				var pulse = 1.0 + 0.02 * sin(Time.get_ticks_msec() * 0.003)
+				floating_boost_btn.scale = Vector2(pulse, pulse)
+				floating_boost_btn.pivot_offset = floating_boost_btn.size * 0.5
 			if boost_timer_bar != null:
 				boost_timer_bar.visible = false
 			if boost_btn != null:
@@ -1244,8 +1300,8 @@ func _ensure_rush_hour_button() -> void:
 		if not rush_hour_btn.pressed.is_connected(_on_rush_hour_pressed):
 			rush_hour_btn.pressed.connect(_on_rush_hour_pressed)
 		return
-	var topbar = get_node_or_null("HUD/TopBar")
-	if topbar == null or boost_btn == null:
+	var target_parent = get_node_or_null("HUD/TopBar")
+	if target_parent == null:
 		return
 	rush_hour_btn = Button.new()
 	rush_hour_btn.name = "RushHourBtn"
@@ -1268,8 +1324,7 @@ func _ensure_rush_hour_button() -> void:
 	var sb_d = sb.duplicate()
 	sb_d.bg_color = Color(0.35, 0.18, 0.12, 1.0)
 	rush_hour_btn.add_theme_stylebox_override("disabled", sb_d)
-	topbar.add_child(rush_hour_btn)
-	topbar.move_child(rush_hour_btn, boost_btn.get_index() + 1)
+	target_parent.add_child(rush_hour_btn)
 	rush_hour_btn.pressed.connect(_on_rush_hour_pressed)
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null and gm.has_signal("rush_hour_changed"):
@@ -1723,15 +1778,25 @@ func _refresh_upgrade_btn() -> void:
 	var is_max = lvl >= station_max
 	var info = gm.get_upgrade_multi_info(current_station_id, current_multiplier)
 	if is_max or info.levels <= 0:
-		upgrade_btn.text = "MAX LEVEL"
+		upgrade_btn.text = "MAX LEVEL\n(COMPLETED)"
 		upgrade_btn.disabled = true
+		apply_mobile_button_theme(upgrade_btn, Color(0.55, 0.58, 0.62, 1.0), Color(0.38, 0.40, 0.45, 1.0), 16)
 		if upgrade_max_badge != null:
 			upgrade_max_badge.visible = true
 			upgrade_max_badge.text = "⭐ MAX LEVEL"
 			upgrade_max_badge.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
+			apply_mobile_typography(upgrade_max_badge, 5, Color(1.0, 0.85, 0.2, 1.0))
 	else:
-		upgrade_btn.text = "UPGRADE +%d LVL\n(%s)" % [info.levels, _format_money(info.cost)]
+		var cost_str = "💵 " + _format_money(info.cost)
+		if info.levels > 1:
+			upgrade_btn.text = "UPGRADE (+%d)\n%s" % [info.levels, cost_str]
+		else:
+			upgrade_btn.text = "UPGRADE\n%s" % cost_str
 		upgrade_btn.disabled = not info.can_afford
+		if info.can_afford:
+			apply_mobile_button_theme(upgrade_btn, Color(0.22, 0.847, 0.282, 1.0), Color(0.12, 0.52, 0.18, 1.0), 16)
+		else:
+			apply_mobile_button_theme(upgrade_btn, Color(0.78, 0.45, 0.15, 1.0), Color(0.52, 0.28, 0.08, 1.0), 16)
 		if upgrade_max_badge != null:
 			upgrade_max_badge.visible = false
 
@@ -2506,36 +2571,313 @@ func _get_green_ribbon_style() -> StyleBoxFlat:
 	sb.set_content_margin_all(4)
 	return sb
 
-# ─── Stylebox Generators ───────────────────────────────────────────────────
-func _get_card_style() -> StyleBoxFlat:
+# ─── Stylebox Generators & Kolibri Mobile UI Helpers ───────────────────────
+func create_mobile_action_button_style(bg_col: Color = Color(0.22, 0.847, 0.282, 1.0), border_dark_col: Color = Color(0.12, 0.52, 0.18, 1.0), is_pressed: bool = false, corner_rad: int = 16) -> StyleBoxFlat:
 	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.11, 0.14, 0.20, 0.95)
-	sb.border_width_left = 1
-	sb.border_width_top = 1
-	sb.border_width_right = 1
-	sb.border_width_bottom = 3
-	sb.border_color = Color(0.24, 0.32, 0.44, 0.8)
-	sb.set_corner_radius_all(14)
-	sb.set_content_margin_all(12)
+	sb.bg_color = bg_col
+	sb.border_color = border_dark_col
+	sb.border_width_left = 2
+	sb.border_width_right = 2
+	if is_pressed:
+		sb.border_width_top = 4
+		sb.border_width_bottom = 2
+		sb.content_margin_top = 10.0
+		sb.content_margin_bottom = 6.0
+	else:
+		sb.border_width_top = 2
+		sb.border_width_bottom = 6
+		sb.content_margin_top = 8.0
+		sb.content_margin_bottom = 8.0
+	sb.set_corner_radius_all(corner_rad)
+	sb.content_margin_left = 16.0
+	sb.content_margin_right = 16.0
+	sb.shadow_color = Color(0, 0, 0, 0.35)
+	sb.shadow_size = 6
+	sb.shadow_offset = Vector2(0, 3)
 	return sb
+
+func create_mobile_modal_frame_style(bg_col: Color = Color(1.0, 0.718, 0.012, 1.0), border_col: Color = Color(0.32, 0.16, 0.06, 1.0)) -> StyleBoxFlat:
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = bg_col
+	sb.border_color = border_col
+	sb.border_width_left = 4
+	sb.border_width_top = 4
+	sb.border_width_right = 4
+	sb.border_width_bottom = 7
+	sb.set_corner_radius_all(24)
+	sb.content_margin_left = 20.0
+	sb.content_margin_top = 18.0
+	sb.content_margin_right = 20.0
+	sb.content_margin_bottom = 18.0
+	sb.shadow_color = Color(0, 0, 0, 0.55)
+	sb.shadow_size = 14
+	sb.shadow_offset = Vector2(0, 5)
+	return sb
+
+func create_mobile_inner_card_style(bg_col: Color = Color(1.0, 0.973, 0.906, 1.0), border_col: Color = Color(0.85, 0.68, 0.42, 1.0)) -> StyleBoxFlat:
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = bg_col
+	sb.border_color = border_col
+	sb.border_width_left = 2
+	sb.border_width_top = 2
+	sb.border_width_right = 2
+	sb.border_width_bottom = 4
+	sb.set_corner_radius_all(18)
+	sb.content_margin_left = 14.0
+	sb.content_margin_top = 10.0
+	sb.content_margin_right = 14.0
+	sb.content_margin_bottom = 10.0
+	sb.shadow_color = Color(0.35, 0.2, 0.05, 0.22)
+	sb.shadow_size = 6
+	sb.shadow_offset = Vector2(0, 2)
+	return sb
+
+func create_mobile_currency_capsule_style(bg_col: Color = Color(0.15, 0.09, 0.06, 0.98), border_col: Color = Color(1.0, 0.82, 0.22, 1.0)) -> StyleBoxFlat:
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = bg_col
+	sb.border_color = border_col
+	sb.border_width_left = 3
+	sb.border_width_top = 2
+	sb.border_width_right = 3
+	sb.border_width_bottom = 4
+	sb.set_corner_radius_all(22)
+	sb.content_margin_left = 12.0
+	sb.content_margin_top = 4.0
+	sb.content_margin_right = 14.0
+	sb.content_margin_bottom = 4.0
+	sb.shadow_color = Color(0, 0, 0, 0.45)
+	sb.shadow_size = 8
+	sb.shadow_offset = Vector2(0, 2)
+	return sb
+
+func apply_mobile_typography(control: Control, outline_sz: int = 6, text_col: Color = Color.WHITE) -> void:
+	if control == null:
+		return
+	if control is Label:
+		if text_col != Color.TRANSPARENT:
+			control.add_theme_color_override("font_color", text_col)
+		control.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.05, 1.0))
+		control.add_theme_constant_override("outline_size", outline_sz)
+		control.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.45))
+		control.add_theme_constant_override("shadow_offset_x", 1)
+		control.add_theme_constant_override("shadow_offset_y", 2)
+		control.add_theme_constant_override("shadow_outline_size", 2)
+	elif control is Button:
+		if text_col != Color.TRANSPARENT:
+			control.add_theme_color_override("font_color", text_col)
+			control.add_theme_color_override("font_pressed_color", text_col)
+			control.add_theme_color_override("font_hover_color", text_col)
+			control.add_theme_color_override("font_focus_color", text_col)
+		control.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.05, 1.0))
+		control.add_theme_constant_override("outline_size", outline_sz)
+		control.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.45))
+		control.add_theme_constant_override("shadow_offset_x", 1)
+		control.add_theme_constant_override("shadow_offset_y", 2)
+
+func apply_mobile_button_theme(btn: Button, bg_col: Color, border_dark_col: Color, corner_rad: int = 16, outline_sz: int = 6) -> void:
+	if btn == null:
+		return
+	var normal_sb = create_mobile_action_button_style(bg_col, border_dark_col, false, corner_rad)
+	var pressed_sb = create_mobile_action_button_style(bg_col, border_dark_col, true, corner_rad)
+	var hover_sb = normal_sb.duplicate()
+	hover_sb.bg_color = bg_col.lightened(0.12)
+	var disabled_sb = normal_sb.duplicate()
+	disabled_sb.bg_color = Color(0.5, 0.52, 0.56, 1.0)
+	disabled_sb.border_color = Color(0.35, 0.36, 0.40, 1.0)
+	btn.add_theme_stylebox_override("normal", normal_sb)
+	btn.add_theme_stylebox_override("pressed", pressed_sb)
+	btn.add_theme_stylebox_override("hover", hover_sb)
+	btn.add_theme_stylebox_override("focus", normal_sb)
+	btn.add_theme_stylebox_override("disabled", disabled_sb)
+	apply_mobile_typography(btn, outline_sz, Color.WHITE)
+
+func style_card_mobile(card: PanelContainer) -> void:
+	if card == null:
+		return
+	card.add_theme_stylebox_override("panel", create_mobile_inner_card_style())
+	_format_node_mobile_recursive(card)
+
+func _format_node_mobile_recursive(node: Node) -> void:
+	if node == null:
+		return
+	if node is Label:
+		var curr_col = (node as Label).get_theme_color("font_color") if (node as Label).has_theme_color_override("font_color") else Color.WHITE
+		if curr_col.r > 0.8 and curr_col.g > 0.7 and curr_col.b < 0.5:
+			apply_mobile_typography(node, 6, curr_col)
+		elif curr_col.g > 0.7 and curr_col.r < 0.6:
+			apply_mobile_typography(node, 6, curr_col)
+		elif curr_col.b > 0.8 and curr_col.r < 0.6:
+			apply_mobile_typography(node, 6, curr_col)
+		elif curr_col.r > 0.85 and curr_col.g > 0.85 and curr_col.b > 0.85:
+			apply_mobile_typography(node, 6, Color(0.20, 0.12, 0.06, 1.0))
+		else:
+			apply_mobile_typography(node, 5, curr_col)
+	elif node is Button:
+		apply_mobile_typography(node, 6, Color.WHITE)
+	for child in node.get_children():
+		_format_node_mobile_recursive(child)
+
+func _apply_mobile_kolibri_ui_styling() -> void:
+	# 1. Top Currency Capsules
+	var profile = get_node_or_null("HUD/TopBar/ProfilePanel")
+	if profile is Control:
+		profile.clip_contents = false
+		profile.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style(Color(0.20, 0.12, 0.28, 0.98), Color(1.0, 0.82, 0.22, 1.0)))
+	var cash_p = get_node_or_null("HUD/TopBar/CashPanel")
+	if cash_p is Control:
+		cash_p.clip_contents = false
+		cash_p.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style())
+	var gold_p = get_node_or_null("HUD/TopBar/GoldCoinPanel")
+	if gold_p is Control:
+		gold_p.clip_contents = false
+		gold_p.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style())
+	var energy_p = get_node_or_null("HUD/TopBar/EnergyPanel")
+	if energy_p is Control:
+		energy_p.clip_contents = false
+		energy_p.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style())
+	var gem_p = get_node_or_null("HUD/TopBar/GemPanel")
+	if gem_p is Control:
+		gem_p.clip_contents = false
+		gem_p.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style())
+	var clock_p = get_node_or_null("HUD/TopBar/ClockPanel")
+	if clock_p is Control:
+		clock_p.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style(Color(0.15, 0.09, 0.06, 0.98), Color(1.0, 0.82, 0.22, 0.9)))
+	var live_p = get_node_or_null("HUD/TopBar/LivePanel")
+	if live_p is Control:
+		live_p.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style(Color(0.15, 0.09, 0.06, 0.98), Color(0.25, 0.92, 0.45, 0.9)))
+
+	# 2. Top Currency Heavy Outlined Typography
+	apply_mobile_typography(cash_label, 7, Color(0.35, 1.0, 0.6))
+	apply_mobile_typography(cash_rate_label, 5, Color(0.75, 1.0, 0.8))
+	apply_mobile_typography(gold_label, 6, Color(1.0, 0.88, 0.4))
+	apply_mobile_typography(energy_label, 6, Color(0.75, 0.92, 1.0))
+	apply_mobile_typography(gem_label, 6, Color(0.92, 0.70, 1.0))
+	apply_mobile_typography(clock_label, 5, Color(1.0, 0.95, 0.85))
+	apply_mobile_typography(avatar_label, 6, Color.WHITE)
+	apply_mobile_typography(level_label, 5, Color(1.0, 0.9, 0.4))
+	apply_mobile_typography(quest_title, 6, Color.WHITE)
+	apply_mobile_typography(quest_progress_label, 5, Color(1.0, 0.9, 0.6))
+
+	# 3. Action Buttons & Mini Plus Buttons
+	if boost_btn != null:
+		apply_mobile_button_theme(boost_btn, Color(1.0, 0.624, 0.11, 1.0), Color(0.72, 0.35, 0.05, 1.0), 16)
+	if rush_hour_btn != null:
+		apply_mobile_button_theme(rush_hour_btn, Color(0.94, 0.35, 0.12, 1.0), Color(0.58, 0.15, 0.05, 1.0), 16)
+	if quest_claim_btn != null:
+		apply_mobile_button_theme(quest_claim_btn, Color(0.22, 0.847, 0.282, 1.0), Color(0.12, 0.52, 0.18, 1.0), 12)
+	if map_btn != null:
+		apply_mobile_button_theme(map_btn, Color(1.0, 0.624, 0.11, 1.0), Color(0.72, 0.35, 0.05, 1.0), 14)
+	if add_gold_btn != null:
+		apply_mobile_button_theme(add_gold_btn, Color(0.22, 0.847, 0.282, 1.0), Color(0.12, 0.52, 0.18, 1.0), 10)
+	if add_energy_btn != null:
+		apply_mobile_button_theme(add_energy_btn, Color(0.22, 0.847, 0.282, 1.0), Color(0.12, 0.52, 0.18, 1.0), 10)
+	if add_gem_btn != null:
+		apply_mobile_button_theme(add_gem_btn, Color(0.22, 0.847, 0.282, 1.0), Color(0.12, 0.52, 0.18, 1.0), 10)
+
+	# 4. Bottom Dock & Navigation Buttons
+	var dock = get_node_or_null("HUD/BottomDock")
+	if dock is PanelContainer:
+		var dock_sb = create_mobile_modal_frame_style(Color(0.24, 0.14, 0.08, 0.98), Color(1.0, 0.78, 0.22, 0.95))
+		dock.add_theme_stylebox_override("panel", dock_sb)
+	for nav_btn in [nav_parking_btn, nav_kitchen_btn, nav_dining_btn, nav_milkshake_btn, nav_terrace_btn, nav_staff_btn, nav_promo_btn]:
+		if nav_btn != null:
+			apply_mobile_button_theme(nav_btn, Color(1.0, 0.624, 0.11, 1.0), Color(0.72, 0.35, 0.05, 1.0), 16)
+
+	# 5. Oversized Floating Edge Buttons (Left & Right margins)
+	var edge_buttons = [
+		{"btn": shop_btn, "bg": Color(1.0, 0.624, 0.11, 1.0), "border": Color(0.58, 0.28, 0.05, 1.0)},
+		{"btn": map_btn, "bg": Color(0.12, 0.58, 0.95, 1.0), "border": Color(0.06, 0.28, 0.58, 1.0)},
+		{"btn": side_ad_btn, "bg": Color(0.98, 0.48, 0.08, 1.0), "border": Color(0.58, 0.22, 0.04, 1.0)},
+		{"btn": side_stats_btn, "bg": Color(0.16, 0.72, 0.52, 1.0), "border": Color(0.08, 0.38, 0.28, 1.0)},
+		{"btn": side_spin_btn, "bg": Color(0.58, 0.18, 0.88, 1.0), "border": Color(0.32, 0.08, 0.52, 1.0)},
+	]
+	for eb in edge_buttons:
+		var b: Button = eb["btn"]
+		if b != null:
+			apply_mobile_button_theme(b, eb["bg"], eb["border"], 36)
+			var badge = b.find_child("BadgeLabel", true, false)
+			if badge is Label:
+				apply_mobile_typography(badge, 6, Color.WHITE)
+			var icon_l = b.find_child("Icon", true, false)
+			if icon_l is Label:
+				apply_mobile_typography(icon_l, 6, Color.WHITE)
+
+	# Bottom-Center Floating x2 Boost Pill Button
+	if floating_boost_btn != null:
+		apply_mobile_typography(floating_boost_btn, 6, Color(1.0, 0.88, 0.25, 1.0))
+
+	# 6. UpgradePanel Drawer & Inner Station Card
+	if upgrade_panel != null:
+		upgrade_panel.add_theme_stylebox_override("panel", create_mobile_modal_frame_style(Color(1.0, 0.718, 0.012, 1.0), Color(0.32, 0.16, 0.06, 1.0)))
+	var st_card = get_node_or_null("UpgradePanel/VBox/StationCard")
+	if st_card is PanelContainer:
+		st_card.add_theme_stylebox_override("panel", create_mobile_inner_card_style())
+	if upgrade_title != null:
+		apply_mobile_typography(upgrade_title, 6, Color(0.2, 0.12, 0.06, 1.0))
+	if upgrade_level != null:
+		apply_mobile_typography(upgrade_level, 6, Color(0.45, 0.25, 0.1, 1.0))
+	if upgrade_income != null:
+		apply_mobile_typography(upgrade_income, 6, Color(0.12, 0.65, 0.25, 1.0))
+	if upgrade_btn != null:
+		apply_mobile_button_theme(upgrade_btn, Color(0.22, 0.847, 0.282, 1.0), Color(0.12, 0.52, 0.18, 1.0), 16)
+	if close_btn != null:
+		apply_mobile_button_theme(close_btn, Color(0.88, 0.24, 0.24, 1.0), Color(0.55, 0.12, 0.12, 1.0), 14)
+	if tab_upgrades_btn != null:
+		var tab_up_sb = StyleBoxFlat.new()
+		tab_up_sb.bg_color = Color(1.0, 0.718, 0.012, 1.0)
+		tab_up_sb.border_width_left = 3
+		tab_up_sb.border_width_top = 4
+		tab_up_sb.border_width_right = 3
+		tab_up_sb.border_width_bottom = 0
+		tab_up_sb.border_color = Color(0.32, 0.16, 0.06, 1.0)
+		tab_up_sb.corner_radius_top_left = 18
+		tab_up_sb.corner_radius_top_right = 18
+		tab_up_sb.content_margin_left = 18.0
+		tab_up_sb.content_margin_right = 18.0
+		tab_up_sb.content_margin_top = 8.0
+		tab_up_sb.content_margin_bottom = 6.0
+		tab_upgrades_btn.add_theme_stylebox_override("normal", tab_up_sb)
+		apply_mobile_typography(tab_upgrades_btn, 6, Color.WHITE)
+	if tab_staff_btn != null:
+		var tab_st_sb = StyleBoxFlat.new()
+		tab_st_sb.bg_color = Color(0.85, 0.72, 0.55, 0.95)
+		tab_st_sb.border_width_left = 2
+		tab_st_sb.border_width_top = 3
+		tab_st_sb.border_width_right = 2
+		tab_st_sb.border_width_bottom = 0
+		tab_st_sb.border_color = Color(0.48, 0.32, 0.18, 1.0)
+		tab_st_sb.corner_radius_top_left = 18
+		tab_st_sb.corner_radius_top_right = 18
+		tab_st_sb.content_margin_left = 18.0
+		tab_st_sb.content_margin_right = 18.0
+		tab_st_sb.content_margin_top = 8.0
+		tab_st_sb.content_margin_bottom = 6.0
+		tab_staff_btn.add_theme_stylebox_override("normal", tab_st_sb)
+		apply_mobile_typography(tab_staff_btn, 6, Color.WHITE)
+
+	# 7. Modals: Golden-Amber Outer Frame & Chunky Outlines
+	var modals = [
+		dining_panel, kitchen_panel, terrace_panel, parking_panel,
+		marketing_panel, staff_panel, quests_panel, world_map_panel
+	]
+	for mod in modals:
+		if mod != null and mod is PanelContainer:
+			mod.add_theme_stylebox_override("panel", create_mobile_modal_frame_style())
+			var hdr = mod.find_child("Header", true, false)
+			if hdr is Label:
+				apply_mobile_typography(hdr, 7, Color.WHITE)
+			var cl_btn = mod.find_child("CloseBtn", true, false)
+			if cl_btn is Button:
+				apply_mobile_button_theme(cl_btn, Color(0.88, 0.24, 0.24, 1.0), Color(0.55, 0.12, 0.12, 1.0), 14)
+
+func _get_card_style() -> StyleBoxFlat:
+	return create_mobile_inner_card_style()
 
 func _get_green_btn_style() -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.18, 0.78, 0.42, 1.0)
-	sb.border_width_bottom = 4
-	sb.border_color = Color(0.10, 0.52, 0.28, 1.0)
-	sb.set_corner_radius_all(12)
-	sb.set_content_margin_all(10)
-	return sb
+	return create_mobile_action_button_style(Color(0.22, 0.847, 0.282, 1.0), Color(0.12, 0.52, 0.18, 1.0), false, 14)
 
 func _get_gold_btn_style() -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.96, 0.72, 0.18, 1.0)
-	sb.border_width_bottom = 4
-	sb.border_color = Color(0.68, 0.48, 0.08, 1.0)
-	sb.set_corner_radius_all(12)
-	sb.set_content_margin_all(10)
-	return sb
+	return create_mobile_action_button_style(Color(1.0, 0.624, 0.11, 1.0), Color(0.72, 0.35, 0.05, 1.0), false, 14)
 
 var welcome_modal: PanelContainer = null
 
@@ -2545,52 +2887,53 @@ func _on_offline_earnings_available(earned: float, elapsed: float) -> void:
 
 	welcome_modal = PanelContainer.new()
 	welcome_modal.name = "WelcomeBackModal"
-	welcome_modal.custom_minimum_size = Vector2(440, 300)
+	welcome_modal.custom_minimum_size = Vector2(460, 320)
 	welcome_modal.anchors_preset = Control.PRESET_CENTER
 	welcome_modal.anchor_left = 0.5
 	welcome_modal.anchor_top = 0.5
 	welcome_modal.anchor_right = 0.5
 	welcome_modal.anchor_bottom = 0.5
-	welcome_modal.offset_left = -220
-	welcome_modal.offset_top = -150
-	welcome_modal.offset_right = 220
-	welcome_modal.offset_bottom = 150
-	welcome_modal.pivot_offset = Vector2(220, 150)
+	welcome_modal.offset_left = -230
+	welcome_modal.offset_top = -160
+	welcome_modal.offset_right = 230
+	welcome_modal.offset_bottom = 160
+	welcome_modal.pivot_offset = Vector2(230, 160)
 
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.12, 0.14, 0.20, 0.96)
-	style.border_color = Color(0.95, 0.82, 0.25, 1.0)
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(18)
-	style.shadow_color = Color(0, 0, 0, 0.6)
-	style.shadow_size = 20
-	welcome_modal.add_theme_stylebox_override("panel", style)
+	welcome_modal.add_theme_stylebox_override("panel", create_mobile_modal_frame_style())
 
 	var vb = VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 14)
+	vb.add_theme_constant_override("separation", 12)
 	welcome_modal.add_child(vb)
 
 	var title = Label.new()
 	title.text = "✨ WELCOME BACK, CHEF! ✨"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", Color(1.0, 0.88, 0.25))
+	apply_mobile_typography(title, 7, Color(1.0, 0.88, 0.25, 1.0))
 	vb.add_child(title)
+
+	var inner_card = PanelContainer.new()
+	inner_card.add_theme_stylebox_override("panel", create_mobile_inner_card_style())
+	var inner_vb = VBoxContainer.new()
+	inner_vb.add_theme_constant_override("separation", 8)
+	inner_card.add_child(inner_vb)
 
 	var mins = max(1, int(elapsed / 60.0))
 	var desc = Label.new()
 	desc.text = "While you were away for %d min (capped at 8h),\nyour staff kept cooking at 85%% efficiency:" % mins
 	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc.add_theme_font_size_override("font_size", 15)
-	desc.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
-	vb.add_child(desc)
+	desc.add_theme_font_size_override("font_size", 14)
+	apply_mobile_typography(desc, 5, Color(0.28, 0.18, 0.10, 1.0))
+	inner_vb.add_child(desc)
 
 	var cash_val = Label.new()
 	cash_val.text = "+" + _format_money(earned)
 	cash_val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cash_val.add_theme_font_size_override("font_size", 34)
-	cash_val.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55))
-	vb.add_child(cash_val)
+	apply_mobile_typography(cash_val, 7, Color(0.15, 0.78, 0.32, 1.0))
+	inner_vb.add_child(cash_val)
+
+	vb.add_child(inner_card)
 
 	var hb = HBoxContainer.new()
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -2599,23 +2942,17 @@ func _on_offline_earnings_available(earned: float, elapsed: float) -> void:
 
 	var collect_btn = Button.new()
 	collect_btn.text = "COLLECT (1X)"
-	collect_btn.custom_minimum_size = Vector2(160, 44)
-	var btn_style = StyleBoxFlat.new()
-	btn_style.bg_color = Color(0.22, 0.58, 0.32, 1.0)
-	btn_style.set_corner_radius_all(10)
-	collect_btn.add_theme_stylebox_override("normal", btn_style)
-	collect_btn.add_theme_font_size_override("font_size", 16)
+	collect_btn.custom_minimum_size = Vector2(160, 46)
+	apply_mobile_button_theme(collect_btn, Color(0.22, 0.847, 0.282, 1.0), Color(0.12, 0.52, 0.18, 1.0), 16)
+	collect_btn.add_theme_font_size_override("font_size", 15)
 	collect_btn.pressed.connect(func(): _claim_offline(1.0))
 	hb.add_child(collect_btn)
 
 	var double_btn = Button.new()
 	double_btn.text = "⚡ 2X PROMO BOOST!"
-	double_btn.custom_minimum_size = Vector2(170, 44)
-	var double_style = StyleBoxFlat.new()
-	double_style.bg_color = Color(0.92, 0.65, 0.12, 1.0)
-	double_style.set_corner_radius_all(10)
-	double_btn.add_theme_stylebox_override("normal", double_style)
-	double_btn.add_theme_font_size_override("font_size", 16)
+	double_btn.custom_minimum_size = Vector2(180, 46)
+	apply_mobile_button_theme(double_btn, Color(1.0, 0.624, 0.11, 1.0), Color(0.72, 0.35, 0.05, 1.0), 16)
+	double_btn.add_theme_font_size_override("font_size", 15)
 	double_btn.pressed.connect(func(): _claim_offline(2.0))
 	hb.add_child(double_btn)
 

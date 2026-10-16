@@ -79,7 +79,13 @@ var restroom_sinks: Array[Dictionary] = [
 	{"pos": Vector3(0.6, 0.0, -9.2), "occupied_by": null}
 ]
 
-# ─── Swipe-to-Collect & Combo Tracking ──────────────────────────────────────
+# ─── Hostess Desk Cash Mat & Swipe-to-Collect ───────────────────────────────
+var hostess_cash_mat: Node3D = null
+var hostess_cash_bricks: Node3D = null
+var hostess_cash_label: Label3D = null
+var hostess_cash_amount: float = 0.0
+var hostess_cash_timer: float = 0.0
+
 var active_counter_stacks: Array[Dictionary] = []
 var last_cash_collect_time: float = -999.0
 var cash_collect_combo: int = 0
@@ -151,6 +157,7 @@ func _ready() -> void:
 	_setup_custom_textures()
 	_setup_active_service_sectors()
 	_setup_restroom_fidelity()
+	_setup_hostess_cash_mat()
 
 
 func _setup_custom_textures() -> void:
@@ -1969,6 +1976,16 @@ func _process(delta: float) -> void:
 	_process_breakroom_routine(delta)
 	_process_sliding_doors(delta)
 
+	# Hostess cash mat handling
+	if hostess_cash_mat != null:
+		if not hostess_cash_mat.visible or hostess_cash_amount <= 0.0:
+			hostess_cash_timer += delta
+			if hostess_cash_timer >= 22.0:
+				hostess_cash_timer = 0.0
+				_add_hostess_cash(75.0)
+		elif hostess_cash_label != null:
+			hostess_cash_label.position.y = 0.42 + 0.03 * sin(Time.get_ticks_msec() * 0.003 + 2.0)
+
 	# VIP Auto-Collector: automatically sweeps up floating cash stacks without tapping
 	var gm_ref = get_node_or_null("/root/GameManager")
 	if gm_ref != null and gm_ref.has_method("is_vip_auto_collector_active") and gm_ref.is_vip_auto_collector_active():
@@ -1976,6 +1993,12 @@ func _process(delta: float) -> void:
 			for t in tables_container.get_children():
 				if is_instance_valid(t) and t.has_method("has_visible_cash_stack") and t.has_visible_cash_stack():
 					t.collect_booth_cash()
+		if kitchen_container != null:
+			for st in kitchen_container.get_children():
+				if is_instance_valid(st) and st.has_method("has_visible_cash_stack") and st.has_visible_cash_stack():
+					st.collect_station_cash()
+		if hostess_cash_mat != null and hostess_cash_mat.visible and hostess_cash_amount > 0.0:
+			collect_hostess_cash()
 
 	if sign_board_mat != null:
 		var gm = get_node_or_null("/root/GameManager")
@@ -2164,6 +2187,7 @@ func _check_seat_waiting_customers() -> void:
 	var hostess = find_child("Hostess", true, false)
 	if hostess != null and hostess.has_method("greet_customer"):
 		hostess.greet_customer()
+	_add_hostess_cash(15.0)
 		
 	var roll = randf()
 	if avail_tables.size() > 0 and (avail_lounge.size() == 0 and avail_diner.size() == 0 or roll < 0.5):
@@ -2699,27 +2723,215 @@ func _on_diner_treat_finished(_cust: Node3D, seat_id: String) -> void:
 			break
 	_check_seat_waiting_customers()
 
+func _create_physical_cash_brick() -> Node3D:
+	var brick = Node3D.new()
+	var bill = MeshInstance3D.new()
+	var b_box = BoxMesh.new()
+	b_box.size = Vector3(0.18, 0.038, 0.095)
+	bill.mesh = b_box
+	var bill_mat = StandardMaterial3D.new()
+	bill_mat.albedo_color = Color(0.18, 0.68, 0.30)
+	bill_mat.roughness = 0.45
+	bill.material_override = bill_mat
+	brick.add_child(bill)
+	
+	var band = MeshInstance3D.new()
+	var band_box = BoxMesh.new()
+	band_box.size = Vector3(0.045, 0.040, 0.098)
+	band.mesh = band_box
+	var band_mat = StandardMaterial3D.new()
+	band_mat.albedo_color = Color(0.96, 0.94, 0.88)
+	band.material_override = band_mat
+	brick.add_child(band)
+	return brick
+
+func _fly_cash_brick_in_arc(brick: Node3D, delay: float) -> void:
+	var start_pos = brick.global_position
+	var cam = get_viewport().get_camera_3d() if get_viewport() != null else null
+	var target_pos = start_pos + Vector3(0.0, 3.2, 1.2)
+	if cam != null:
+		target_pos = cam.global_position + (cam.global_transform.basis.y * 1.2) - (cam.global_transform.basis.z * 1.5)
+		
+	var tw = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(brick, "scale", Vector3(1.3, 1.3, 1.3), 0.15).set_delay(delay)
+	tw.chain().tween_property(brick, "scale", Vector3.ZERO, 0.45)
+	
+	tw.tween_property(brick, "global_position:x", target_pos.x, 0.6).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(brick, "global_position:z", target_pos.z, 0.6).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	
+	var apex_y = max(start_pos.y, target_pos.y) + 1.8
+	tw.tween_method(func(t: float):
+		if is_instance_valid(brick):
+			brick.global_position.y = lerp(start_pos.y, target_pos.y, t) + 4.0 * t * (1.0 - t) * (apex_y - start_pos.y)
+	, 0.0, 1.0, 0.6).set_delay(delay)
+	
+	tw.tween_property(brick, "rotation:y", brick.rotation.y + randf_range(3.0, 6.0), 0.6).set_delay(delay)
+	tw.tween_property(brick, "rotation:x", randf_range(1.0, 3.0), 0.6).set_delay(delay)
+	tw.chain().tween_callback(brick.queue_free)
+
+func _setup_hostess_cash_mat() -> void:
+	if hostess_cash_mat != null and is_instance_valid(hostess_cash_mat):
+		return
+	hostess_cash_mat = Node3D.new()
+	hostess_cash_mat.name = "HostessCashMat"
+	hostess_cash_mat.position = Vector3(-0.75, 0.90, 5.55)
+	add_child(hostess_cash_mat)
+	
+	var mat_mesh = MeshInstance3D.new()
+	var m_box = BoxMesh.new()
+	m_box.size = Vector3(0.48, 0.018, 0.38)
+	mat_mesh.mesh = m_box
+	var mat_mat = StandardMaterial3D.new()
+	mat_mat.albedo_color = Color(0.08, 0.30, 0.16)
+	mat_mat.roughness = 0.6
+	mat_mesh.material_override = mat_mat
+	hostess_cash_mat.add_child(mat_mesh)
+	
+	var rim_mesh = MeshInstance3D.new()
+	var r_box = BoxMesh.new()
+	r_box.size = Vector3(0.50, 0.016, 0.40)
+	rim_mesh.mesh = r_box
+	rim_mesh.position = Vector3(0.0, -0.002, 0.0)
+	var rim_mat = StandardMaterial3D.new()
+	rim_mat.albedo_color = Color(0.95, 0.82, 0.22)
+	rim_mat.metallic = 0.8
+	rim_mat.roughness = 0.25
+	rim_mesh.material_override = rim_mat
+	hostess_cash_mat.add_child(rim_mesh)
+	
+	hostess_cash_bricks = Node3D.new()
+	hostess_cash_bricks.name = "HostessCashBricks"
+	hostess_cash_mat.add_child(hostess_cash_bricks)
+	
+	hostess_cash_label = Label3D.new()
+	hostess_cash_label.name = "HostessCashLabel"
+	hostess_cash_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	hostess_cash_label.double_sided = false
+	hostess_cash_label.font_size = 28
+	hostess_cash_label.outline_size = 7
+	hostess_cash_label.position = Vector3(0.0, 0.42, 0.0)
+	hostess_cash_label.modulate = Color(0.35, 1.0, 0.55)
+	hostess_cash_label.outline_modulate = Color(0.04, 0.16, 0.06, 0.95)
+	hostess_cash_label.text = "$75"
+	hostess_cash_mat.add_child(hostess_cash_label)
+	
+	hostess_cash_amount = 75.0
+	_populate_hostess_cash_bricks(4)
+
+func _populate_hostess_cash_bricks(count: int) -> void:
+	if hostess_cash_bricks == null:
+		return
+	for c in hostess_cash_bricks.get_children():
+		c.queue_free()
+	var grid_slots = [
+		Vector3(-0.09, 0.0, -0.07),
+		Vector3(0.09, 0.0, -0.07),
+		Vector3(-0.09, 0.0, 0.07),
+		Vector3(0.09, 0.0, 0.07)
+	]
+	for i in range(count):
+		var brick = _create_physical_cash_brick()
+		var slot_idx = i % 4
+		var layer = i / 4
+		var base_p = grid_slots[slot_idx]
+		brick.position = Vector3(base_p.x, 0.015 + float(layer) * 0.038, base_p.z)
+		brick.rotation.y = randf_range(-0.08, 0.08)
+		hostess_cash_bricks.add_child(brick)
+
+func _add_hostess_cash(amount: float) -> void:
+	if hostess_cash_mat == null:
+		_setup_hostess_cash_mat()
+	hostess_cash_mat.visible = true
+	hostess_cash_amount += amount
+	if hostess_cash_label != null:
+		hostess_cash_label.text = "+$%d" % round(hostess_cash_amount)
+	_populate_hostess_cash_bricks(min(8, 2 + int(hostess_cash_amount / 25.0)))
+
+func collect_hostess_cash() -> float:
+	if hostess_cash_mat == null or not hostess_cash_mat.visible or hostess_cash_amount <= 0.0:
+		return 0.0
+	var amount = hostess_cash_amount
+	var pos = hostess_cash_mat.global_position
+	
+	if hostess_cash_bricks != null:
+		var bricks = hostess_cash_bricks.get_children()
+		var delay_idx = 0
+		for b in bricks:
+			if b is Node3D:
+				var gpos = b.global_position
+				hostess_cash_bricks.remove_child(b)
+				get_tree().root.add_child(b)
+				b.global_position = gpos
+				_fly_cash_brick_in_arc(b, float(delay_idx) * 0.04)
+				delay_idx += 1
+				
+	hostess_cash_mat.visible = false
+	hostess_cash_amount = 0.0
+	register_cash_collection(pos, amount)
+	_spawn_floating_text("💵 +$%d HOSTESS TIPS! ✨" % int(amount), Color(0.35, 1.0, 0.55))
+	return amount
+
 func _spawn_counter_cash_stack(pos: Vector3, amount: float) -> void:
 	var stack_root = Node3D.new()
 	stack_root.position = pos
 	add_child(stack_root)
 	
-	var sprite = Sprite3D.new()
-	var tex = load("res://assets/textures/bubble_cash_stack.png")
-	if tex != null:
-		sprite.texture = tex
-	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	sprite.scale = Vector3(0.01, 0.01, 0.01)
-	stack_root.add_child(sprite)
+	# 3D Collection Mat on counter
+	var mat_mesh = MeshInstance3D.new()
+	var m_box = BoxMesh.new()
+	m_box.size = Vector3(0.48, 0.018, 0.38)
+	mat_mesh.mesh = m_box
+	var mat_mat = StandardMaterial3D.new()
+	mat_mat.albedo_color = Color(0.08, 0.30, 0.16)
+	mat_mat.roughness = 0.6
+	mat_mesh.material_override = mat_mat
+	stack_root.add_child(mat_mesh)
 	
+	var rim_mesh = MeshInstance3D.new()
+	var r_box = BoxMesh.new()
+	r_box.size = Vector3(0.50, 0.016, 0.40)
+	rim_mesh.mesh = r_box
+	rim_mesh.position = Vector3(0.0, -0.002, 0.0)
+	var rim_mat = StandardMaterial3D.new()
+	rim_mat.albedo_color = Color(0.95, 0.82, 0.22)
+	rim_mat.metallic = 0.8
+	rim_mat.roughness = 0.25
+	rim_mesh.material_override = rim_mat
+	stack_root.add_child(rim_mesh)
+	
+	# 3D Cash Bricks
+	var bricks_container = Node3D.new()
+	bricks_container.name = "BricksContainer"
+	stack_root.add_child(bricks_container)
+	
+	var grid_slots = [
+		Vector3(-0.09, 0.0, -0.07),
+		Vector3(0.09, 0.0, -0.07),
+		Vector3(-0.09, 0.0, 0.07),
+		Vector3(0.09, 0.0, 0.07)
+	]
+	var brick_count = randi_range(3, 5)
+	for i in range(brick_count):
+		var brick = _create_physical_cash_brick()
+		var slot_idx = i % 4
+		var layer = i / 4
+		var base_p = grid_slots[slot_idx]
+		brick.position = Vector3(base_p.x, 0.015 + float(layer) * 0.038, base_p.z)
+		brick.rotation.y = randf_range(-0.08, 0.08)
+		bricks_container.add_child(brick)
+	
+	# Floating Label
 	var lbl = Label3D.new()
+	lbl.name = "StackLabel"
 	lbl.text = "+$%d" % round(amount)
 	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lbl.double_sided = false
 	lbl.font_size = 28
 	lbl.modulate = Color(0.35, 1.0, 0.55, 1.0)
 	lbl.outline_modulate = Color(0.05, 0.15, 0.05, 1.0)
 	lbl.outline_size = 6
-	lbl.position = Vector3(0, 0.35, 0)
+	lbl.position = Vector3(0, 0.38, 0)
 	stack_root.add_child(lbl)
 	
 	var stack_data = {
@@ -2732,11 +2944,9 @@ func _spawn_counter_cash_stack(pos: Vector3, amount: float) -> void:
 		
 	var tw = create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(sprite, "scale", Vector3(0.5, 0.5, 0.5), 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(stack_root, "position:y", pos.y + 0.45, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw.chain().tween_property(sprite, "modulate:a", 0.0, 0.4)
-	tw.set_parallel(true)
-	tw.tween_property(lbl, "modulate:a", 0.0, 0.4)
+	tw.tween_property(stack_root, "scale", Vector3.ONE, 0.35).from(Vector3(0.2, 0.2, 0.2)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(stack_root, "position:y", pos.y + 0.30, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_property(lbl, "modulate:a", 0.0, 0.5).set_delay(1.2)
 	tw.chain().tween_callback(func():
 		active_counter_stacks.erase(stack_data)
 		if is_instance_valid(stack_root):
@@ -2755,6 +2965,18 @@ func collect_counter_stack(item: Dictionary) -> void:
 	register_cash_collection(pos, amount)
 	
 	if is_instance_valid(node):
+		var bricks_cont = node.get_node_or_null("BricksContainer")
+		if bricks_cont != null:
+			var bricks = bricks_cont.get_children()
+			var d_idx = 0
+			for b in bricks:
+				if b is Node3D:
+					var gpos = b.global_position
+					bricks_cont.remove_child(b)
+					get_tree().root.add_child(b)
+					b.global_position = gpos
+					_fly_cash_brick_in_arc(b, float(d_idx) * 0.04)
+					d_idx += 1
 		var tw = create_tween()
 		tw.tween_property(node, "scale", Vector3.ZERO, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 		tw.tween_callback(node.queue_free)
@@ -2805,6 +3027,23 @@ func _spawn_combo_floating_text(world_pos: Vector3, multiplier: int) -> void:
 	tw.parallel().tween_property(label, "modulate:a", 0.0, 0.4).set_delay(0.3)
 	tw.chain().tween_callback(label.queue_free)
 
+func _spawn_floating_text(txt: String, col: Color) -> void:
+	var label = Label3D.new()
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.double_sided = false
+	label.font_size = 26
+	label.outline_size = 7
+	label.text = txt
+	label.modulate = col
+	label.outline_modulate = Color(0.1, 0.1, 0.1, 0.95)
+	label.position = Vector3(-0.75, 1.8, 5.55)
+	add_child(label)
+	
+	var tw = create_tween()
+	tw.tween_property(label, "position:y", 2.8, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(label, "modulate:a", 0.0, 0.8).set_delay(0.35)
+	tw.tween_callback(label.queue_free)
+
 func _check_swipe_cash_collection(screen_pos: Vector2) -> void:
 	var cam: Camera3D = get_viewport().get_camera_3d() if get_viewport() != null else null
 	if cam == null:
@@ -2817,17 +3056,35 @@ func _check_swipe_cash_collection(screen_pos: Vector2) -> void:
 				var stack_pos: Vector3 = table.get_cash_stack_world_pos()
 				if not cam.is_position_behind(stack_pos):
 					var screen_pt: Vector2 = cam.unproject_position(stack_pos)
-					if screen_pt.distance_to(screen_pos) <= 52.0:
+					if screen_pt.distance_to(screen_pos) <= 68.0:
 						table.collect_booth_cash()
+
+	# 2. Check kitchen cooking stations
+	if kitchen_container != null:
+		for st in kitchen_container.get_children():
+			if st.has_method("has_visible_cash_stack") and st.has_visible_cash_stack():
+				var stack_pos: Vector3 = st.get_cash_stack_world_pos()
+				if not cam.is_position_behind(stack_pos):
+					var screen_pt: Vector2 = cam.unproject_position(stack_pos)
+					if screen_pt.distance_to(screen_pos) <= 68.0:
+						st.collect_station_cash()
+
+	# 3. Check Hostess Desk cash mat
+	if hostess_cash_mat != null and hostess_cash_mat.visible and hostess_cash_amount > 0.0:
+		var h_pos: Vector3 = hostess_cash_mat.global_position
+		if not cam.is_position_behind(h_pos):
+			var screen_pt: Vector2 = cam.unproject_position(h_pos)
+			if screen_pt.distance_to(screen_pos) <= 68.0:
+				collect_hostess_cash()
 						
-	# 2. Check active counter stacks
+	# 4. Check active counter stacks
 	for i in range(active_counter_stacks.size() - 1, -1, -1):
 		var item = active_counter_stacks[i]
 		if not item.get("collected", false) and is_instance_valid(item.get("node", null)):
 			var stack_pos: Vector3 = item.get("pos", Vector3.ZERO)
 			if not cam.is_position_behind(stack_pos):
 				var screen_pt: Vector2 = cam.unproject_position(stack_pos)
-				if screen_pt.distance_to(screen_pos) <= 52.0:
+				if screen_pt.distance_to(screen_pos) <= 68.0:
 					collect_counter_stack(item)
 
 func _unhandled_input(event: InputEvent) -> void:
