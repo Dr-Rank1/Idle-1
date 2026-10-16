@@ -361,6 +361,17 @@ func _on_all_waypoints_reached() -> void:
 		State.WALKING_TO_KITCHEN:
 			# Look directly North into the kitchen pass counter at Z = -3.4m under silver heat lamps
 			rotation.y = PI
+			
+			var dish_id: String = "burger"
+			if is_instance_valid(target_table) and "occupying_customer" in target_table and is_instance_valid(target_table.occupying_customer):
+				var cust = target_table.occupying_customer
+				if "ordered_dish" in cust and typeof(cust.ordered_dish) == TYPE_DICTIONARY:
+					dish_id = cust.ordered_dish.get("id", "burger")
+			_update_tray_dish_model(dish_id)
+			var cook_script = load("res://scripts/cooking_station.gd")
+			if cook_script != null and cook_script.has_method("take_dish_from_pass"):
+				cook_script.take_dish_from_pass(dish_id)
+
 			serving_tray.visible = true
 			serving_tray.scale = Vector3(0.2, 0.2, 0.2)
 			var tw = create_tween()
@@ -484,3 +495,25 @@ func _on_all_waypoints_reached() -> void:
 			current_state = State.RETURNING
 			waypoints = _get_waypoints_from_breakroom_to_home(position)
 			_play_anim("walk")
+
+func _update_tray_dish_model(dish_id: String) -> void:
+	if serving_tray == null:
+		return
+	var holder = serving_tray.get_node_or_null("DishHolder")
+	if holder == null:
+		holder = Node3D.new()
+		holder.name = "DishHolder"
+		holder.position = Vector3(0, 0.02, 0)
+		serving_tray.add_child(holder)
+		var burger_old = serving_tray.get_node_or_null("Burger")
+		if burger_old != null:
+			burger_old.visible = false
+	for c in holder.get_children():
+		c.queue_free()
+	var cook_script = load("res://scripts/cooking_station.gd")
+	if cook_script != null and cook_script.has_method("create_dish_3d_model"):
+		var dish_node = cook_script.create_dish_3d_model(dish_id)
+		if dish_node != null:
+			dish_node.scale = Vector3(0.55, 0.55, 0.55)
+			holder.add_child(dish_node)
+

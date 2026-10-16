@@ -1,3 +1,4 @@
+class_name CookingStation
 extends StaticBody3D
 
 signal station_clicked(station_id: String, station_name: String, level: int)
@@ -746,3 +747,207 @@ func _refresh_catering_label() -> void:
 		action_badge.visible = true
 		action_badge.text = "🚚 Van crate • Kitchen Pass"
 		action_badge.modulate = Color(1.0, 0.85, 0.25, 1.0)
+
+# ─── Play Store 3D Food Models & Pass Plating ──────────────────────────────
+static var pass_dishes: Array[Node3D] = []
+const PASS_COORDINATES: Array[Vector3] = [
+	Vector3(5.4, 0.94, -3.4),
+	Vector3(6.5, 0.94, -3.4),
+	Vector3(7.6, 0.94, -3.4)
+]
+
+static func _safe_load_model(path: String, fallback_mesh: Mesh = null) -> Node3D:
+	if ResourceLoader.exists(path):
+		var scn = load(path)
+		if scn is PackedScene:
+			var inst = scn.instantiate()
+			if inst is Node3D:
+				return inst
+	# Fallback if glb fails or is missing
+	var fallback_inst = MeshInstance3D.new()
+	if fallback_mesh != null:
+		fallback_inst.mesh = fallback_mesh
+	else:
+		var cyl = CylinderMesh.new()
+		cyl.top_radius = 0.22
+		cyl.bottom_radius = 0.22
+		cyl.height = 0.04
+		fallback_inst.mesh = cyl
+	return fallback_inst
+
+static func create_dish_3d_model(dish_id: String) -> Node3D:
+	var root = Node3D.new()
+	root.name = "Dish_%s" % dish_id
+	
+	match dish_id:
+		"burger":
+			# Star 1: Classic Diner Burger & Fries
+			var plate = _safe_load_model("res://assets/models/food/plate-dinner.glb")
+			plate.scale = Vector3(0.65, 0.65, 0.65)
+			root.add_child(plate)
+			
+			var burger = _safe_load_model("res://assets/models/food/burger-cheese.glb")
+			burger.position = Vector3(-0.06, 0.04, 0.0)
+			burger.scale = Vector3(0.45, 0.45, 0.45)
+			root.add_child(burger)
+			
+			var fries = _safe_load_model("res://assets/models/food/fries.glb")
+			fries.position = Vector3(0.12, 0.04, 0.0)
+			fries.scale = Vector3(0.40, 0.40, 0.40)
+			root.add_child(fries)
+			
+		"sundae":
+			# Star 2: Retro Strawberry Sundae & Frappe
+			var sundae = _safe_load_model("res://assets/models/food/sundae.glb")
+			sundae.position = Vector3(-0.08, 0.0, 0.0)
+			sundae.scale = Vector3(0.46, 0.46, 0.46)
+			root.add_child(sundae)
+			
+			var frappe = _safe_load_model("res://assets/models/food/frappe.glb")
+			frappe.position = Vector3(0.10, 0.0, 0.0)
+			frappe.scale = Vector3(0.42, 0.42, 0.42)
+			root.add_child(frappe)
+			
+		"steak_platter":
+			# Star 3: Double Cheese Steak Platter
+			var plate = _safe_load_model("res://assets/models/food/plate-dinner.glb")
+			plate.scale = Vector3(0.68, 0.68, 0.68)
+			root.add_child(plate)
+			
+			var steak = _safe_load_model("res://assets/models/food/meat-cooked.glb")
+			steak.position = Vector3(-0.06, 0.04, 0.0)
+			steak.scale = Vector3(0.46, 0.46, 0.46)
+			root.add_child(steak)
+			
+			var cheese = _safe_load_model("res://assets/models/food/cheese.glb")
+			cheese.position = Vector3(0.11, 0.04, 0.0)
+			cheese.scale = Vector3(0.38, 0.38, 0.38)
+			root.add_child(cheese)
+			
+		"cocktail_tapas":
+			# Star 4: Artisan Cocktail & Tapas Combo
+			var tray = _safe_load_model("res://assets/models/food/plate-rectangle.glb")
+			tray.scale = Vector3(0.55, 0.55, 0.55)
+			root.add_child(tray)
+			
+			var cocktail = _safe_load_model("res://assets/models/food/cocktail.glb")
+			cocktail.position = Vector3(-0.09, 0.03, 0.0)
+			cocktail.scale = Vector3(0.45, 0.45, 0.45)
+			root.add_child(cocktail)
+			
+			var taco = _safe_load_model("res://assets/models/food/taco.glb")
+			taco.position = Vector3(0.09, 0.03, 0.0)
+			taco.scale = Vector3(0.42, 0.42, 0.42)
+			root.add_child(taco)
+			
+		"michelin_feast":
+			# Star 5: Golden Michelin Lobster & Ribeye Feast
+			var plate = _safe_load_model("res://assets/models/food/plate-dinner.glb")
+			plate.scale = Vector3(0.72, 0.72, 0.72)
+			root.add_child(plate)
+			
+			var fish = _safe_load_model("res://assets/models/food/fish.glb")
+			fish.position = Vector3(-0.08, 0.04, 0.0)
+			fish.scale = Vector3(0.46, 0.46, 0.46)
+			root.add_child(fish)
+			
+			var ribs = _safe_load_model("res://assets/models/food/meat-ribs.glb")
+			ribs.position = Vector3(0.10, 0.04, 0.0)
+			ribs.scale = Vector3(0.42, 0.42, 0.42)
+			root.add_child(ribs)
+			
+			# Golden Michelin sparkle particles
+			var sparkles = CPUParticles3D.new()
+			sparkles.name = "GoldSparkles"
+			sparkles.amount = 12
+			sparkles.lifetime = 1.0
+			sparkles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+			sparkles.emission_sphere_radius = 0.22
+			sparkles.gravity = Vector3(0, 0.6, 0)
+			sparkles.color = Color(1.0, 0.85, 0.25, 0.85)
+			sparkles.scale_amount_min = 0.04
+			sparkles.scale_amount_max = 0.08
+			root.add_child(sparkles)
+			
+		"pasta":
+			var bowl = _safe_load_model("res://assets/models/food/bowl-broth.glb")
+			bowl.scale = Vector3(0.5, 0.5, 0.5)
+			root.add_child(bowl)
+			
+		"pizza":
+			var pizza = _safe_load_model("res://assets/models/food/pizza.glb")
+			pizza.scale = Vector3(0.48, 0.48, 0.48)
+			root.add_child(pizza)
+			
+		"sushi":
+			var sushi = _safe_load_model("res://assets/models/food/sushi-salmon.glb")
+			sushi.scale = Vector3(0.5, 0.5, 0.5)
+			root.add_child(sushi)
+			
+		_:
+			var burger_default = _safe_load_model("res://assets/models/food/burger-cheese.glb")
+			burger_default.scale = Vector3(0.45, 0.45, 0.45)
+			root.add_child(burger_default)
+			
+	return root
+
+static func plate_dish_on_pass(dish_id: String, parent_node: Node3D = null) -> Node3D:
+	var valid_dishes: Array[Node3D] = []
+	for d in pass_dishes:
+		if is_instance_valid(d):
+			valid_dishes.append(d)
+	pass_dishes = valid_dishes
+	
+	if pass_dishes.size() >= PASS_COORDINATES.size():
+		return pass_dishes[0]
+		
+	var slot_idx = pass_dishes.size()
+	var slot_pos = PASS_COORDINATES[slot_idx]
+	var dish = create_dish_3d_model(dish_id)
+	dish.position = slot_pos
+	dish.scale = Vector3(0.35, 0.35, 0.35)
+	
+	if parent_node != null and is_instance_valid(parent_node):
+		parent_node.add_child(dish)
+	elif Engine.get_main_loop() is SceneTree and Engine.get_main_loop().root != null:
+		var scene_root = Engine.get_main_loop().root
+		var rest = scene_root.find_child("Restaurant", true, false)
+		if rest != null:
+			rest.add_child(dish)
+		else:
+			scene_root.add_child(dish)
+			
+	pass_dishes.append(dish)
+	return dish
+
+static func take_dish_from_pass(dish_id: String = "") -> Node3D:
+	var valid_dishes: Array[Node3D] = []
+	for d in pass_dishes:
+		if is_instance_valid(d):
+			valid_dishes.append(d)
+	pass_dishes = valid_dishes
+	
+	if pass_dishes.is_empty():
+		return null
+		
+	var target_dish: Node3D = null
+	if dish_id != "":
+		for d in pass_dishes:
+			if d.name.find(dish_id) != -1:
+				target_dish = d
+				break
+	if target_dish == null:
+		target_dish = pass_dishes.pop_front()
+	else:
+		pass_dishes.erase(target_dish)
+		
+	if is_instance_valid(target_dish):
+		target_dish.queue_free()
+	return target_dish
+
+static func clear_all_pass_dishes() -> void:
+	for d in pass_dishes:
+		if is_instance_valid(d):
+			d.queue_free()
+	pass_dishes.clear()
+

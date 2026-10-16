@@ -445,7 +445,84 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 		gm.sector_managers[sec]["active_timer"] = 0.0
 		gm.sector_managers[sec]["cooldown_timer"] = 0.0
 
-	print("✓ Frame 20 completed: Customer FSM, alerts, and Kolibri manager skills validated.")
+	# Part 5: Play Store Star Rating Signature Dishes & Celebration Modal
+	print("\n--- [FRAME 20 Part 5] Asserting Play Store Recipe Progression System ---")
+	_assert_test(gm.STAR_DISH_TIERS.size() == 5, "STAR_DISH_TIERS defines exactly 5 signature tiers")
+	_assert_test(gm.STAR_DISH_TIERS[1]["id"] == "burger" and gm.STAR_DISH_TIERS[1]["multiplier"] == 1.0, "Star 1: Classic Diner Burger & Fries (x1.0)")
+	_assert_test(gm.STAR_DISH_TIERS[2]["id"] == "sundae" and gm.STAR_DISH_TIERS[2]["multiplier"] == 2.5, "Star 2: Retro Strawberry Sundae & Frappe (x2.5)")
+	_assert_test(gm.STAR_DISH_TIERS[3]["id"] == "steak_platter" and gm.STAR_DISH_TIERS[3]["multiplier"] == 4.0, "Star 3: Double Cheese Steak Platter (x4.0)")
+	_assert_test(gm.STAR_DISH_TIERS[4]["id"] == "cocktail_tapas" and gm.STAR_DISH_TIERS[4]["multiplier"] == 6.5, "Star 4: Artisan Cocktail & Tapas Combo (x6.5)")
+	_assert_test(gm.STAR_DISH_TIERS[5]["id"] == "michelin_feast" and gm.STAR_DISH_TIERS[5]["multiplier"] == 10.0, "Star 5: Golden Michelin Lobster & Ribeye Feast (x10.0)")
+
+	_assert_test(gm.STAR_THRESHOLDS[1] == 1, "Star 1 threshold level is 1")
+	_assert_test(gm.STAR_THRESHOLDS[2] == 3, "Star 2 threshold level is 3")
+	_assert_test(gm.STAR_THRESHOLDS[3] == 6, "Star 3 threshold level is 6")
+	_assert_test(gm.STAR_THRESHOLDS[4] == 10, "Star 4 threshold level is 10")
+	_assert_test(gm.STAR_THRESHOLDS[5] == 15, "Star 5 threshold level is 15")
+
+	# Test unlock progression and tier tracking
+	_assert_test(gm.is_star_dish_unlocked(1) == true, "Star Tier 1 is unlocked initially")
+	gm.unlock_star_dish(2, false)
+	_assert_test(gm.is_star_dish_unlocked(2) == true, "Star Tier 2 successfully unlocked")
+	_assert_test(gm.get_current_star_tier() >= 2, "Current star tier reflects unlock")
+
+	# Test +25 Diamonds Reward Claim
+	gm.claimed_star_rewards.erase(2)
+	var pre_diamonds = gm.diamonds
+	var claim_success = gm.claim_star_dish_reward(2)
+	_assert_test(claim_success == true, "Claim star dish reward succeeded")
+	_assert_test(gm.diamonds == pre_diamonds + 25, "Claimed reward granted exactly +25 Diamonds")
+	_assert_test(gm.is_star_reward_claimed(2) == true, "Star reward recorded as claimed")
+	var dup_claim = gm.claim_star_dish_reward(2)
+	_assert_test(dup_claim == false, "Duplicate star reward claim prevented")
+
+	# Test 3D Compound Dish Models Generation
+	var cook_script = load("res://scripts/cooking_station.gd")
+	_assert_test(cook_script != null, "cooking_station.gd loaded successfully")
+	var burger_model = cook_script.create_dish_3d_model("burger")
+	_assert_test(burger_model != null and burger_model.get_child_count() >= 2, "3D Burger & Fries model created with sub-components")
+	burger_model.queue_free()
+
+	var sundae_model = cook_script.create_dish_3d_model("sundae")
+	_assert_test(sundae_model != null and sundae_model.get_child_count() >= 2, "3D Sundae & Frappe model created with sub-components")
+	sundae_model.queue_free()
+
+	var steak_model = cook_script.create_dish_3d_model("steak_platter")
+	_assert_test(steak_model != null and steak_model.get_child_count() >= 2, "3D Steak Platter model created with sub-components")
+	steak_model.queue_free()
+
+	var cocktail_model = cook_script.create_dish_3d_model("cocktail_tapas")
+	_assert_test(cocktail_model != null and cocktail_model.get_child_count() >= 2, "3D Cocktail & Tapas model created with sub-components")
+	cocktail_model.queue_free()
+
+	var feast_model = cook_script.create_dish_3d_model("michelin_feast")
+	_assert_test(feast_model != null and feast_model.get_child_count() >= 3, "3D Michelin Feast model created with lobster, ribs, and sparkles")
+	feast_model.queue_free()
+
+	# Test Pass Counter Plating & Taking
+	cook_script.clear_all_pass_dishes()
+	var plated = cook_script.plate_dish_on_pass("burger", rest)
+	_assert_test(plated != null, "Dish successfully plated on kitchen pass counter (Z = -3.4m)")
+	_assert_test(cook_script.pass_dishes.size() == 1, "Kitchen pass counter tracks 1 active plated dish")
+	var taken = cook_script.take_dish_from_pass("burger")
+	_assert_test(taken != null, "Waiter successfully picked up plated dish from kitchen pass counter")
+	_assert_test(cook_script.pass_dishes.size() == 0, "Kitchen pass counter updated to 0 after pickup")
+
+	# Test Celebration Modal Creation & Dismissal
+	var hud_scn = load("res://scenes/ui/hud.tscn")
+	var hud_inst = hud_scn.instantiate()
+	root.add_child(hud_inst)
+	hud_inst._show_star_dish_unlock_modal(2, gm.STAR_DISH_TIERS[2])
+	_assert_test(hud_inst.star_dish_unlock_modal != null, "Celebration modal created on star threshold unlock")
+	var dish_icon_node = hud_inst.star_dish_unlock_modal.find_child("DishIcon", true, false)
+	_assert_test(dish_icon_node != null and dish_icon_node.text == "🍨", "Celebration modal showcases newly unlocked dish icon")
+	var claim_btn_node = hud_inst.star_dish_unlock_modal.find_child("ClaimRewardBtn", true, false)
+	_assert_test(claim_btn_node != null and claim_btn_node.text.find("25 DIAMONDS") != -1, "Celebration modal features green CLAIM +25 DIAMONDS button")
+	hud_inst._hide_all_modals()
+	_assert_test(hud_inst.star_dish_unlock_modal == null, "Celebration modal cleanly dismissed on _hide_all_modals")
+	hud_inst.queue_free()
+
+	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, and recipe progression validated.")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Frame 25: Teardown & Summary

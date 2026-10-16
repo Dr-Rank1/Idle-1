@@ -2535,6 +2535,14 @@ func _on_customer_order_placed(table: Node3D, cust: Node3D) -> void:
 func _queue_order(table: Node3D) -> void:
 	if not pending_orders.has(table):
 		pending_orders.append(table)
+		var dish_id: String = "burger"
+		if "occupying_customer" in table and is_instance_valid(table.occupying_customer):
+			var cust = table.occupying_customer
+			if "ordered_dish" in cust and typeof(cust.ordered_dish) == TYPE_DICTIONARY:
+				dish_id = cust.ordered_dish.get("id", "burger")
+		var cook_script = load("res://scripts/cooking_station.gd")
+		if cook_script != null and cook_script.has_method("plate_dish_on_pass"):
+			cook_script.plate_dish_on_pass(dish_id, self)
 
 func _process_lounge_bartender(_delta: float) -> void:
 	if bartender_state != StaffState.IDLE or pending_lounge_orders.size() == 0:

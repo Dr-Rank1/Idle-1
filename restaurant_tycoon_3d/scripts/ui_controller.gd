@@ -58,6 +58,7 @@ extends CanvasLayer
 @onready var hours_badge_label: Label = get_node_or_null("UpgradePanel/VBox/HeaderBar/HBox/HoursBadge")
 @onready var upgrade_milestone_bar: ProgressBar = get_node_or_null("UpgradePanel/VBox/MilestoneBar")
 var _station_progress_bar: ProgressBar = null
+var star_dish_unlock_modal: Control = null
 var station_progress_bar: ProgressBar:
 	get:
 		if _station_progress_bar != null and is_instance_valid(_station_progress_bar):
@@ -709,6 +710,8 @@ func _ready() -> void:
 		gm.campaign_updated.connect(_on_campaign_updated)
 		gm.offline_earnings_available.connect(_on_offline_earnings_available)
 		gm.critic_review_awarded.connect(_on_critic_review_awarded)
+		if gm.has_signal("star_dish_unlocked") and not gm.star_dish_unlocked.is_connected(_on_star_dish_unlocked):
+			gm.star_dish_unlocked.connect(_on_star_dish_unlocked)
 		if gm.has_signal("spawn_flying_currency_trail"):
 			gm.spawn_flying_currency_trail.connect(spawn_flying_currency_trail)
 		if gm.has_signal("marketing_changed"):
@@ -772,6 +775,7 @@ func _ready() -> void:
 			cash_rate_label.text = "+%s/s" % _format_money(displayed_rate)
 		_set_multiplier("1")
 		_refresh_quest_banner()
+		_refresh_star_milestone_bar()
 	
 	_wire_all_buttons_in_tree(self)
 	_update_affordability_badges()
@@ -1045,6 +1049,10 @@ func _hide_all_modals() -> void:
 	if perks_panel != null: perks_panel.visible = false
 	if cards_panel != null: cards_panel.visible = false
 	if chest_reward_modal != null: chest_reward_modal.visible = false
+	if star_dish_unlock_modal != null and is_instance_valid(star_dish_unlock_modal):
+		star_dish_unlock_modal.visible = false
+		star_dish_unlock_modal.queue_free()
+		star_dish_unlock_modal = null
 
 func _open_modal(panel: PanelContainer) -> void:
 	if panel == null: return
@@ -1257,6 +1265,7 @@ func _on_level_updated(lvl: int, cur_xp: float, max_xp: float) -> void:
 	if star_milestone_bar != null:
 		star_milestone_bar.max_value = max_xp
 		star_milestone_bar.value = cur_xp
+	_refresh_star_milestone_bar()
 
 func _process(delta: float) -> void:
 	sim_time_minutes += delta * 4.0
@@ -3298,6 +3307,277 @@ func _on_critic_review_awarded(stars: float, is_positive: bool) -> void:
 	tw.tween_property(banner, "scale", Vector2(0.3, 0.3), 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	tw.parallel().tween_property(banner, "modulate:a", 0.0, 0.25)
 	tw.tween_callback(banner.queue_free)
+
+# ─── Play Store Star Rating Signature Dishes & Celebration Modal ───────────
+func _on_star_dish_unlocked(star_tier: int, dish_info: Dictionary) -> void:
+	_refresh_star_milestone_bar()
+	_show_star_dish_unlock_modal(star_tier, dish_info)
+
+func _refresh_star_milestone_bar() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	var hbox = get_node_or_null("HUD/StarMilestoneBar/HBox")
+	if hbox == null or gm == null:
+		return
+	var items = [
+		{"tier": 1, "node": hbox.get_node_or_null("Star1"), "title": "★1 🍔 Burger"},
+		{"tier": 2, "node": hbox.get_node_or_null("Star2"), "title": "★2 🍨 Sundae"},
+		{"tier": 3, "node": hbox.get_node_or_null("Star3"), "title": "★3 🥩 Steak"},
+		{"tier": 4, "node": hbox.get_node_or_null("Star4"), "title": "★4 🍸 Cocktail"},
+		{"tier": 5, "node": hbox.get_node_or_null("Star5"), "title": "★5 🦞 Michelin"}
+	]
+	for it in items:
+		var lbl: Label = it["node"]
+		if lbl != null:
+			lbl.text = it["title"]
+			var is_unlocked: bool = gm.is_star_dish_unlocked(it["tier"]) if gm.has_method("is_star_dish_unlocked") else (it["tier"] == 1)
+			if is_unlocked:
+				lbl.add_theme_color_override("font_color", Color(1.0, 0.88, 0.25, 1.0))
+			else:
+				lbl.add_theme_color_override("font_color", Color(0.65, 0.72, 0.85, 0.65))
+
+func _show_star_dish_unlock_modal(star_tier: int, dish_info: Dictionary) -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	var hud_node = get_node_or_null("HUD")
+	if hud_node == null:
+		hud_node = self
+		
+	# Clean up any existing modal instance
+	if star_dish_unlock_modal != null and is_instance_valid(star_dish_unlock_modal):
+		star_dish_unlock_modal.queue_free()
+		star_dish_unlock_modal = null
+
+	var modal_root = Control.new()
+	modal_root.name = "StarDishUnlockModal"
+	modal_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal_root.mouse_filter = Control.MOUSE_FILTER_STOP
+	star_dish_unlock_modal = modal_root
+
+	# Dark Royal Navy Scrim
+	var scrim = ColorRect.new()
+	scrim.name = "Scrim"
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.color = Color(0.04, 0.07, 0.12, 0.85)
+	modal_root.add_child(scrim)
+
+	# Sunburst Rays Background Container
+	var sunburst_ctrl = Control.new()
+	sunburst_ctrl.name = "SunburstRays"
+	sunburst_ctrl.set_anchors_preset(Control.PRESET_CENTER)
+	sunburst_ctrl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	# Create 16 alternating golden rays
+	var ray_count = 16
+	for r_i in range(ray_count):
+		var ray_poly = Polygon2D.new()
+		var a_start = (float(r_i) / float(ray_count)) * TAU
+		var a_end = ((float(r_i) + 0.5) / float(ray_count)) * TAU
+		var ray_pts = PackedVector2Array()
+		ray_pts.append(Vector2.ZERO)
+		var ray_radius = 550.0
+		var ray_steps = 6
+		for s_i in range(ray_steps + 1):
+			var a = a_start + (a_end - a_start) * (float(s_i) / float(ray_steps))
+			ray_pts.append(Vector2(cos(a), sin(a)) * ray_radius)
+		ray_poly.polygon = ray_pts
+		if r_i % 2 == 0:
+			ray_poly.color = Color(1.0, 0.82, 0.22, 0.18)
+		else:
+			ray_poly.color = Color(1.0, 0.90, 0.35, 0.08)
+		sunburst_ctrl.add_child(ray_poly)
+	modal_root.add_child(sunburst_ctrl)
+
+	# Rotate sunburst continuously
+	var rot_tween = modal_root.create_tween().set_loops()
+	rot_tween.tween_property(sunburst_ctrl, "rotation", TAU, 18.0).as_relative()
+
+	# Center Card Container
+	var center_box = CenterContainer.new()
+	center_box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal_root.add_child(center_box)
+
+	var card_panel = PanelContainer.new()
+	card_panel.name = "CardPanel"
+	card_panel.custom_minimum_size = Vector2(380, 480)
+	
+	var card_style = StyleBoxFlat.new()
+	card_style.bg_color = Color(0.09, 0.12, 0.19, 0.98)
+	card_style.set_corner_radius_all(24)
+	card_style.border_width_left = 3
+	card_style.border_width_top = 3
+	card_style.border_width_right = 3
+	card_style.border_width_bottom = 3
+	card_style.border_color = Color(1.0, 0.84, 0.22, 1.0)
+	card_style.shadow_color = Color(0.0, 0.0, 0.0, 0.6)
+	card_style.shadow_size = 18
+	card_style.content_margin_left = 24
+	card_style.content_margin_right = 24
+	card_style.content_margin_top = 22
+	card_style.content_margin_bottom = 22
+	card_panel.add_theme_stylebox_override("panel", card_style)
+	center_box.add_child(card_panel)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	card_panel.add_child(vbox)
+
+	# Top Close Button Row
+	var top_row = HBoxContainer.new()
+	var top_spacer = Control.new()
+	top_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_row.add_child(top_spacer)
+	
+	var close_btn = Button.new()
+	close_btn.text = "✕"
+	close_btn.custom_minimum_size = Vector2(32, 32)
+	close_btn.flat = true
+	close_btn.add_theme_font_size_override("font_size", 18)
+	close_btn.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95, 0.8))
+	top_row.add_child(close_btn)
+	vbox.add_child(top_row)
+
+	# Star Rating Badge Row
+	var stars_box = HBoxContainer.new()
+	stars_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	var star_str = ""
+	for s in range(1, 6):
+		if s <= star_tier:
+			star_str += "★ "
+		else:
+			star_str += "☆ "
+	var star_badge = Label.new()
+	star_badge.text = star_str.strip_edges()
+	star_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	star_badge.add_theme_font_size_override("font_size", 22)
+	star_badge.add_theme_color_override("font_color", Color(1.0, 0.86, 0.24, 1.0))
+	vbox.add_child(star_badge)
+
+	# Header Title
+	var title_lbl = Label.new()
+	title_lbl.text = "🌟 NEW SIGNATURE DISH! 🌟"
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_font_size_override("font_size", 16)
+	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35, 1.0))
+	vbox.add_child(title_lbl)
+
+	# Large Dish Icon with Floating Bounce
+	var icon_lbl = Label.new()
+	icon_lbl.name = "DishIcon"
+	icon_lbl.text = dish_info.get("icon", "🍽️")
+	icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon_lbl.add_theme_font_size_override("font_size", 68)
+	vbox.add_child(icon_lbl)
+
+	var icon_tw = modal_root.create_tween().set_loops()
+	icon_tw.tween_property(icon_lbl, "scale", Vector2(1.12, 1.12), 0.65).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	icon_tw.tween_property(icon_lbl, "scale", Vector2(1.0, 1.0), 0.65).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+	# Dish Name
+	var name_lbl = Label.new()
+	name_lbl.name = "DishName"
+	name_lbl.text = dish_info.get("name", "Gourmet Dish")
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lbl.add_theme_font_size_override("font_size", 20)
+	name_lbl.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+	vbox.add_child(name_lbl)
+
+	# Dish Description
+	var desc_lbl = Label.new()
+	desc_lbl.text = dish_info.get("desc", "")
+	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.add_theme_font_size_override("font_size", 12)
+	desc_lbl.add_theme_color_override("font_color", Color(0.72, 0.78, 0.88, 0.9))
+	vbox.add_child(desc_lbl)
+
+	# Selling Price Multiplier Pill
+	var mult_pill = PanelContainer.new()
+	var pill_style = StyleBoxFlat.new()
+	pill_style.bg_color = Color(0.2, 0.15, 0.05, 0.95)
+	pill_style.border_color = Color(1.0, 0.82, 0.22, 0.9)
+	pill_style.border_width_left = 2
+	pill_style.border_width_top = 2
+	pill_style.border_width_right = 2
+	pill_style.border_width_bottom = 2
+	pill_style.set_corner_radius_all(14)
+	pill_style.content_margin_left = 12
+	pill_style.content_margin_right = 12
+	pill_style.content_margin_top = 8
+	pill_style.content_margin_bottom = 8
+	mult_pill.add_theme_stylebox_override("panel", pill_style)
+	
+	var mult_val: float = dish_info.get("multiplier", 1.0)
+	var mult_lbl = Label.new()
+	mult_lbl.name = "MultiplierLabel"
+	mult_lbl.text = "🔥 x%.1f Base Selling Multiplier! 🔥" % mult_val
+	mult_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mult_lbl.add_theme_font_size_override("font_size", 14)
+	mult_lbl.add_theme_color_override("font_color", Color(1.0, 0.86, 0.28, 1.0))
+	mult_pill.add_child(mult_lbl)
+	vbox.add_child(mult_pill)
+
+	# Green "CLAIM +25 DIAMONDS" Button
+	var claim_btn = Button.new()
+	claim_btn.name = "ClaimRewardBtn"
+	claim_btn.text = "💎 CLAIM +25 DIAMONDS 💎"
+	claim_btn.custom_minimum_size = Vector2(0, 46)
+	
+	var btn_style = StyleBoxFlat.new()
+	btn_style.bg_color = Color(0.12, 0.68, 0.32, 1.0)
+	btn_style.set_corner_radius_all(16)
+	btn_style.border_width_bottom = 4
+	btn_style.border_color = Color(0.06, 0.42, 0.18, 1.0)
+	claim_btn.add_theme_stylebox_override("normal", btn_style)
+	
+	var btn_hover = btn_style.duplicate()
+	btn_hover.bg_color = Color(0.16, 0.76, 0.38, 1.0)
+	claim_btn.add_theme_stylebox_override("hover", btn_hover)
+	
+	var btn_pressed = btn_style.duplicate()
+	btn_pressed.border_width_bottom = 0
+	claim_btn.add_theme_stylebox_override("pressed", btn_pressed)
+	
+	claim_btn.add_theme_font_size_override("font_size", 15)
+	claim_btn.add_theme_color_override("font_color", Color.WHITE)
+	vbox.add_child(claim_btn)
+
+	var dismiss_action = func():
+		if is_instance_valid(modal_root):
+			var tw_close = modal_root.create_tween()
+			tw_close.tween_property(card_panel, "scale", Vector2(0.3, 0.3), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+			tw_close.parallel().tween_property(modal_root, "modulate:a", 0.0, 0.2)
+			tw_close.tween_callback(func():
+				if is_instance_valid(modal_root):
+					modal_root.queue_free()
+				star_dish_unlock_modal = null
+			)
+
+	claim_btn.pressed.connect(func():
+		if gm != null:
+			if gm.has_method("claim_star_dish_reward"):
+				gm.claim_star_dish_reward(star_tier)
+			else:
+				gm.add_gems(25)
+		dismiss_action.call()
+	)
+
+	close_btn.pressed.connect(dismiss_action)
+
+	hud_node.add_child(modal_root)
+
+	# Scale-in Elastic Entrance
+	card_panel.pivot_offset = card_panel.custom_minimum_size * 0.5
+	card_panel.scale = Vector2(0.2, 0.2)
+	modal_root.modulate.a = 0.0
+	
+	var in_tw = modal_root.create_tween()
+	in_tw.tween_property(modal_root, "modulate:a", 1.0, 0.15)
+	in_tw.parallel().tween_property(card_panel, "scale", Vector2.ONE, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.0, 4.0)
 
 # ─── Michelin Critic & VIP Arrival Toast Banner ──────────────────────────────
 func _on_vip_arrived(vip_node: Node3D, title: String, type: String, duration: float) -> void:

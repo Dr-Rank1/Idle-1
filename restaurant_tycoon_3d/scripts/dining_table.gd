@@ -1405,6 +1405,10 @@ func occupy(customer: Node) -> Vector3:
 
 const DISH_SCENES: Dictionary = {
 	"burger": "res://assets/models/food/burger-cheese.glb",
+	"sundae": "res://assets/models/food/sundae.glb",
+	"steak_platter": "res://assets/models/food/meat-cooked.glb",
+	"cocktail_tapas": "res://assets/models/food/cocktail.glb",
+	"michelin_feast": "res://assets/models/food/fish.glb",
 	"pasta": "res://assets/models/food/bowl-broth.glb",
 	"pizza": "res://assets/models/food/pizza.glb",
 	"sushi": "res://assets/models/food/sushi-salmon.glb"
@@ -1423,13 +1427,20 @@ func serve_food(dish_id: String = "burger") -> void:
 func _setup_dish_model(dish_id: String) -> void:
 	if food_dish == null:
 		return
-	var scn_path = DISH_SCENES.get(dish_id, DISH_SCENES["burger"])
 	for c in food_dish.get_children():
 		c.queue_free()
-	var scn = load(scn_path)
-	if scn:
-		var node = scn.instantiate()
-		food_dish.add_child(node)
+	var cook_script = load("res://scripts/cooking_station.gd")
+	var dish_node: Node3D = null
+	if cook_script != null and cook_script.has_method("create_dish_3d_model"):
+		dish_node = cook_script.create_dish_3d_model(dish_id)
+	if dish_node != null:
+		food_dish.add_child(dish_node)
+	else:
+		var scn_path = DISH_SCENES.get(dish_id, DISH_SCENES["burger"])
+		var scn = load(scn_path)
+		if scn:
+			var node = scn.instantiate()
+			food_dish.add_child(node)
 
 func clear_food() -> void:
 	if food_dish != null:

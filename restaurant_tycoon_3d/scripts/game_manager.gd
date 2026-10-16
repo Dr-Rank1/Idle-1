@@ -52,6 +52,7 @@ signal manager_skill_activated(sector_id: String)
 signal manager_skill_ended(sector_id: String)
 signal manager_skill_ready(sector_id: String)
 signal manager_assigned(sector_id: String, tier: String)
+signal star_dish_unlocked(star_tier: int, dish_info: Dictionary)
 
 var restaurant_node: Node3D = null
 
@@ -154,6 +155,76 @@ var boost_timer: float = 0.0
 var boost_multiplier: float = 2.0
 var is_manager_inspection_active: bool = false
 var daily_gift_claimed: bool = false
+var unlocked_star_tiers: Array = [1]
+var claimed_star_rewards: Array = []
+
+# ─── Play Store Star Rating Signature Dishes ────────────────────────────────
+const STAR_DISH_TIERS: Dictionary = {
+	1: {
+		"id": "burger",
+		"star": 1,
+		"name": "Classic Diner Burger & Fries",
+		"icon": "🍔",
+		"price": 45.0,
+		"multiplier": 1.0,
+		"models": ["res://assets/models/food/burger.glb", "res://assets/models/food/fries.glb"],
+		"primary_model": "res://assets/models/food/burger-cheese.glb",
+		"desc": "Crispy golden french fries paired with a fire-grilled beef patty on toasted brioche."
+	},
+	2: {
+		"id": "sundae",
+		"star": 2,
+		"name": "Retro Strawberry Sundae & Frappe",
+		"icon": "🍨",
+		"price": 120.0,
+		"multiplier": 2.5,
+		"models": ["res://assets/models/food/sundae.glb", "res://assets/models/food/frappe.glb"],
+		"primary_model": "res://assets/models/food/sundae.glb",
+		"desc": "Double strawberry sundae with whipped cream, cherry, and an icy retro diner frappe."
+	},
+	3: {
+		"id": "steak_platter",
+		"star": 3,
+		"name": "Double Cheese Steak Platter",
+		"icon": "🥩",
+		"price": 280.0,
+		"multiplier": 4.0,
+		"models": ["res://assets/models/food/meat-cooked.glb", "res://assets/models/food/cheese.glb"],
+		"primary_model": "res://assets/models/food/meat-cooked.glb",
+		"desc": "Thick sizzling seared ribeye platter smothered in melted double Wisconsin cheddar."
+	},
+	4: {
+		"id": "cocktail_tapas",
+		"star": 4,
+		"name": "Artisan Cocktail & Tapas Combo",
+		"icon": "🍸",
+		"price": 650.0,
+		"multiplier": 6.5,
+		"models": ["res://assets/models/food/cocktail.glb", "res://assets/models/food/taco.glb"],
+		"primary_model": "res://assets/models/food/cocktail.glb",
+		"desc": "Handcrafted botanical cocktail paired with crunchy artisan tapas bites."
+	},
+	5: {
+		"id": "michelin_feast",
+		"star": 5,
+		"name": "Golden Michelin Lobster & Ribeye Feast",
+		"icon": "🦞",
+		"price": 1500.0,
+		"multiplier": 10.0,
+		"models": ["res://assets/models/food/fish.glb", "res://assets/models/food/meat-ribs.glb"],
+		"primary_model": "res://assets/models/food/fish.glb",
+		"desc": "Supreme 5-star Michelin feast: butter-poached lobster and 24k gold ribeye."
+	}
+}
+
+const STAR_THRESHOLDS: Dictionary = {
+	1: 1,
+	2: 3,
+	3: 6,
+	4: 10,
+	5: 15
+}
+
 var marketing_level: int = 1
 const MARKETING_MAX_LEVEL: int = 25
 var vip_revenue_multiplier_timer: float = 0.0
@@ -596,18 +667,66 @@ var max_level: int = 50
 var menu_items: Dictionary = {
 	"burger": {
 		"id": "burger",
-		"name": "Classic Bistro Burger",
+		"star": 1,
+		"name": "Classic Diner Burger & Fries",
 		"icon": "🍔",
 		"price": 45.0,
+		"multiplier": 1.0,
 		"unlocked": true,
 		"unlock_cost": 0.0,
-		"desc": "Juicy grilled beef patty with aged cheddar & toasted brioche"
+		"desc": "Crispy seasoned golden fries paired with a fire-grilled beef patty on toasted brioche."
 	},
+	"sundae": {
+		"id": "sundae",
+		"star": 2,
+		"name": "Retro Strawberry Sundae & Frappe",
+		"icon": "🍨",
+		"price": 120.0,
+		"multiplier": 2.5,
+		"unlocked": false,
+		"unlock_cost": 250.0,
+		"desc": "Double strawberry sundae with whipped cream, cherry, and an icy retro diner frappe."
+	},
+	"steak_platter": {
+		"id": "steak_platter",
+		"star": 3,
+		"name": "Double Cheese Steak Platter",
+		"icon": "🥩",
+		"price": 280.0,
+		"multiplier": 4.0,
+		"unlocked": false,
+		"unlock_cost": 600.0,
+		"desc": "Thick sizzling seared ribeye platter smothered in melted double Wisconsin cheddar."
+	},
+	"cocktail_tapas": {
+		"id": "cocktail_tapas",
+		"star": 4,
+		"name": "Artisan Cocktail & Tapas Combo",
+		"icon": "🍸",
+		"price": 650.0,
+		"multiplier": 6.5,
+		"unlocked": false,
+		"unlock_cost": 1500.0,
+		"desc": "Handcrafted botanical cocktail paired with crunchy artisan tapas bites."
+	},
+	"michelin_feast": {
+		"id": "michelin_feast",
+		"star": 5,
+		"name": "Golden Michelin Lobster & Ribeye Feast",
+		"icon": "🦞",
+		"price": 1500.0,
+		"multiplier": 10.0,
+		"unlocked": false,
+		"unlock_cost": 4000.0,
+		"desc": "Supreme 5-star Michelin feast: butter-poached lobster and 24k gold ribeye."
+	},
+	# Aliases & secondary menu items for variety
 	"pasta": {
 		"id": "pasta",
 		"name": "Truffle Tagliatelle",
 		"icon": "🍝",
 		"price": 115.0,
+		"multiplier": 1.5,
 		"unlocked": false,
 		"unlock_cost": 180.0,
 		"desc": "Handmade ribbon pasta with shaved black winter truffles & parmesan"
@@ -617,6 +736,7 @@ var menu_items: Dictionary = {
 		"name": "Wood-Fired Margherita",
 		"icon": "🍕",
 		"price": 240.0,
+		"multiplier": 2.0,
 		"unlocked": false,
 		"unlock_cost": 420.0,
 		"desc": "Crispy bubbly crust with San Marzano tomatoes, fresh mozzarella & basil"
@@ -626,6 +746,7 @@ var menu_items: Dictionary = {
 		"name": "Deluxe Dragon Roll",
 		"icon": "🍣",
 		"price": 480.0,
+		"multiplier": 3.0,
 		"unlocked": false,
 		"unlock_cost": 850.0,
 		"desc": "Premium grilled eel, avocado, tobiko, and fresh Atlantic salmon"
@@ -635,6 +756,7 @@ var menu_items: Dictionary = {
 		"name": "Wagyu Bistro Ribeye",
 		"icon": "🥩",
 		"price": 750.0,
+		"multiplier": 4.5,
 		"unlocked": false,
 		"unlock_cost": 2200.0,
 		"desc": "A5 Japanese Wagyu steak seared on high-heat lava rock with herb butter"
@@ -644,6 +766,7 @@ var menu_items: Dictionary = {
 		"name": "Molten Gold Lava Cake",
 		"icon": "🍰",
 		"price": 1200.0,
+		"multiplier": 5.0,
 		"unlocked": false,
 		"unlock_cost": 5000.0,
 		"desc": "Decadent Valrhona dark chocolate cake with warm center & 24k gold leaf"
@@ -1116,6 +1239,7 @@ var autosave_timer: float = 0.0
 
 func _ready() -> void:
 	load_game()
+	check_star_dish_unlocks(false)
 	if preview_all_max_levels:
 		set_all_stations_max_level(true)
 	level_updated.emit(restaurant_level, restaurant_xp, xp_to_next_level)
@@ -1171,6 +1295,8 @@ func save_game() -> void:
 		},
 		"prestige_level": prestige_level,
 		"franchise_keys": franchise_keys,
+		"unlocked_star_tiers": unlocked_star_tiers,
+		"claimed_star_rewards": claimed_star_rewards,
 		"restaurant_valuation": get_restaurant_valuation(),
 		"saved_timestamp": Time.get_unix_time_from_system()
 	}
@@ -1306,6 +1432,17 @@ func load_game() -> void:
 		boost_timer = float(parsed["boost_timer"])
 	if parsed.has("boost_multiplier"):
 		boost_multiplier = float(parsed["boost_multiplier"])
+
+	if parsed.has("unlocked_star_tiers") and typeof(parsed["unlocked_star_tiers"]) == TYPE_ARRAY:
+		unlocked_star_tiers = []
+		for t in parsed["unlocked_star_tiers"]:
+			unlocked_star_tiers.append(int(t))
+		if not unlocked_star_tiers.has(1):
+			unlocked_star_tiers.append(1)
+	if parsed.has("claimed_star_rewards") and typeof(parsed["claimed_star_rewards"]) == TYPE_ARRAY:
+		claimed_star_rewards = []
+		for t in parsed["claimed_star_rewards"]:
+			claimed_star_rewards.append(int(t))
 
 	currencies_updated.emit(cash, golden_coins, diamonds, energy)
 	cash_changed.emit(cash)
@@ -1675,6 +1812,7 @@ func buy_shop_item(item_id: String) -> bool:
 
 func add_xp(amount: float) -> void:
 	restaurant_xp += amount
+	var leveled_up: bool = false
 	while restaurant_xp >= xp_to_next_level:
 		restaurant_xp -= xp_to_next_level
 		restaurant_level += 1
@@ -1682,9 +1820,12 @@ func add_xp(amount: float) -> void:
 		star_rating = min(5.0, star_rating + 0.05)
 		reputation_changed.emit(round(star_rating * 10))
 		add_gems(5)
+		leveled_up = true
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
 			am.play_sfx("upgrade", 0.0, 3.5)
+	if leveled_up:
+		check_star_dish_unlocks(true)
 	level_updated.emit(restaurant_level, restaurant_xp, xp_to_next_level)
 
 # ─── Multiplier Station Upgrades ────────────────────────────────────────────
@@ -1861,6 +2002,12 @@ func set_all_stations_max_level(enable: bool = true) -> void:
 		unlocked_tables["table_11"] = true
 		unlocked_tables["table_12"] = true
 		unlocked_stalls = 5
+		for tier in [1, 2, 3, 4, 5]:
+			if not unlocked_star_tiers.has(tier):
+				unlocked_star_tiers.append(tier)
+			var dish_id = STAR_DISH_TIERS[tier]["id"]
+			if menu_items.has(dish_id):
+				menu_items[dish_id]["unlocked"] = true
 	save_game()
 
 func is_table_unlocked(table_id: String) -> bool:
@@ -2103,6 +2250,11 @@ func unlock_dish(dish_id: String) -> bool:
 	var cost = item.get("unlock_cost", 100.0)
 	if spend_cash(cost):
 		item["unlocked"] = true
+		for tier in STAR_DISH_TIERS.keys():
+			if STAR_DISH_TIERS[tier].get("id") == dish_id:
+				if not unlocked_star_tiers.has(tier):
+					unlocked_star_tiers.append(tier)
+				break
 		add_xp(cost * 0.35)
 		_progress_quest("unlock_recipe", 1)
 		menu_updated.emit()
@@ -2112,6 +2264,76 @@ func unlock_dish(dish_id: String) -> bool:
 			am.play_sfx("upgrade", 0.0, 3.0)
 		return true
 	return false
+
+# ─── Play Store Star Rating Dish Unlocks ────────────────────────────────────
+func get_star_dish(star_tier: int) -> Dictionary:
+	return STAR_DISH_TIERS.get(star_tier, {})
+
+func get_all_star_dishes() -> Array:
+	var list: Array = []
+	for tier in [1, 2, 3, 4, 5]:
+		if STAR_DISH_TIERS.has(tier):
+			list.append(STAR_DISH_TIERS[tier])
+	return list
+
+func is_star_dish_unlocked(star_tier: int) -> bool:
+	return unlocked_star_tiers.has(star_tier)
+
+func get_current_star_tier() -> int:
+	var max_unlocked = 1
+	for tier in unlocked_star_tiers:
+		if tier > max_unlocked:
+			max_unlocked = tier
+	return max_unlocked
+
+func unlock_star_dish(star_tier: int, show_celebration: bool = true) -> bool:
+	if not STAR_DISH_TIERS.has(star_tier):
+		return false
+	if not unlocked_star_tiers.has(star_tier):
+		unlocked_star_tiers.append(star_tier)
+	var dish_info = STAR_DISH_TIERS[star_tier]
+	var dish_id = dish_info.get("id", "")
+	if menu_items.has(dish_id):
+		menu_items[dish_id]["unlocked"] = true
+	save_game()
+	menu_updated.emit()
+	if show_celebration:
+		star_dish_unlocked.emit(star_tier, dish_info)
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.0, 3.5)
+	return true
+
+func check_star_dish_unlocks(show_celebration: bool = true) -> void:
+	for tier in [1, 2, 3, 4, 5]:
+		var required_level = STAR_THRESHOLDS.get(tier, 1)
+		if restaurant_level >= required_level:
+			if not unlocked_star_tiers.has(tier):
+				unlock_star_dish(tier, show_celebration)
+			else:
+				var dish_id = STAR_DISH_TIERS[tier].get("id", "")
+				if menu_items.has(dish_id) and not menu_items[dish_id].get("unlocked", false):
+					menu_items[dish_id]["unlocked"] = true
+
+func claim_star_dish_reward(star_tier: int) -> bool:
+	if not unlocked_star_tiers.has(star_tier):
+		return false
+	if claimed_star_rewards.has(star_tier):
+		return false
+	claimed_star_rewards.append(star_tier)
+	add_gems(25) # +25 DIAMONDS
+	save_game()
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("coin", 0.0, 2.0)
+	return true
+
+func is_star_reward_claimed(star_tier: int) -> bool:
+	return claimed_star_rewards.has(star_tier)
+
+func preview_star_dish_celebration(star_tier: int) -> void:
+	if STAR_DISH_TIERS.has(star_tier):
+		star_dish_unlocked.emit(star_tier, STAR_DISH_TIERS[star_tier])
 
 # ─── Staff Methods ──────────────────────────────────────────────────────────
 func is_staff_hired(staff_id: String) -> bool:

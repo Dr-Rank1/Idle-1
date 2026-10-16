@@ -791,11 +791,12 @@ func _on_timer_complete() -> void:
 			_play_anim("emote-yes")
 			var gm = get_node_or_null("/root/GameManager")
 			var dish_price: float = ordered_dish.get("price", 45.0)
+			var dish_tier_mult: float = ordered_dish.get("multiplier", 1.0)
 			var table_bonus: float = gm.get_station_income(assigned_table_id) if gm != null else 0.0
 			var price_mult: float = 1.0
 			if gm != null and gm.has_method("get_dish_price_multiplier"):
 				price_mult = gm.get_dish_price_multiplier()
-			var total_revenue: float = (dish_price * price_mult) + table_bonus
+			var total_revenue: float = (dish_price * dish_tier_mult * price_mult) + table_bonus
 			var form_rev = gm.format_money(total_revenue) if gm != null and gm.has_method("format_money") else ("$%d" % round(total_revenue))
 			set_bubble_text("💵 +" + form_rev)
 			
