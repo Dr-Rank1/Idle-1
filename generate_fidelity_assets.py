@@ -6,12 +6,12 @@ import math
 OUT_DIR = "restaurant_tycoon_3d/assets/textures"
 os.makedirs(OUT_DIR, exist_ok=True)
 
-# 1. Circular Bubble: Fork & Knife (Dining order ready / eating, 1:1 with crop_dining_08s.jpg)
+# 1. Circular Bubble: Fork & Knife (Dining order ready / eating, 1:1 with mobile casual finish)
 def create_bubble_fork_knife():
     size = 256
     img = np.zeros((size, size, 4), dtype=np.uint8)
-    cx, cy = 128, 114
-    r = 92
+    cx, cy = 128, 110
+    r = 86
     ang1, ang2 = 128, 82
 
     rad1 = math.radians(ang1)
@@ -19,63 +19,78 @@ def create_bubble_fork_knife():
 
     p1 = (int(round(cx + r * math.cos(rad1))), int(round(cy + r * math.sin(rad1))))
     p2 = (int(round(cx + r * math.cos(rad2))), int(round(cy + r * math.sin(rad2))))
-    p_tip = (54, 234)
+    p_tip = (54, 226)
 
-    # Combined mask
-    mask = np.zeros((size, size), dtype=np.uint8)
-    cv2.circle(mask, (cx, cy), r, 255, -1)
+    # 1. Base silhouette mask
+    base_mask = np.zeros((size, size), dtype=np.uint8)
+    cv2.circle(base_mask, (cx, cy), r, 255, -1)
     tail_pts = np.array([p1, p_tip, p2], np.int32)
-    cv2.fillConvexPoly(mask, tail_pts, 255)
+    cv2.fillConvexPoly(base_mask, tail_pts, 255)
 
-    # Soft shadow
-    s_off = (3, 7)
-    shadow_mask = np.zeros((size, size), dtype=np.uint8)
-    cv2.circle(shadow_mask, (cx + s_off[0], cy + s_off[1]), r, 255, -1)
-    s_pts = np.array([(p1[0]+s_off[0], p1[1]+s_off[1]), (p_tip[0]+s_off[0], p_tip[1]+s_off[1]), (p2[0]+s_off[0], p2[1]+s_off[1])], np.int32)
-    cv2.fillConvexPoly(shadow_mask, s_pts, 255)
-    img[shadow_mask > 0] = (0, 0, 0, 75)
+    # 2. Bold drop shadow with Gaussian blur (stands out sharply against checkerboard floor)
+    s_off = (5, 11)
+    shadow_raw = np.zeros((size, size), dtype=np.float32)
+    cv2.circle(shadow_raw, (cx + s_off[0], cy + s_off[1]), r + 3, 1.0, -1)
+    s_pts = np.array([(p1[0] + s_off[0], p1[1] + s_off[1]),
+                     (p_tip[0] + s_off[0], p_tip[1] + s_off[1]),
+                     (p2[0] + s_off[0], p2[1] + s_off[1])], np.int32)
+    cv2.fillConvexPoly(shadow_raw, s_pts, 1.0)
+    shadow_blurred = cv2.GaussianBlur(shadow_raw, (17, 17), 5.5)
 
-    # White bubble fill
-    img[mask > 0] = (255, 255, 255, 255)
+    shadow_alpha = np.clip(shadow_blurred * 175.0, 0, 255).astype(np.uint8)
+    img[:, :, 0] = 12
+    img[:, :, 1] = 12
+    img[:, :, 2] = 16
+    img[:, :, 3] = shadow_alpha
 
-    # Border rim
-    border_col = (80, 95, 110, 255)
-    inner_rim_col = (220, 228, 236, 255)
+    # 3. Thick 8px white outer ring / boundary
+    kernel_8px = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+    outer_white_mask = cv2.dilate(base_mask, kernel_8px)
+    img[outer_white_mask > 0] = (255, 255, 255, 255)
 
-    cv2.ellipse(img, (cx, cy), (r, r), 0, ang1, 360 + ang2, inner_rim_col, 5)
-    cv2.ellipse(img, (cx, cy), (r, r), 0, ang1, 360 + ang2, border_col, 2)
-    cv2.line(img, p1, p_tip, border_col, 2, cv2.LINE_AA)
-    cv2.line(img, p_tip, p2, border_col, 2, cv2.LINE_AA)
+    # 4. Bubble interior & contrasting 2px slate border inside the 8px white outer ring
+    border_col = (75, 88, 104, 255)
+    inner_rim_col = (228, 235, 242, 255)
+
+    cv2.ellipse(img, (cx, cy), (r - 4, r - 4), 0, ang1, 360 + ang2, inner_rim_col, 4, cv2.LINE_AA)
+    cv2.ellipse(img, (cx, cy), (r - 4, r - 4), 0, ang1, 360 + ang2, border_col, 2, cv2.LINE_AA)
+    cv2.line(img, (int(round(cx + (r - 4) * math.cos(rad1))), int(round(cy + (r - 4) * math.sin(rad1)))), (p_tip[0] + 4, p_tip[1] - 6), border_col, 2, cv2.LINE_AA)
+    cv2.line(img, (p_tip[0] + 4, p_tip[1] - 6), (int(round(cx + (r - 4) * math.cos(rad2))), int(round(cy + (r - 4) * math.sin(rad2)))), border_col, 2, cv2.LINE_AA)
+
+    # Thick 8px pure white outer ring around the perimeter
+    cv2.ellipse(img, (cx, cy), (r, r), 0, ang1, 360 + ang2, (255, 255, 255, 255), 8, cv2.LINE_AA)
+    cv2.line(img, p1, p_tip, (255, 255, 255, 255), 8, cv2.LINE_AA)
+    cv2.line(img, p_tip, p2, (255, 255, 255, 255), 8, cv2.LINE_AA)
 
     # Fork on left (charcoal/dark slate grey matching reference)
-    icon_color = (65, 70, 75, 255)
+    icon_color = (48, 54, 62, 255)
     # Handle
-    cv2.line(img, (96, 170), (96, 110), icon_color, 7)
-    cv2.circle(img, (96, 170), 5, icon_color, -1)
+    cv2.line(img, (96, 166), (96, 108), icon_color, 7, cv2.LINE_AA)
+    cv2.circle(img, (96, 166), 5, icon_color, -1, cv2.LINE_AA)
     # Tines base
-    cv2.ellipse(img, (96, 110), (16, 11), 0, 0, 180, icon_color, -1)
+    cv2.ellipse(img, (96, 108), (16, 11), 0, 0, 180, icon_color, -1, cv2.LINE_AA)
     # 3 Tines
     for tx in [84, 96, 108]:
-        cv2.line(img, (tx, 110), (tx, 74), icon_color, 4)
+        cv2.line(img, (tx, 108), (tx, 72), icon_color, 4, cv2.LINE_AA)
 
     # Knife on right (charcoal/dark slate grey)
     # Handle
-    cv2.line(img, (158, 170), (158, 116), icon_color, 7)
-    cv2.circle(img, (158, 170), 5, icon_color, -1)
+    cv2.line(img, (158, 166), (158, 114), icon_color, 7, cv2.LINE_AA)
+    cv2.circle(img, (158, 166), 5, icon_color, -1, cv2.LINE_AA)
     # Blade
-    pts = np.array([[155, 116], [162, 116], [166, 74], [155, 74]], np.int32)
+    pts = np.array([[155, 114], [162, 114], [166, 72], [155, 72]], np.int32)
     cv2.fillConvexPoly(img, pts, icon_color)
-    cv2.ellipse(img, (160, 74), (6, 9), 0, 180, 360, icon_color, -1)
+    cv2.ellipse(img, (160, 72), (6, 9), 0, 180, 360, icon_color, -1, cv2.LINE_AA)
 
     cv2.imwrite(os.path.join(OUT_DIR, "bubble_fork_knife.png"), img)
     print("Created bubble_fork_knife.png")
 
-# 2. Circular Bubble: Hourglass (Waiting for food / service, 1:1 with crop_dining_08s.jpg)
+# 2. Circular Bubble: Hourglass (Waiting for food / service, 1:1 with mobile casual finish)
 def create_bubble_hourglass():
     size = 256
     img = np.zeros((size, size, 4), dtype=np.uint8)
-    cx, cy = 128, 114
-    r = 92
+    cx, cy = 128, 110
+    r = 86
     ang1, ang2 = 128, 82
 
     rad1 = math.radians(ang1)
@@ -83,54 +98,69 @@ def create_bubble_hourglass():
 
     p1 = (int(round(cx + r * math.cos(rad1))), int(round(cy + r * math.sin(rad1))))
     p2 = (int(round(cx + r * math.cos(rad2))), int(round(cy + r * math.sin(rad2))))
-    p_tip = (54, 234)
+    p_tip = (54, 226)
 
-    # Combined mask
-    mask = np.zeros((size, size), dtype=np.uint8)
-    cv2.circle(mask, (cx, cy), r, 255, -1)
+    # 1. Base silhouette mask
+    base_mask = np.zeros((size, size), dtype=np.uint8)
+    cv2.circle(base_mask, (cx, cy), r, 255, -1)
     tail_pts = np.array([p1, p_tip, p2], np.int32)
-    cv2.fillConvexPoly(mask, tail_pts, 255)
+    cv2.fillConvexPoly(base_mask, tail_pts, 255)
 
-    # Soft shadow
-    s_off = (3, 7)
-    shadow_mask = np.zeros((size, size), dtype=np.uint8)
-    cv2.circle(shadow_mask, (cx + s_off[0], cy + s_off[1]), r, 255, -1)
-    s_pts = np.array([(p1[0]+s_off[0], p1[1]+s_off[1]), (p_tip[0]+s_off[0], p_tip[1]+s_off[1]), (p2[0]+s_off[0], p2[1]+s_off[1])], np.int32)
-    cv2.fillConvexPoly(shadow_mask, s_pts, 255)
-    img[shadow_mask > 0] = (0, 0, 0, 75)
+    # 2. Bold drop shadow with Gaussian blur
+    s_off = (5, 11)
+    shadow_raw = np.zeros((size, size), dtype=np.float32)
+    cv2.circle(shadow_raw, (cx + s_off[0], cy + s_off[1]), r + 3, 1.0, -1)
+    s_pts = np.array([(p1[0] + s_off[0], p1[1] + s_off[1]),
+                     (p_tip[0] + s_off[0], p_tip[1] + s_off[1]),
+                     (p2[0] + s_off[0], p2[1] + s_off[1])], np.int32)
+    cv2.fillConvexPoly(shadow_raw, s_pts, 1.0)
+    shadow_blurred = cv2.GaussianBlur(shadow_raw, (17, 17), 5.5)
 
-    # White bubble fill
-    img[mask > 0] = (255, 255, 255, 255)
+    shadow_alpha = np.clip(shadow_blurred * 175.0, 0, 255).astype(np.uint8)
+    img[:, :, 0] = 12
+    img[:, :, 1] = 12
+    img[:, :, 2] = 16
+    img[:, :, 3] = shadow_alpha
 
-    # Border rim
-    border_col = (80, 95, 110, 255)
-    inner_rim_col = (220, 228, 236, 255)
+    # 3. Thick 8px white outer ring / boundary
+    kernel_8px = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+    outer_white_mask = cv2.dilate(base_mask, kernel_8px)
+    img[outer_white_mask > 0] = (255, 255, 255, 255)
 
-    cv2.ellipse(img, (cx, cy), (r, r), 0, ang1, 360 + ang2, inner_rim_col, 5)
-    cv2.ellipse(img, (cx, cy), (r, r), 0, ang1, 360 + ang2, border_col, 2)
-    cv2.line(img, p1, p_tip, border_col, 2, cv2.LINE_AA)
-    cv2.line(img, p_tip, p2, border_col, 2, cv2.LINE_AA)
+    # 4. Bubble interior & contrasting 2px slate border inside the 8px white outer ring
+    border_col = (75, 88, 104, 255)
+    inner_rim_col = (228, 235, 242, 255)
+
+    cv2.ellipse(img, (cx, cy), (r - 4, r - 4), 0, ang1, 360 + ang2, inner_rim_col, 4, cv2.LINE_AA)
+    cv2.ellipse(img, (cx, cy), (r - 4, r - 4), 0, ang1, 360 + ang2, border_col, 2, cv2.LINE_AA)
+    cv2.line(img, (int(round(cx + (r - 4) * math.cos(rad1))), int(round(cy + (r - 4) * math.sin(rad1)))), (p_tip[0] + 4, p_tip[1] - 6), border_col, 2, cv2.LINE_AA)
+    cv2.line(img, (p_tip[0] + 4, p_tip[1] - 6), (int(round(cx + (r - 4) * math.cos(rad2))), int(round(cy + (r - 4) * math.sin(rad2)))), border_col, 2, cv2.LINE_AA)
+
+    # Thick 8px pure white outer ring around the perimeter
+    cv2.ellipse(img, (cx, cy), (r, r), 0, ang1, 360 + ang2, (255, 255, 255, 255), 8, cv2.LINE_AA)
+    cv2.line(img, p1, p_tip, (255, 255, 255, 255), 8, cv2.LINE_AA)
+    cv2.line(img, p_tip, p2, (255, 255, 255, 255), 8, cv2.LINE_AA)
 
     # Hourglass Frame (Warm mahogany/brass wood)
     frame_color = (35, 75, 155, 255)
-    cv2.rectangle(img, (84, 66), (172, 78), frame_color, -1)
-    cv2.rectangle(img, (84, 160), (172, 172), frame_color, -1)
+    cv2.rectangle(img, (84, 62), (172, 74), frame_color, -1)
+    cv2.rectangle(img, (84, 156), (172, 168), frame_color, -1)
     
     # Glass Bulbs
     glass_color = (248, 242, 230, 220)
-    top_glass = np.array([[94, 78], [162, 78], [134, 118], [122, 118]], np.int32)
-    bot_glass = np.array([[122, 118], [134, 118], [162, 160], [94, 160]], np.int32)
+    top_glass = np.array([[94, 74], [162, 74], [134, 114], [122, 114]], np.int32)
+    bot_glass = np.array([[122, 114], [134, 114], [162, 156], [94, 156]], np.int32)
     cv2.fillConvexPoly(img, top_glass, glass_color)
     cv2.fillConvexPoly(img, bot_glass, glass_color)
 
     # Golden-Yellow Sand
     sand_color = (25, 185, 245, 255)
-    top_sand = np.array([[104, 96], [152, 96], [132, 118], [124, 118]], np.int32)
+    top_sand = np.array([[104, 92], [152, 92], [132, 114], [124, 114]], np.int32)
     cv2.fillConvexPoly(img, top_sand, sand_color)
     # Stream
-    cv2.line(img, (128, 116), (128, 140), sand_color, 3)
+    cv2.line(img, (128, 112), (128, 136), sand_color, 3)
     # Bottom sand pile
-    bot_sand = np.array([[102, 160], [154, 160], [140, 136], [116, 136]], np.int32)
+    bot_sand = np.array([[102, 156], [154, 156], [140, 132], [116, 132]], np.int32)
     cv2.fillConvexPoly(img, bot_sand, sand_color)
 
     # Glass outline
@@ -140,7 +170,7 @@ def create_bubble_hourglass():
     cv2.imwrite(os.path.join(OUT_DIR, "bubble_hourglass.png"), img)
     print("Created bubble_hourglass.png")
 
-# 3. Floating Green Cash Stack Graphic (1:1 with crop_dining_08s.jpg)
+# 3. Floating Green Cash Stack Graphic (High-contrast mobile sticker finish)
 def create_floating_cash_badge():
     w, h = 320, 200
     canvas = np.zeros((h, w, 4), dtype=np.uint8)
@@ -148,22 +178,40 @@ def create_floating_cash_badge():
     center = (w // 2, h // 2)
     angle = -12.0
 
-    bw, bh = 240, 110
+    bw, bh = 220, 96
     bx, by = (w - bw) // 2, (h - bh) // 2
 
-    # Drop shadow
-    cv2.rectangle(canvas, (bx - 4, by + 10), (bx + bw - 4, by + bh + 10), (0, 0, 0, 85), -1)
+    # Overall mask of bills stack
+    stack_mask = np.zeros((h, w), dtype=np.uint8)
+    cv2.rectangle(stack_mask, (bx - 8, by), (bx + bw, by + bh + 8), 255, -1)
+
+    # Bold Drop Shadow with soft Gaussian blur
+    s_off = (6, 12)
+    shadow_raw = np.zeros((h, w), dtype=np.float32)
+    cv2.rectangle(shadow_raw, (bx - 8 + s_off[0], by + s_off[1]), (bx + bw + s_off[0], by + bh + 8 + s_off[1]), 1.0, -1)
+    shadow_blurred = cv2.GaussianBlur(shadow_raw, (19, 19), 6.0)
+    shadow_alpha = np.clip(shadow_blurred * 185.0, 0, 255).astype(np.uint8)
+
+    canvas[:, :, 0] = 10
+    canvas[:, :, 1] = 12
+    canvas[:, :, 2] = 14
+    canvas[:, :, 3] = shadow_alpha
+
+    # Thick 8px white outer ring / die-cut boundary around the stack
+    kernel_8px = cv2.getStructuringElement(cv2.MORPH_RECT, (17, 17))
+    outer_white_mask = cv2.dilate(stack_mask, kernel_8px)
+    canvas[outer_white_mask > 0] = (255, 255, 255, 255)
 
     # Layer 1: Bottom bill (dark green base)
-    cv2.rectangle(canvas, (bx - 8, by + 6), (bx + bw - 8, by + bh + 6), (35, 125, 50, 255), -1)
-    cv2.rectangle(canvas, (bx - 8, by + 6), (bx + bw - 8, by + bh + 6), (60, 175, 80, 255), 2)
+    cv2.rectangle(canvas, (bx - 8, by + 6), (bx + bw - 8, by + bh + 6), (32, 118, 46, 255), -1)
+    cv2.rectangle(canvas, (bx - 8, by + 6), (bx + bw - 8, by + bh + 6), (55, 168, 75, 255), 2)
 
     # Layer 2: Middle bill
-    cv2.rectangle(canvas, (bx - 4, by + 3), (bx + bw - 4, by + bh + 3), (45, 150, 65, 255), -1)
-    cv2.rectangle(canvas, (bx - 4, by + 3), (bx + bw - 4, by + bh + 3), (85, 210, 110, 255), 2)
+    cv2.rectangle(canvas, (bx - 4, by + 3), (bx + bw - 4, by + bh + 3), (42, 142, 60, 255), -1)
+    cv2.rectangle(canvas, (bx - 4, by + 3), (bx + bw - 4, by + bh + 3), (80, 202, 104, 255), 2)
 
     # Layer 3: Top crisp emerald bill
-    cv2.rectangle(canvas, (bx, by), (bx + bw, by + bh), (55, 185, 80, 255), -1)
+    cv2.rectangle(canvas, (bx, by), (bx + bw, by + bh), (52, 180, 78, 255), -1)
     cv2.rectangle(canvas, (bx + 6, by + 6), (bx + bw - 6, by + bh - 6), (195, 250, 210, 255), 3)
 
     # Center white currency oval
@@ -171,12 +219,12 @@ def create_floating_cash_badge():
     cv2.ellipse(canvas, (bx + bw // 2, by + bh // 2), (48, 34), 0, 0, 360, (195, 250, 210, 255), 2)
 
     # Currency Dollar Symbol $
-    cv2.putText(canvas, '$', (bx + bw // 2 - 14, by + bh // 2 + 16), cv2.FONT_HERSHEY_DUPLEX, 1.8, (45, 160, 65, 255), 4, cv2.LINE_AA)
+    cv2.putText(canvas, '$', (bx + bw // 2 - 14, by + bh // 2 + 16), cv2.FONT_HERSHEY_DUPLEX, 1.8, (42, 150, 62, 255), 4, cv2.LINE_AA)
 
     # Corner security dots
     for cx, cy in [(bx + 18, by + 18), (bx + bw - 18, by + 18), (bx + 18, by + bh - 18), (bx + bw - 18, by + bh - 18)]:
         cv2.circle(canvas, (cx, cy), 6, (215, 255, 225, 255), -1)
-        cv2.circle(canvas, (cx, cy), 2, (55, 185, 80, 255), -1)
+        cv2.circle(canvas, (cx, cy), 2, (52, 180, 78, 255), -1)
 
     # Rotate canvas
     M = cv2.getRotationMatrix2D(center, angle, 1.0)

@@ -158,6 +158,7 @@ func _ready() -> void:
 	_setup_active_service_sectors()
 	_setup_restroom_fidelity()
 	_setup_hostess_cash_mat()
+	_apply_toy_mobile_styling_to_node(self)
 
 
 func _setup_custom_textures() -> void:
@@ -555,15 +556,21 @@ func _setup_lounge_fidelity() -> void:
 	# Re-style the 4 round lounge tables & chairs with dark mahogany wood and padded cushions (matching crop_lounge_08s.jpg)
 	var wood_tbl_mat = StandardMaterial3D.new()
 	wood_tbl_mat.albedo_color = Color(0.24, 0.10, 0.06, 1.0)
-	wood_tbl_mat.roughness = 0.35
+	wood_tbl_mat.roughness = 0.38
+	wood_tbl_mat.rim_enabled = true
+	wood_tbl_mat.rim = 0.35
 
 	var chair_wood_mat = StandardMaterial3D.new()
 	chair_wood_mat.albedo_color = Color(0.22, 0.09, 0.05, 1.0)
-	chair_wood_mat.roughness = 0.45
+	chair_wood_mat.roughness = 0.40
+	chair_wood_mat.rim_enabled = true
+	chair_wood_mat.rim = 0.35
 
 	var red_cushion_mat = StandardMaterial3D.new()
 	red_cushion_mat.albedo_color = Color(0.72, 0.14, 0.18, 1.0)
-	red_cushion_mat.roughness = 0.5
+	red_cushion_mat.roughness = 0.40
+	red_cushion_mat.rim_enabled = true
+	red_cushion_mat.rim = 0.35
 
 	var wine_scn_tbl = load("res://assets/models/food/glass-wine.glb")
 
@@ -628,7 +635,9 @@ func _setup_milkshake_fidelity() -> void:
 	# Shared materials
 	var mint_mat = StandardMaterial3D.new()
 	mint_mat.albedo_color = Color(0.44, 0.78, 0.72, 1.0)
-	mint_mat.roughness = 0.35
+	mint_mat.roughness = 0.38
+	mint_mat.rim_enabled = true
+	mint_mat.rim = 0.35
 
 	var chrome_mat = StandardMaterial3D.new()
 	chrome_mat.albedo_color = Color(0.92, 0.94, 0.96, 1.0)
@@ -902,7 +911,9 @@ func _setup_milkshake_fidelity() -> void:
 
 	var diner_cushion_mat = StandardMaterial3D.new()
 	diner_cushion_mat.albedo_color = Color(0.44, 0.78, 0.72, 1.0)
-	diner_cushion_mat.roughness = 0.4
+	diner_cushion_mat.roughness = 0.38
+	diner_cushion_mat.rim_enabled = true
+	diner_cushion_mat.rim = 0.35
 
 	# Overhead Lamp materials
 	var cord_mat = StandardMaterial3D.new()
@@ -1564,6 +1575,7 @@ func _check_spawn_hired_staff() -> void:
 		w2.staff_name = "Sophia"
 		w2.position = Vector3(1.8, 0.0, 0.5)
 		add_child(w2)
+		_apply_toy_mobile_styling_to_node(w2)
 		waiters.append(w2)
 		
 	# Check Waiter 3 (Lucas - VIP Concierge)
@@ -1574,6 +1586,7 @@ func _check_spawn_hired_staff() -> void:
 		w3.staff_name = "Lucas"
 		w3.position = Vector3(5.2, 0.0, 0.5)
 		add_child(w3)
+		_apply_toy_mobile_styling_to_node(w3)
 		waiters.append(w3)
 
 	# Check Waiter 4 (Elena - Banquet Server)
@@ -1584,6 +1597,7 @@ func _check_spawn_hired_staff() -> void:
 		w4.staff_name = "Elena"
 		w4.position = Vector3(8.6, 0.0, 0.5)
 		add_child(w4)
+		_apply_toy_mobile_styling_to_node(w4)
 		waiters.append(w4)
 
 	# Check Sous Chef Antoine
@@ -1596,6 +1610,7 @@ func _check_spawn_hired_staff() -> void:
 			sc.rotation_degrees.y = 180.0
 			sc.set("chef_index", 1)
 			kitchen_container.add_child(sc)
+			_apply_toy_mobile_styling_to_node(sc)
 
 	# Check Pastry Chef Marcel
 	if gm.is_staff_hired("chef_pastry") and not _has_pastry_chef():
@@ -1607,6 +1622,7 @@ func _check_spawn_hired_staff() -> void:
 			pc.rotation_degrees.y = 180.0
 			pc.set("chef_index", 3)
 			kitchen_container.add_child(pc)
+			_apply_toy_mobile_styling_to_node(pc)
 
 	# Check Floor Manager Arthur
 	if gm.is_staff_hired("manager") and not _has_floor_manager():
@@ -1677,6 +1693,7 @@ func _spawn_floor_manager() -> void:
 		anim.play("idle")
 		
 	add_child(mgr)
+	_apply_toy_mobile_styling_to_node(mgr)
 	floor_manager = mgr
 
 func _spawn_janitor() -> void:
@@ -1714,6 +1731,7 @@ func _spawn_janitor() -> void:
 	jan.add_child(broom)
 	
 	add_child(jan)
+	_apply_toy_mobile_styling_to_node(jan)
 	janitor_character = jan
 
 func _start_manager_inspection_tour() -> void:
@@ -2409,6 +2427,7 @@ func _spawn_customer_flow_lounge(seat: Dictionary) -> void:
 	if customer_scene == null: return
 	var cust = customer_scene.instantiate()
 	customers_container.add_child(cust)
+	_apply_toy_mobile_styling_to_node(cust)
 	var spawn_pos: Vector3 = Vector3(-5.5, 0.0, 9.5)
 	if spawn_marker != null: spawn_pos = spawn_marker.global_position
 	cust.global_position = spawn_pos
@@ -2418,6 +2437,7 @@ func _spawn_customer_flow_diner(seat: Dictionary) -> void:
 	if customer_scene == null: return
 	var cust = customer_scene.instantiate()
 	customers_container.add_child(cust)
+	_apply_toy_mobile_styling_to_node(cust)
 	var spawn_pos: Vector3 = Vector3(-5.5, 0.0, 9.5)
 	if spawn_marker != null: spawn_pos = spawn_marker.global_position
 	cust.global_position = spawn_pos
@@ -2426,6 +2446,7 @@ func _spawn_customer_flow_diner(seat: Dictionary) -> void:
 func _spawn_waiting_customer_flow() -> void:
 	var cust = customer_scene.instantiate()
 	customers_container.add_child(cust)
+	_apply_toy_mobile_styling_to_node(cust)
 	
 	var spawn_pos: Vector3 = Vector3(-5.5, 0.0, 9.5)
 	if spawn_marker != null:
@@ -2454,6 +2475,7 @@ func _spawn_customer_flow(table: Node3D, is_critic: bool = false) -> void:
 	
 	var cust = customer_scene.instantiate()
 	customers_container.add_child(cust)
+	_apply_toy_mobile_styling_to_node(cust)
 	
 	var spawn_pos: Vector3 = Vector3(-5.5, 0.0, 9.5)
 	if spawn_marker != null:
@@ -3205,6 +3227,7 @@ func spawn_customer_from_car(car_exit_pos: Vector3) -> Node3D:
 		
 	var cust = customer_scene.instantiate()
 	customers_container.add_child(cust)
+	_apply_toy_mobile_styling_to_node(cust)
 	cust.global_position = car_exit_pos
 	
 	var crosswalk_road_pt = Vector3(car_exit_pos.x, 0.0, 16.5)
@@ -3299,7 +3322,9 @@ func _setup_courtyard_fidelity() -> void:
 
 	var warm_wood = StandardMaterial3D.new()
 	warm_wood.albedo_color = Color(0.48, 0.28, 0.16, 1.0)
-	warm_wood.roughness = 0.5
+	warm_wood.roughness = 0.40
+	warm_wood.rim_enabled = true
+	warm_wood.rim = 0.35
 
 	for b_name in ["CourtyardBenchWest", "CourtyardBenchEast"]:
 		var bench = courtyard.get_node_or_null(b_name)
@@ -3313,8 +3338,10 @@ func _setup_breakroom_fidelity() -> void:
 
 	# Red Vinyl material for L-shaped lounge sofa and armchair
 	var red_vinyl = StandardMaterial3D.new()
-	red_vinyl.albedo_color = Color(0.82, 0.16, 0.16, 1.0) # vibrant lounge red
-	red_vinyl.roughness = 0.4
+	red_vinyl.albedo_color = Color(0.85, 0.16, 0.18, 1.0) # vibrant lounge red
+	red_vinyl.roughness = 0.38
+	red_vinyl.rim_enabled = true
+	red_vinyl.rim = 0.35
 
 	for node_name in ["BreakroomSofaMain", "BreakroomSofaCorner", "BreakroomSofaSide", "BreakroomArmchair"]:
 		var sofa_node = breakroom.get_node_or_null(node_name)
@@ -3326,7 +3353,9 @@ func _setup_breakroom_fidelity() -> void:
 	if coffee_tbl != null:
 		var dark_wood = StandardMaterial3D.new()
 		dark_wood.albedo_color = Color(0.24, 0.15, 0.10, 1.0)
-		dark_wood.roughness = 0.45
+		dark_wood.roughness = 0.38
+		dark_wood.rim_enabled = true
+		dark_wood.rim = 0.35
 		_apply_material_to_node(coffee_tbl, dark_wood)
 
 func _setup_manager_office_fidelity() -> void:
@@ -3336,8 +3365,10 @@ func _setup_manager_office_fidelity() -> void:
 
 	# Two red guest chairs in front of executive desk
 	var red_vinyl = StandardMaterial3D.new()
-	red_vinyl.albedo_color = Color(0.82, 0.16, 0.16, 1.0)
-	red_vinyl.roughness = 0.4
+	red_vinyl.albedo_color = Color(0.85, 0.16, 0.18, 1.0)
+	red_vinyl.roughness = 0.38
+	red_vinyl.rim_enabled = true
+	red_vinyl.rim = 0.35
 
 	for node_name in ["GuestChairLeft", "GuestChairRight"]:
 		var chair_node = office.get_node_or_null(node_name)
@@ -3350,6 +3381,38 @@ func _apply_material_to_node(node: Node, mat: Material) -> void:
 	for child in node.get_children():
 		_apply_material_to_node(child, mat)
 
+func _apply_toy_mobile_styling_to_node(node: Node) -> void:
+	if node == null:
+		return
+	if node is MeshInstance3D:
+		var mi: MeshInstance3D = node
+		if mi.material_override != null and mi.material_override is StandardMaterial3D:
+			var mat: StandardMaterial3D = mi.material_override
+			mat.rim_enabled = true
+			mat.rim = 0.35
+			mat.roughness = clampf(mat.roughness, 0.35, 0.45)
+		elif mi.mesh != null and mi.mesh is ArrayMesh:
+			var sc = mi.mesh.get_surface_count()
+			for s in range(sc):
+				var surf_mat = mi.get_surface_override_material(s)
+				if surf_mat == null:
+					surf_mat = mi.mesh.surface_get_material(s)
+				if surf_mat != null and surf_mat is StandardMaterial3D:
+					var dup_mat = surf_mat.duplicate()
+					dup_mat.rim_enabled = true
+					dup_mat.rim = 0.35
+					dup_mat.roughness = clampf(dup_mat.roughness, 0.35, 0.45)
+					mi.set_surface_override_material(s, dup_mat)
+	elif node is CSGShape3D:
+		var csg: CSGShape3D = node
+		if csg.material != null and csg.material is StandardMaterial3D:
+			var mat: StandardMaterial3D = csg.material
+			mat.rim_enabled = true
+			mat.rim = 0.35
+			mat.roughness = clampf(mat.roughness, 0.35, 0.45)
+	for child in node.get_children():
+		_apply_toy_mobile_styling_to_node(child)
+
 func spawn_vip_investor(spawn_pos: Vector3) -> Node3D:
 	if customer_scene == null:
 		customer_scene = load("res://scenes/customer.tscn")
@@ -3358,6 +3421,7 @@ func spawn_vip_investor(spawn_pos: Vector3) -> Node3D:
 		
 	var cust = customer_scene.instantiate()
 	customers_container.add_child(cust)
+	_apply_toy_mobile_styling_to_node(cust)
 	cust.global_position = spawn_pos
 	if cust.has_method("set_as_vip_investor"):
 		cust.set_as_vip_investor(true)

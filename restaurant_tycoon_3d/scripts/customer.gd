@@ -299,6 +299,32 @@ func _setup_random_character() -> void:
 		var inst = scn.instantiate()
 		mesh_root.add_child(inst)
 		anim_player = inst.find_child("AnimationPlayer", true, false)
+		_apply_toy_mobile_styling(inst)
+
+func _apply_toy_mobile_styling(node: Node) -> void:
+	if node == null:
+		return
+	if node is MeshInstance3D:
+		var mi: MeshInstance3D = node
+		if mi.material_override != null and mi.material_override is StandardMaterial3D:
+			var mat: StandardMaterial3D = mi.material_override
+			mat.rim_enabled = true
+			mat.rim = 0.35
+			mat.roughness = clampf(mat.roughness, 0.35, 0.45)
+		elif mi.mesh != null and mi.mesh is ArrayMesh:
+			var sc = mi.mesh.get_surface_count()
+			for s in range(sc):
+				var surf_mat = mi.get_surface_override_material(s)
+				if surf_mat == null:
+					surf_mat = mi.mesh.surface_get_material(s)
+				if surf_mat != null and surf_mat is StandardMaterial3D:
+					var dup_mat = surf_mat.duplicate()
+					dup_mat.rim_enabled = true
+					dup_mat.rim = 0.35
+					dup_mat.roughness = clampf(dup_mat.roughness, 0.35, 0.45)
+					mi.set_surface_override_material(s, dup_mat)
+	for child in node.get_children():
+		_apply_toy_mobile_styling(child)
 
 func _play_anim(anim_name: String) -> void:
 	if anim_player != null and anim_player.has_animation(anim_name):

@@ -345,8 +345,10 @@ var _booth_chars_setup: bool = false
 func _setup_booth_materials() -> void:
 	# 1. Burgundy/red vinyl benches
 	var red_vinyl = StandardMaterial3D.new()
-	red_vinyl.albedo_color = Color(0.82, 0.12, 0.18)
-	red_vinyl.roughness = 0.45
+	red_vinyl.albedo_color = Color(0.85, 0.14, 0.20)
+	red_vinyl.roughness = 0.40
+	red_vinyl.rim_enabled = true
+	red_vinyl.rim = 0.35
 	
 	for path in [
 		"BoothDecor/BenchNorthSeat",
@@ -370,8 +372,10 @@ func _setup_booth_materials() -> void:
 			
 	# 3. Cyan tabletop cloth
 	var cyan_mat = StandardMaterial3D.new()
-	cyan_mat.albedo_color = Color(0.12, 0.65, 0.55)
-	cyan_mat.roughness = 0.5
+	cyan_mat.albedo_color = Color(0.14, 0.70, 0.60)
+	cyan_mat.roughness = 0.38
+	cyan_mat.rim_enabled = true
+	cyan_mat.rim = 0.35
 	var cloth_node = get_node_or_null("TableCloth")
 	if cloth_node is MeshInstance3D:
 		cloth_node.material_override = cyan_mat
@@ -467,6 +471,7 @@ func _setup_unique_booth_diners() -> void:
 			node.set_script(decor_script)
 			node.set("anim_name", "sit")
 			companion_diners.add_child(node)
+			_apply_toy_mobile_styling_to_character(node)
 			
 	var plate_scn = load("res://assets/models/food/burger-cheese.glb")
 	if plate_scn != null:
@@ -1242,14 +1247,41 @@ func _apply_tier3() -> void:
 		if f is MeshInstance3D:
 			f.material_override = fc["mat"]
 
+func _apply_toy_mobile_styling_to_character(node: Node) -> void:
+	if node == null:
+		return
+	if node is MeshInstance3D:
+		var mi: MeshInstance3D = node
+		if mi.material_override != null and mi.material_override is StandardMaterial3D:
+			var mat: StandardMaterial3D = mi.material_override
+			mat.rim_enabled = true
+			mat.rim = 0.35
+			mat.roughness = clampf(mat.roughness, 0.35, 0.45)
+		elif mi.mesh != null and mi.mesh is ArrayMesh:
+			var sc = mi.mesh.get_surface_count()
+			for s in range(sc):
+				var surf_mat = mi.get_surface_override_material(s)
+				if surf_mat == null:
+					surf_mat = mi.mesh.surface_get_material(s)
+				if surf_mat != null and surf_mat is StandardMaterial3D:
+					var dup_mat = surf_mat.duplicate()
+					dup_mat.rim_enabled = true
+					dup_mat.rim = 0.35
+					dup_mat.roughness = clampf(dup_mat.roughness, 0.35, 0.45)
+					mi.set_surface_override_material(s, dup_mat)
+	for child in node.get_children():
+		_apply_toy_mobile_styling_to_character(child)
+
 func _apply_tier_max() -> void:
 	_apply_tier3()
 	# Level 50 Max: royal crimson velvet benches + gleaming gold rim + warm overhead spot
 
 	# Crimson velvet benches
 	var velvet = StandardMaterial3D.new()
-	velvet.albedo_color = Color(0.62, 0.04, 0.12)
-	velvet.roughness = 0.82
+	velvet.albedo_color = Color(0.68, 0.06, 0.14)
+	velvet.roughness = 0.45
+	velvet.rim_enabled = true
+	velvet.rim = 0.35
 	for path in [
 		"BoothDecor/BenchNorthSeat", "BoothDecor/BenchNorthBack",
 		"BoothDecor/BenchSouthSeat", "BoothDecor/BenchSouthBack"
