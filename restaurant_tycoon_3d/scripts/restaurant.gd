@@ -19,6 +19,11 @@ var waiters: Array[Node3D] = []
 var pending_orders: Array[Node3D] = []
 var waiter_scene: PackedScene = null
 
+const CATERING_PASS_POS: Vector3 = Vector3(6.5, 0.0, -3.4)
+var catering_jobs: Array = []
+var catering_plated_at_pass: int = 0
+var catering_cook_ready: int = 0
+
 var waiting_customers: Array[Node3D] = []
 const MAX_WAITING_CUSTOMERS: int = 3
 const WAITING_SPOTS: Array[Vector3] = [
@@ -114,7 +119,18 @@ func _ready() -> void:
 			gm.rapid_sanitation_triggered.connect(_on_rapid_sanitation_triggered)
 		if gm.has_signal("station_milestone_reached"):
 			gm.station_milestone_reached.connect(_on_station_milestone_reached)
+		if gm.has_signal("franchise_prestiged"):
+			gm.franchise_prestiged.connect(_on_franchise_prestiged)
 		_check_spawn_hired_staff()
+	
+	var lot = find_child("ParkingLot", true, false)
+	if lot != null:
+		if lot.has_signal("catering_order_started"):
+			lot.catering_order_started.connect(begin_catering_order)
+		if lot.has_signal("catering_order_finished"):
+			lot.catering_order_finished.connect(func(van, _ok):
+				_clear_catering_job_for_van(van)
+			)
 	
 	if tables_container != null:
 		for table in tables_container.get_children():
@@ -1944,6 +1960,7 @@ func _process(delta: float) -> void:
 		_try_spawn_critic()
 		
 	_check_seat_waiting_customers()
+	_process_catering_fulfillment(delta)
 	_dispatch_waiter_tasks()
 	_process_lounge_bartender(delta)
 	_process_diner_barista(delta)
@@ -2179,8 +2196,130 @@ func _find_unclaimed_dirty_table(targeted: Array[Node3D]) -> Node3D:
 			return tbl
 	return null
 
+func begin_catering_order(van_node: Node3D, meals_needed: int, _time_limit: float = 45.0) -> void:
+	if van_node == null:
+		return
+	for job in catering_jobs:
+		if job.get("van") == van_node:
+			return
+	catering_jobs.append({
+		"van": van_node,
+		"needed": meals_needed,
+		"delivered": 0
+	})
+	var station = _get_cooking_station()
+	if station != null:
+		if station.has_signal("catering_meal_cooked") and not station.catering_meal_cooked.is_connected(_on_catering_meal_cooked):
+			station.catering_meal_cooked.connect(_on_catering_meal_cooked)
+		if station.has_method("start_catering_batch"):
+			var total_needed := 0
+			for j in catering_jobs:
+				total_needed += int(j.get("needed", 0))
+			station.start_catering_batch(total_needed)
+	_dispatch_chefs_to_pass()
+
+func _on_catering_meal_cooked() -> void:
+	catering_cook_ready += 1
+	_dispatch_chefs_to_pass()
+
+func on_catering_order_completed(van_node: Node3D, success: bool, _payout: float = 0.0, _coins: int = 0) -> void:
+	_clear_catering_job_for_van(van_node)
+	if success:
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("claim", 0.04, 1.6)
+
+func _clear_catering_job_for_van(van_node: Node3D) -> void:
+	for i in range(catering_jobs.size() - 1, -1, -1):
+		if catering_jobs[i].get("van") == van_node:
+			catering_jobs.remove_at(i)
+	if catering_jobs.is_empty():
+		catering_plated_at_pass = 0
+		catering_cook_ready = 0
+		var station = _get_cooking_station()
+		if station != null and station.has_method("stop_catering_batch"):
+			station.stop_catering_batch()
+
+func _get_cooking_station() -> Node:
+	if kitchen_container != null:
+		var st = kitchen_container.get_node_or_null("CookingStation")
+		if st != null:
+			return st
+	return find_child("CookingStation", true, false)
+
+func _get_idle_chefs() -> Array:
+	var chefs: Array = []
+	if kitchen_container == null:
+		return chefs
+	for node in kitchen_container.find_children("*Chef*", "", true, false):
+		if node != null and node.has_method("is_idle_for_catering") and node.is_idle_for_catering():
+			chefs.append(node)
+			if not node.catering_plated.is_connected(_on_chef_catering_plated):
+				node.catering_plated.connect(_on_chef_catering_plated)
+	return chefs
+
+func _on_chef_catering_plated() -> void:
+	catering_plated_at_pass += 1
+	_dispatch_catering_waiters()
+
+func _dispatch_chefs_to_pass() -> void:
+	if catering_jobs.is_empty():
+		return
+	while catering_cook_ready > 0:
+		var idle = _get_idle_chefs()
+		if idle.is_empty():
+			break
+		var chef = idle[0]
+		if chef.has_method("send_to_kitchen_pass") and chef.send_to_kitchen_pass(CATERING_PASS_POS):
+			catering_cook_ready -= 1
+		else:
+			break
+	# Kick off plating immediately so the first crate is not gated on cook ticks
+	if catering_plated_at_pass + catering_cook_ready < 2:
+		var starters = _get_idle_chefs()
+		if starters.size() > 0 and starters[0].has_method("send_to_kitchen_pass"):
+			starters[0].send_to_kitchen_pass(CATERING_PASS_POS)
+
+func _dispatch_catering_waiters() -> void:
+	if catering_jobs.is_empty() or catering_plated_at_pass <= 0:
+		return
+	var van: Node3D = catering_jobs[0].get("van")
+	if not is_instance_valid(van):
+		_clear_catering_job_for_van(van)
+		return
+	var lot = find_child("ParkingLot", true, false)
+	for w in waiters:
+		if catering_plated_at_pass <= 0:
+			break
+		if not is_instance_valid(w) or w.get("current_state") != w.State.IDLE:
+			continue
+		if not w.has_method("deliver_catering_crate"):
+			continue
+		var take = mini(catering_plated_at_pass, 4)
+		if w.deliver_catering_crate(van, take, lot):
+			catering_plated_at_pass -= take
+
+func _process_catering_fulfillment(_delta: float) -> void:
+	if catering_jobs.is_empty():
+		return
+	# Drop jobs whose van already left
+	for i in range(catering_jobs.size() - 1, -1, -1):
+		if not is_instance_valid(catering_jobs[i].get("van")):
+			catering_jobs.remove_at(i)
+	if catering_jobs.is_empty():
+		var station = _get_cooking_station()
+		if station != null and station.has_method("stop_catering_batch"):
+			station.stop_catering_batch()
+		return
+	_dispatch_chefs_to_pass()
+	_dispatch_catering_waiters()
+
 func _dispatch_waiter_tasks() -> void:
 	var targeted = _get_tables_targeted_by_waiters()
+
+	# 0. Rush catering crates from the kitchen pass to the delivery van
+	if not catering_jobs.is_empty():
+		_dispatch_catering_waiters()
 
 	# 1. Top priority: Busboy clearing dirty tables & wiping booths to return them to active seating
 	for w in waiters:
@@ -2781,6 +2920,9 @@ func _spawn_milestone_world_banner(station_id: String, milestone_lvl: int, world
 	tw.tween_property(lbl, "position:y", world_pos.y + 2.2, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(lbl, "modulate:a", 0.0, 0.9).set_delay(0.5)
 	tw.tween_callback(lbl.queue_free)
+
+func _on_franchise_prestiged(p_level: int, keys: int, _diamonds: int) -> void:
+	_spawn_milestone_world_banner("FRANCHISE PRESTIGE", p_level, global_position + Vector3(0, 3.5, 0))
 
 
 func _on_table_clicked(station_id: String, station_name: String, level: int) -> void:

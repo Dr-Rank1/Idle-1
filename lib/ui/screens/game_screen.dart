@@ -7,6 +7,7 @@ import '../../logic/game_state.dart';
 import '../../models/station.dart';
 import '../../services/save_service.dart';
 import '../../ui/painters/resort_painter.dart';
+import '../../ui/widgets/franchise_sheet.dart';
 import '../../ui/widgets/hud_overlay.dart';
 import '../../ui/widgets/managers_sheet.dart';
 import '../../ui/widgets/upgrade_sheet.dart';
@@ -221,6 +222,12 @@ class _GameScreenState extends State<GameScreen>
                 right: 0,
                 bottom: 0,
                 child: HudOverlay(
+                  onWorldMapTap: () => showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    isScrollControlled: true,
+                    builder: (_) => const FranchiseSheet(),
+                  ),
                   onManagersTap: () => showModalBottomSheet(
                     context: context,
                     backgroundColor: Colors.transparent,

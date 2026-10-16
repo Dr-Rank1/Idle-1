@@ -388,7 +388,11 @@ func _physics_process(delta: float) -> void:
 		var arrival_thresh: float = 0.32 if waypoints.size() == 1 else 0.24
 		if dist > arrival_thresh:
 			var dir: Vector3 = to_target.normalized()
-			var desired_vel: Vector3 = dir * move_speed
+			var walk_mult: float = 1.0
+			var gm_rush = get_node_or_null("/root/GameManager")
+			if gm_rush != null and gm_rush.has_method("get_customer_walk_speed_multiplier"):
+				walk_mult = gm_rush.get_customer_walk_speed_multiplier()
+			var desired_vel: Vector3 = dir * move_speed * walk_mult
 			velocity = velocity.move_toward(desired_vel, 14.0 * delta)
 			
 			var target_yaw: float = atan2(dir.x, dir.z)

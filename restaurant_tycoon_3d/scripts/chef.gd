@@ -9,8 +9,18 @@ extends Node3D
 @onready var pan: Node3D = $Pan
 @onready var cooking_ring: MeshInstance3D = get_node_or_null("CookingTimerRing")
 
+signal catering_plated()
+
+const KITCHEN_PASS_POS: Vector3 = Vector3(6.5, 0.0, -3.4)
+
 var anim_player: AnimationPlayer = null
 var time_passed: float = 0.0
+var catering_busy: bool = false
+var catering_returning: bool = false
+var catering_target: Vector3 = Vector3.ZERO
+var catering_home: Vector3 = Vector3.ZERO
+var catering_home_yaw: float = 0.0
+var catering_walk_speed: float = 3.4
 
 func _ready() -> void:
 	anim_player = find_child("AnimationPlayer", true, false)
@@ -39,8 +49,38 @@ func _play_chef_animation() -> void:
 		elif anim_player.has_animation("idle"):
 			anim_player.play("idle")
 
+func is_idle_for_catering() -> bool:
+	return not catering_busy
+
+func send_to_kitchen_pass(pass_pos: Vector3 = KITCHEN_PASS_POS) -> bool:
+	if catering_busy:
+		return false
+	catering_busy = true
+	catering_returning = false
+	catering_home = global_position
+	catering_home_yaw = rotation.y
+	catering_target = pass_pos
+	if flame_light != null:
+		flame_light.visible = false
+	if steam_particles != null:
+		steam_particles.visible = false
+	_play_anim_named("walk")
+	return true
+
+func _play_anim_named(anim_name: String) -> void:
+	if anim_player != null and anim_player.has_animation(anim_name):
+		var anim = anim_player.get_animation(anim_name)
+		if anim != null and anim_name in ["idle", "walk"]:
+			anim.loop_mode = Animation.LOOP_LINEAR
+		anim_player.play(anim_name)
+	elif anim_name == "idle":
+		_play_chef_animation()
+
 func _process(delta: float) -> void:
 	time_passed += delta
+	if catering_busy:
+		_process_catering_walk(delta)
+		return
 	# Sizzling flame flicker effect for cooking chef
 	if flame_light != null and not is_prep_chef:
 		flame_light.light_energy = 1.1 + sin(time_passed * 14.0 + float(chef_index)) * 0.35 + randf_range(-0.1, 0.1)
@@ -72,3 +112,33 @@ func _process(delta: float) -> void:
 		var mat = cooking_ring.material_override
 		if mat is ShaderMaterial:
 			mat.set_shader_parameter("progress", cook_progress)
+
+func _process_catering_walk(delta: float) -> void:
+	var dest: Vector3 = catering_home if catering_returning else catering_target
+	var pos: Vector3 = global_position
+	dest.y = pos.y
+	var to_dest: Vector3 = dest - pos
+	to_dest.y = 0.0
+	if to_dest.length() > 0.18:
+		var step = min(catering_walk_speed * delta, to_dest.length())
+		global_position = pos + to_dest.normalized() * step
+		rotation.y = lerp_angle(rotation.y, atan2(to_dest.x, to_dest.z), 10.0 * delta)
+		return
+	global_position = dest
+	if not catering_returning:
+		rotation.y = PI
+		_play_anim_named("interact-right")
+		catering_plated.emit()
+		catering_returning = true
+		catering_target = catering_home
+		_play_anim_named("walk")
+	else:
+		rotation.y = catering_home_yaw
+		catering_busy = false
+		catering_returning = false
+		if not is_prep_chef:
+			if flame_light != null:
+				flame_light.visible = true
+			if steam_particles != null:
+				steam_particles.visible = true
+		_play_chef_animation()

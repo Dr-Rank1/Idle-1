@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import '../models/character.dart';
 import '../models/enums.dart';
+import '../models/franchise.dart';
 import '../models/manager.dart';
 import '../models/particles.dart';
 import '../models/station.dart';
@@ -17,6 +18,11 @@ class GameState extends ChangeNotifier {
   double totalEarned = 0.0;
   int reputation = 1;          // prestige multiplier level
   int prestigeStars = 0;       // permanent prestige stars earned
+  int prestigeLevel = 0;       // franchise prestige level
+  int franchiseKeys = 0;       // franchise golden keys earned
+  double restaurantValuation = 0.0;
+  final List<WorldRestaurant> worldRestaurants = List.from(defaultWorldRestaurants);
+  String activeRestaurantId = 'idle_diner';
   double starRating = 5.0;
   String restaurantName = 'Idle Diner';
   String get hotelName => restaurantName;
@@ -41,13 +47,32 @@ class GameState extends ChangeNotifier {
     'table_12': true,
   };
 
-  double get prestigeMultiplier => 1.0 + (prestigeStars * 0.25);
+  double get prestigeMultiplier => 1.0 + (prestigeLevel * 0.50) + (prestigeStars * 0.25);
   double get totalRevenueMultiplier => revenueMultiplier * prestigeMultiplier;
   double get cashPerSecond =>
       stations.fold(0.0, (sum, s) => sum + (s.actionDuration > 0 ? s.income / s.actionDuration : 0.0)) *
       totalRevenueMultiplier;
   void triggerVipEvent() => _triggerVipEvent();
-  bool get canPrestige => totalEarned >= 15000.0;
+
+  double getRestaurantValuation() {
+    final earnedPart = totalEarned * 0.75;
+    double stationPart = 0.0;
+    for (final s in stations) {
+      if (s.id.startsWith('table_')) {
+        stationPart += s.level * 250.0;
+      } else {
+        stationPart += s.level * 500.0;
+      }
+    }
+    final starMult = (starRating / 5.0).clamp(0.6, 1.25);
+    final val = (earnedPart + stationPart * 1.5) * starMult;
+    return max(500.0, val);
+  }
+
+  bool get areCoreStationsMaxLevel => stations.every((s) => s.level >= 50);
+  bool get canPrestige => getRestaurantValuation() >= 25000.0 || areCoreStationsMaxLevel;
+  int get keysToEarnOnPrestige => max(1, (getRestaurantValuation() / 15000.0).floor());
+  int get diamondsToEarnOnPrestige => 25 + (keysToEarnOnPrestige * 15);
 
   int get starsToEarnOnPrestige {
     final potential = (sqrt(totalEarned / 4000.0)).floor();
@@ -1333,11 +1358,14 @@ class GameState extends ChangeNotifier {
   }
 
   /// Prestige / Franchise Reset:
-  /// Resets cash and stations in exchange for permanent prestige stars
+  /// Resets cash and stations in exchange for permanent franchise keys, diamonds and +50% profit
   bool prestigeReset() {
     if (!canPrestige) return false;
-    final newStars = starsToEarnOnPrestige;
-    prestigeStars += newStars;
+    final newKeys = keysToEarnOnPrestige;
+    final newDiamonds = diamondsToEarnOnPrestige;
+    prestigeLevel += 1;
+    franchiseKeys += newKeys;
+    gems += newDiamonds;
     reputation += 1;
 
     // Reset station levels
@@ -1351,8 +1379,8 @@ class GameState extends ChangeNotifier {
       s.occupiedByCharacterId = null;
     }
 
-    // Starting cash bonus based on prestige
-    cash = 500.0 * (1 + prestigeStars);
+    // Starting cash bonus based on prestige level
+    cash = 500.0 * (1.0 + prestigeLevel);
 
     // Remove existing guests so resort starts fresh
     characters.removeWhere((c) => c.isGuest);
@@ -1364,7 +1392,7 @@ class GameState extends ChangeNotifier {
     }
     floatingLabels.add(FloatingLabel(
       id: 'lbl_${_nextParticleId++}',
-      text: '★ PRESTIGE UP! +${(newStars * 25)}% INCOME ★',
+      text: '👑 PRESTIGE UP! +$newKeys 🔑 (+50% PROFIT) 👑',
       screenPos: center.translate(0, -50),
       color: const Color(0xFFFFD700),
       scale: 1.3,

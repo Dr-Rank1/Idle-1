@@ -43,6 +43,11 @@ signal spin_wheel_completed(slice_index: int, prize: Dictionary)
 signal daily_login_claimed(day: int, reward: Dictionary)
 signal cleanliness_updated(new_cleanliness: float)
 signal rapid_sanitation_triggered(cost_deducted: float)
+signal rush_hour_changed(active: bool, time_left: float)
+signal franchise_prestiged(prestige_level: int, keys_earned: int, diamonds_earned: int)
+signal franchise_keys_changed(new_amount: int)
+signal prestige_updated(prestige_level: int, franchise_keys: int, multiplier: float)
+signal valuation_updated(new_valuation: float)
 
 var restaurant_node: Node3D = null
 
@@ -78,6 +83,16 @@ var daily_gift_claimed: bool = false
 var marketing_level: int = 1
 const MARKETING_MAX_LEVEL: int = 25
 var vip_revenue_multiplier_timer: float = 0.0
+var rush_hour_timer: float = 0.0
+var rush_hour_auto_timer: float = 600.0
+const RUSH_HOUR_DURATION: float = 60.0
+const RUSH_HOUR_ENERGY_COST: int = 15
+const RUSH_HOUR_AUTO_INTERVAL: float = 600.0
+
+# ─── Franchise Prestige & Valuation ─────────────────────────────────────────
+var prestige_level: int = 0
+var franchise_keys: int = 0
+const PRESTIGE_VALUATION_THRESHOLD: float = 25000.0
 
 # ─── Idle Objectives & Quests ───────────────────────────────────────────────
 var active_objective_index: int = 0
@@ -1079,6 +1094,9 @@ func save_game() -> void:
 			"noodle_palace": world_restaurants["noodle_palace"].get("unlocked", false),
 			"sakura_springs": world_restaurants["sakura_springs"].get("unlocked", false),
 		},
+		"prestige_level": prestige_level,
+		"franchise_keys": franchise_keys,
+		"restaurant_valuation": get_restaurant_valuation(),
 		"saved_timestamp": Time.get_unix_time_from_system()
 	}
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -1107,6 +1125,8 @@ func load_game() -> void:
 	total_earned = float(parsed.get("total_earned", total_earned))
 	star_rating = float(parsed.get("star_rating", star_rating))
 	cleanliness = float(parsed.get("cleanliness", cleanliness))
+	prestige_level = int(parsed.get("prestige_level", prestige_level))
+	franchise_keys = int(parsed.get("franchise_keys", franchise_keys))
 	restaurant_name = str(parsed.get("restaurant_name", restaurant_name))
 	restaurant_level = int(parsed.get("restaurant_level", restaurant_level))
 	restaurant_xp = float(parsed.get("restaurant_xp", restaurant_xp))
@@ -1249,6 +1269,19 @@ func _process(delta: float) -> void:
 		vip_revenue_multiplier_timer -= delta
 		if vip_revenue_multiplier_timer <= 0.0:
 			vip_revenue_multiplier_timer = 0.0
+
+	if rush_hour_timer > 0.0:
+		rush_hour_timer -= delta
+		if rush_hour_timer <= 0.0:
+			rush_hour_timer = 0.0
+			rush_hour_changed.emit(false, 0.0)
+		else:
+			rush_hour_changed.emit(true, rush_hour_timer)
+	else:
+		rush_hour_auto_timer -= delta
+		if rush_hour_auto_timer <= 0.0:
+			rush_hour_auto_timer = RUSH_HOUR_AUTO_INTERVAL
+			_activate_rush_hour(false)
 
 	# Update marketing campaigns
 	for camp_id in campaigns.keys():
@@ -1623,6 +1656,8 @@ func get_station_income(station_id: String) -> float:
 		rev *= 1.5
 	if has_method("get_active_revenue_multiplier"):
 		rev *= get_active_revenue_multiplier()
+	if has_method("get_prestige_multiplier"):
+		rev *= get_prestige_multiplier()
 	
 	var sid = station_id.to_lower()
 	if (sid == "cocktail_lounge" or sid == "bar") and has_method("get_card_cocktail_revenue_multiplier"):
@@ -2146,6 +2181,34 @@ func get_spawn_rate_multiplier() -> float:
 	var card_bonus = get_card_parking_rate_multiplier() if has_method("get_card_parking_rate_multiplier") else 1.0
 	return park_bonus * market_bonus * flyer_bonus * card_bonus
 
+func is_rush_hour_active() -> bool:
+	return rush_hour_timer > 0.0
+
+func get_rush_hour_time_left() -> float:
+	return max(0.0, rush_hour_timer)
+
+func get_customer_walk_speed_multiplier() -> float:
+	return 2.0 if is_rush_hour_active() else 1.0
+
+func get_vehicle_arrival_multiplier() -> float:
+	return 2.0 if is_rush_hour_active() else 1.0
+
+func try_start_rush_hour() -> bool:
+	if is_rush_hour_active():
+		return false
+	if not spend_energy(RUSH_HOUR_ENERGY_COST):
+		return false
+	_activate_rush_hour(true)
+	return true
+
+func _activate_rush_hour(_paid: bool) -> void:
+	rush_hour_timer = RUSH_HOUR_DURATION
+	rush_hour_auto_timer = RUSH_HOUR_AUTO_INTERVAL
+	rush_hour_changed.emit(true, rush_hour_timer)
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.05, 2.4)
+
 func get_dish_price_multiplier() -> float:
 	var mult = 1.35 if is_campaign_active("social_ad") else 1.0
 	if is_boosted:
@@ -2253,6 +2316,95 @@ func switch_to_restaurant(rest_id: String) -> bool:
 	if am != null and am.has_method("play_sfx"):
 		am.play_sfx("coin", 0.05)
 	return true
+
+# ─── Franchise Prestige & Valuation API ─────────────────────────────────────
+func get_restaurant_valuation() -> float:
+	var earned_part: float = total_earned * 0.75
+	var station_part: float = 0.0
+	
+	# Tables 1 to 12
+	for i in range(1, 13):
+		var tid = "table_%d" % i
+		if is_table_unlocked(tid):
+			var lvl = get_station_level(tid)
+			station_part += float(lvl) * 250.0
+	
+	# Core sectors (kitchen, milkshake bar, parking lot, lounge, host desk, restroom)
+	for sid in ["kitchen_cook", "milkshake_bar", "parking_lot", "cocktail_lounge", "host_desk", "restroom"]:
+		var lvl = get_station_level(sid)
+		station_part += float(lvl) * 500.0
+	
+	# Current star rating quality multiplier (e.g. 5.0 stars = 1.0x baseline, up to 1.25x)
+	var star_mult: float = clampf(star_rating / 5.0, 0.6, 1.25)
+	var valuation: float = (earned_part + station_part * 1.5) * star_mult
+	return maxf(valuation, 500.0)
+
+func are_core_stations_max_level() -> bool:
+	var core_stations = [
+		"kitchen_cook", "milkshake_bar", "parking_lot",
+		"table_1", "table_2", "table_3", "table_4", "table_5", "table_6",
+		"table_7", "table_8", "table_9", "table_10", "table_11", "table_12"
+	]
+	for sid in core_stations:
+		if get_station_level(sid) < 50:
+			return false
+	return true
+
+func can_prestige() -> bool:
+	return get_restaurant_valuation() >= PRESTIGE_VALUATION_THRESHOLD or are_core_stations_max_level()
+
+func get_prestige_keys_gain() -> int:
+	var val = get_restaurant_valuation()
+	return maxi(1, int(floor(val / 15000.0)))
+
+func get_prestige_diamonds_gain() -> int:
+	var keys = get_prestige_keys_gain()
+	return 25 + (keys * 15)
+
+func get_prestige_multiplier() -> float:
+	return 1.0 + (float(prestige_level) * 0.50)
+
+func execute_prestige() -> bool:
+	if not can_prestige():
+		return false
+	
+	var keys_gained = get_prestige_keys_gain()
+	var diamonds_gained = get_prestige_diamonds_gain()
+	
+	prestige_level += 1
+	franchise_keys += keys_gained
+	diamonds += diamonds_gained
+	gems = diamonds
+	
+	# Reset cash to starting baseline + prestige bonus
+	cash = 500.0 * (1.0 + float(prestige_level))
+	
+	# Reset station levels to 1
+	for sid in station_levels.keys():
+		station_levels[sid] = 1
+	
+	# Save updated state
+	save_game()
+	
+	# Broadcast signals
+	franchise_keys_changed.emit(franchise_keys)
+	diamonds_changed.emit(diamonds)
+	cash_changed.emit(cash)
+	currencies_updated.emit(cash, golden_coins, diamonds, energy)
+	prestige_updated.emit(prestige_level, franchise_keys, get_prestige_multiplier())
+	franchise_prestiged.emit(prestige_level, keys_gained, diamonds_gained)
+	
+	# Notify stations to reset visual tiers and 3D level labels
+	for sid in station_levels.keys():
+		station_upgraded.emit(sid, 1)
+	
+	# Celebration chime
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_milestone_chime"):
+		am.play_milestone_chime(50)
+	
+	return true
+
 
 # ─── Big-Number Currency Formatter ──────────────────────────────────────────
 static func format_currency(amount: float) -> String:

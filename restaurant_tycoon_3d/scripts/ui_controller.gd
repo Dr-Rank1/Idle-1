@@ -20,6 +20,7 @@ extends CanvasLayer
 @onready var energy_panel: PanelContainer = get_node_or_null("HUD/TopBar/EnergyPanel")
 @onready var add_energy_btn: Button = get_node_or_null("HUD/TopBar/EnergyPanel/HBox/AddEnergyBtn")
 @onready var boost_btn: Button = $HUD/TopBar/BoostBtn
+@onready var rush_hour_btn: Button = get_node_or_null("HUD/TopBar/RushHourBtn")
 
 # ─── Left Objectives / Quest Banner ─────────────────────────────────────────
 @onready var quest_banner: PanelContainer = $HUD/QuestBanner
@@ -329,6 +330,7 @@ func _ready() -> void:
 	_setup_currency_hud_icons()
 	
 	boost_btn.pressed.connect(_on_boost_pressed)
+	_ensure_rush_hour_button()
 	if add_gem_btn != null: add_gem_btn.pressed.connect(func(): _open_shop_at_section("currencies"))
 	if add_gold_btn != null: add_gold_btn.pressed.connect(func(): _open_shop_at_section("currencies"))
 	if add_energy_btn != null: add_energy_btn.pressed.connect(func(): _open_shop_at_section("currencies"))
@@ -614,13 +616,26 @@ func _ready() -> void:
 		if gm.has_signal("diamonds_changed"):
 			gm.diamonds_changed.connect(_on_gems_changed)
 		if gm.has_signal("energy_changed"):
-			gm.energy_changed.connect(_on_energy_changed)
+			if not gm.energy_changed.is_connected(_on_energy_changed):
+				gm.energy_changed.connect(_on_energy_changed)
 		if gm.has_signal("currencies_updated"):
 			gm.currencies_updated.connect(_on_currencies_updated)
 		if gm.has_signal("time_skip_activated"):
 			gm.time_skip_activated.connect(_on_time_skip_activated)
 		if gm.has_signal("overdrive_boost_activated"):
 			gm.overdrive_boost_activated.connect(_on_overdrive_boost_activated)
+		if gm.has_signal("franchise_prestiged"):
+			gm.franchise_prestiged.connect(_on_franchise_prestiged)
+		if gm.has_signal("prestige_updated"):
+			gm.prestige_updated.connect(func(_l, _k, _m):
+				if world_map_panel != null and world_map_panel.visible:
+					_refresh_world_map()
+			)
+		if gm.has_signal("franchise_keys_changed"):
+			gm.franchise_keys_changed.connect(func(_k):
+				if world_map_panel != null and world_map_panel.visible:
+					_refresh_world_map()
+			)
 		gm.cash_rate_updated.connect(_on_cash_rate_updated)
 		gm.level_updated.connect(_on_level_updated)
 		gm.station_upgraded.connect(_on_station_upgraded)
@@ -1108,6 +1123,7 @@ func _on_energy_changed(new_energy: int) -> void:
 		energy_label.text = "%d/%d" % [new_energy, max_e]
 	if shop_panel != null and shop_panel.visible:
 		_refresh_shop_panel()
+	_update_rush_hour_button()
 
 func _on_currencies_updated(c: float, g: int, d: int, e: int) -> void:
 	_on_cash_changed(c)
@@ -1190,6 +1206,7 @@ func _process(delta: float) -> void:
 				boost_btn.text = "⚡ 2X"
 
 	_update_status_ribbons()
+	_update_rush_hour_button()
 	if analytics_panel != null and analytics_panel.visible:
 		analytics_refresh_timer += delta
 		if analytics_refresh_timer >= 0.5:
@@ -1221,6 +1238,74 @@ func _process(delta: float) -> void:
 			if _hold_timer >= interval:
 				_hold_timer = 0.0
 				_perform_hold_step()
+
+func _ensure_rush_hour_button() -> void:
+	if rush_hour_btn != null:
+		if not rush_hour_btn.pressed.is_connected(_on_rush_hour_pressed):
+			rush_hour_btn.pressed.connect(_on_rush_hour_pressed)
+		return
+	var topbar = get_node_or_null("HUD/TopBar")
+	if topbar == null or boost_btn == null:
+		return
+	rush_hour_btn = Button.new()
+	rush_hour_btn.name = "RushHourBtn"
+	rush_hour_btn.text = "🔥 RUSH HOUR  (15⚡)"
+	rush_hour_btn.add_theme_font_size_override("font_size", 13)
+	rush_hour_btn.add_theme_color_override("font_color", Color(0.12, 0.06, 0.02, 1.0))
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.92, 0.32, 0.12, 1.0)
+	sb.border_width_bottom = 3
+	sb.border_color = Color(0.55, 0.12, 0.04, 1.0)
+	sb.set_corner_radius_all(16)
+	sb.content_margin_left = 14.0
+	sb.content_margin_right = 14.0
+	sb.content_margin_top = 8.0
+	sb.content_margin_bottom = 8.0
+	rush_hour_btn.add_theme_stylebox_override("normal", sb)
+	var sb_h = sb.duplicate()
+	sb_h.bg_color = Color(1.0, 0.42, 0.16, 1.0)
+	rush_hour_btn.add_theme_stylebox_override("hover", sb_h)
+	var sb_d = sb.duplicate()
+	sb_d.bg_color = Color(0.35, 0.18, 0.12, 1.0)
+	rush_hour_btn.add_theme_stylebox_override("disabled", sb_d)
+	topbar.add_child(rush_hour_btn)
+	topbar.move_child(rush_hour_btn, boost_btn.get_index() + 1)
+	rush_hour_btn.pressed.connect(_on_rush_hour_pressed)
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_signal("rush_hour_changed"):
+		gm.rush_hour_changed.connect(func(_a, _t): _update_rush_hour_button())
+	if gm != null and gm.has_signal("energy_changed"):
+		if not gm.energy_changed.is_connected(_on_energy_changed):
+			gm.energy_changed.connect(_on_energy_changed)
+
+func _on_rush_hour_pressed() -> void:
+	_play_click_sfx()
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+	if gm.has_method("is_rush_hour_active") and gm.is_rush_hour_active():
+		return
+	if gm.has_method("try_start_rush_hour"):
+		if not gm.try_start_rush_hour():
+			_spawn_reward_floater("Need 15 Energy for Rush Hour!")
+	_update_rush_hour_button()
+
+func _update_rush_hour_button() -> void:
+	if rush_hour_btn == null:
+		return
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+	var active = gm.has_method("is_rush_hour_active") and gm.is_rush_hour_active()
+	if active:
+		var left = int(ceil(gm.get_rush_hour_time_left())) if gm.has_method("get_rush_hour_time_left") else 0
+		rush_hour_btn.text = "🔥 RUSH HOUR  %ds" % left
+		rush_hour_btn.disabled = true
+		rush_hour_btn.modulate = Color(1.0, 0.92, 0.45, 1.0)
+	else:
+		rush_hour_btn.text = "🔥 RUSH HOUR  (15⚡)"
+		rush_hour_btn.disabled = gm.energy < 15
+		rush_hour_btn.modulate = Color.WHITE
 
 func _on_boost_pressed() -> void:
 	_play_click_sfx()
@@ -3109,12 +3194,24 @@ func _create_menu_perk_card(item: Dictionary, gm: Node) -> PanelContainer:
 func _refresh_world_map() -> void:
 	if world_map_grid == null:
 		return
-	for c in world_map_grid.get_children():
-		c.queue_free()
 
 	var gm = get_node_or_null("/root/GameManager")
 	if gm == null:
 		return
+
+	# Setup or refresh Franchise Prestige Banner at the top of WorldMapPanel
+	if world_map_panel != null:
+		var vbox = world_map_panel.get_node_or_null("VBox")
+		if vbox != null:
+			var old_banner = vbox.get_node_or_null("FranchisePrestigeBanner")
+			if old_banner != null:
+				old_banner.queue_free()
+			var banner = _create_franchise_prestige_banner(gm)
+			vbox.add_child(banner)
+			vbox.move_child(banner, 1)
+
+	for c in world_map_grid.get_children():
+		c.queue_free()
 
 	var rests = gm.get_world_restaurants()
 	for rest_id in rests.keys():
@@ -3238,6 +3335,286 @@ func _refresh_world_map() -> void:
 
 		card_vbox.add_child(btn)
 		world_map_grid.add_child(card)
+
+func _create_franchise_prestige_banner(gm: Node) -> Control:
+	var banner = PanelContainer.new()
+	banner.name = "FranchisePrestigeBanner"
+	banner.custom_minimum_size = Vector2(0, 110)
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.10, 0.14, 0.24, 0.98)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 3
+	style.border_color = Color(0.95, 0.78, 0.25, 1.0)
+	style.set_corner_radius_all(12)
+	style.content_margin_left = 16.0
+	style.content_margin_top = 10.0
+	style.content_margin_right = 16.0
+	style.content_margin_bottom = 10.0
+	banner.add_theme_stylebox_override("panel", style)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	banner.add_child(vbox)
+	
+	var valuation = gm.get_restaurant_valuation() if gm.has_method("get_restaurant_valuation") else 500.0
+	var p_lvl = gm.prestige_level if "prestige_level" in gm else 0
+	var keys = gm.franchise_keys if "franchise_keys" in gm else 0
+	var p_mult = gm.get_prestige_multiplier() if gm.has_method("get_prestige_multiplier") else 1.0
+	var can_p = gm.can_prestige() if gm.has_method("can_prestige") else false
+	var keys_reward = gm.get_prestige_keys_gain() if gm.has_method("get_prestige_keys_gain") else 1
+	var diamonds_reward = gm.get_prestige_diamonds_gain() if gm.has_method("get_prestige_diamonds_gain") else 25
+
+	# Row 1: Header + Stats Cluster
+	var row1 = HBoxContainer.new()
+	row1.add_theme_constant_override("separation", 10)
+	vbox.add_child(row1)
+	
+	var crown_icon = Label.new()
+	crown_icon.text = "👑"
+	crown_icon.add_theme_font_size_override("font_size", 22)
+	row1.add_child(crown_icon)
+	
+	var title_lbl = Label.new()
+	title_lbl.text = "FRANCHISE VALUATION: %s" % _format_money(valuation)
+	title_lbl.add_theme_font_size_override("font_size", 16)
+	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35, 1.0))
+	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row1.add_child(title_lbl)
+	
+	var keys_pill = Label.new()
+	keys_pill.text = "🔑 %d Keys" % keys
+	keys_pill.add_theme_font_size_override("font_size", 13)
+	keys_pill.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25, 1.0))
+	row1.add_child(keys_pill)
+
+	var sep = Label.new()
+	sep.text = "•"
+	sep.add_theme_color_override("font_color", Color(0.5, 0.6, 0.7, 0.8))
+	row1.add_child(sep)
+	
+	var mult_pill = Label.new()
+	mult_pill.text = "⭐ Prestige Lv. %d (+%d%% Profit)" % [p_lvl, int((p_mult - 1.0) * 100.0)]
+	mult_pill.add_theme_font_size_override("font_size", 13)
+	mult_pill.add_theme_color_override("font_color", Color(0.4, 0.95, 0.6, 1.0))
+	row1.add_child(mult_pill)
+
+	# Row 2: Subtitle / Progress details
+	var row2 = HBoxContainer.new()
+	vbox.add_child(row2)
+	
+	var desc_lbl = Label.new()
+	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc_lbl.add_theme_font_size_override("font_size", 11)
+	if can_p:
+		desc_lbl.text = "✨ VALUATION TARGET MET! Sell & Renovate to expand your empire with permanent profit boosts!"
+		desc_lbl.add_theme_color_override("font_color", Color(0.45, 0.95, 0.65, 1.0))
+	else:
+		var target_val = 25000.0
+		var pct = clampf((valuation / target_val) * 100.0, 0.0, 99.9)
+		desc_lbl.text = "Target Valuation: $25.0K (%d%% met) • Reach $25K valuation or Max Level 50 core stations to Sell." % int(pct)
+		desc_lbl.add_theme_color_override("font_color", Color(0.75, 0.85, 0.95, 0.85))
+	row2.add_child(desc_lbl)
+
+	# Row 3: Action & Rewards Bar
+	var row3 = HBoxContainer.new()
+	row3.add_theme_constant_override("separation", 12)
+	vbox.add_child(row3)
+	
+	var reward_lbl = Label.new()
+	reward_lbl.text = "Rewards on Sale:  +%d 🔑 Keys   •   +%d 💎 Diamonds   •   +50%% Permanent Profit" % [keys_reward, diamonds_reward]
+	reward_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	reward_lbl.add_theme_font_size_override("font_size", 12)
+	reward_lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.6, 0.95))
+	row3.add_child(reward_lbl)
+	
+	var prestige_btn = Button.new()
+	prestige_btn.custom_minimum_size = Vector2(240, 34)
+	if can_p:
+		prestige_btn.text = "⭐ SELL & RENOVATE (+%d 🔑)" % keys_reward
+		var p_style = StyleBoxFlat.new()
+		p_style.bg_color = Color(0.95, 0.72, 0.15, 1.0)
+		p_style.border_width_bottom = 2
+		p_style.border_color = Color(1.0, 0.9, 0.45, 1.0)
+		p_style.set_corner_radius_all(8)
+		prestige_btn.add_theme_stylebox_override("normal", p_style)
+		prestige_btn.add_theme_color_override("font_color", Color(0.12, 0.08, 0.0, 1.0))
+		prestige_btn.pressed.connect(func():
+			_play_click_sfx()
+			_show_prestige_confirmation_modal()
+		)
+	else:
+		prestige_btn.text = "🔒 SELL & RENOVATE"
+		prestige_btn.disabled = true
+		var dis_style = StyleBoxFlat.new()
+		dis_style.bg_color = Color(0.2, 0.25, 0.35, 0.6)
+		dis_style.set_corner_radius_all(8)
+		prestige_btn.add_theme_stylebox_override("disabled", dis_style)
+		prestige_btn.add_theme_color_override("font_disabled_color", Color(0.6, 0.65, 0.75, 0.6))
+	row3.add_child(prestige_btn)
+	
+	return banner
+
+func _show_prestige_confirmation_modal() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+	
+	var keys_gained = gm.get_prestige_keys_gain() if gm.has_method("get_prestige_keys_gain") else 1
+	var diamonds_gained = gm.get_prestige_diamonds_gain() if gm.has_method("get_prestige_diamonds_gain") else 25
+	var cur_mult = gm.get_prestige_multiplier() if gm.has_method("get_prestige_multiplier") else 1.0
+	var next_mult = cur_mult + 0.50
+
+	var modal = PanelContainer.new()
+	modal.name = "PrestigeConfirmModal"
+	modal.custom_minimum_size = Vector2(460, 320)
+	modal.anchors_preset = Control.PRESET_CENTER
+	modal.anchor_left = 0.5
+	modal.anchor_top = 0.5
+	modal.anchor_right = 0.5
+	modal.anchor_bottom = 0.5
+	modal.offset_left = -230.0
+	modal.offset_top = -160.0
+	modal.offset_right = 230.0
+	modal.offset_bottom = 160.0
+	
+	var bg_style = StyleBoxFlat.new()
+	bg_style.bg_color = Color(0.08, 0.12, 0.20, 0.98)
+	bg_style.border_width_left = 3
+	bg_style.border_width_top = 3
+	bg_style.border_width_right = 3
+	bg_style.border_width_bottom = 5
+	bg_style.border_color = Color(0.95, 0.78, 0.25, 1.0)
+	bg_style.set_corner_radius_all(16)
+	bg_style.content_margin_left = 22.0
+	bg_style.content_margin_top = 18.0
+	bg_style.content_margin_right = 22.0
+	bg_style.content_margin_bottom = 18.0
+	modal.add_theme_stylebox_override("panel", bg_style)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	modal.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = "👑 EXPAND FRANCHISE EMPIRE?"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35, 1.0))
+	vbox.add_child(title)
+	
+	var msg = Label.new()
+	msg.text = "Are you ready to sell this restaurant location?\n\n" + \
+		"⚠️  WHAT RESETS:\n" + \
+		"• Cash resets to starting $500 (+ prestige bonus)\n" + \
+		"• Station levels reset back to Level 1\n\n" + \
+		"✨  PERMANENT PRESTIGE REWARDS:\n" + \
+		"• +%d 🔑 Franchise Golden Keys\n" + \
+		"• +%d 💎 Diamonds\n" + \
+		"• +50%% Permanent Global Profit (New: %.1fx)\n" + \
+		"• ALL Manager Cards & Permanent Boosters are KEPT!" % [keys_gained, diamonds_gained, next_mult]
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	msg.add_theme_font_size_override("font_size", 12)
+	msg.add_theme_color_override("font_color", Color(0.85, 0.92, 1.0, 0.95))
+	vbox.add_child(msg)
+	
+	var btn_hbox = HBoxContainer.new()
+	btn_hbox.add_theme_constant_override("separation", 14)
+	vbox.add_child(btn_hbox)
+	
+	var cancel_btn = Button.new()
+	cancel_btn.text = "Keep Operating"
+	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cancel_btn.custom_minimum_size = Vector2(0, 36)
+	var cancel_style = StyleBoxFlat.new()
+	cancel_style.bg_color = Color(0.2, 0.25, 0.35, 0.8)
+	cancel_style.set_corner_radius_all(10)
+	cancel_btn.add_theme_stylebox_override("normal", cancel_style)
+	cancel_btn.pressed.connect(func():
+		_play_click_sfx()
+		modal.queue_free()
+	)
+	btn_hbox.add_child(cancel_btn)
+	
+	var confirm_btn = Button.new()
+	confirm_btn.text = "✨ CONFIRM & PRESTIGE ✨"
+	confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	confirm_btn.custom_minimum_size = Vector2(0, 36)
+	var conf_style = StyleBoxFlat.new()
+	conf_style.bg_color = Color(0.95, 0.72, 0.15, 1.0)
+	conf_style.set_corner_radius_all(10)
+	confirm_btn.add_theme_stylebox_override("normal", conf_style)
+	confirm_btn.add_theme_color_override("font_color", Color(0.12, 0.08, 0.0, 1.0))
+	confirm_btn.pressed.connect(func():
+		_play_click_sfx()
+		modal.queue_free()
+		if gm.execute_prestige():
+			_refresh_world_map()
+	)
+	btn_hbox.add_child(confirm_btn)
+	
+	add_child(modal)
+
+func _on_franchise_prestiged(p_level: int, keys: int, d_earned: int) -> void:
+	_show_franchise_toast("👑 FRANCHISE EMPIRE EXPANDED! Prestige Lv. %d (+%d 🔑, +%d 💎)" % [p_level, keys, d_earned])
+	_refresh_world_map()
+
+func _show_franchise_toast(text: String) -> void:
+	var hud_node = get_node_or_null("HUD")
+	if hud_node == null:
+		hud_node = self
+		
+	var toast = PanelContainer.new()
+	toast.name = "FranchisePrestigeToast"
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.custom_minimum_size = Vector2(460, 56)
+	toast.anchors_preset = Control.PRESET_CENTER_TOP
+	toast.anchor_left = 0.5
+	toast.anchor_top = 0.0
+	toast.anchor_right = 0.5
+	toast.anchor_bottom = 0.0
+	toast.offset_left = -230.0
+	toast.offset_right = 230.0
+	toast.offset_top = 28.0
+	toast.offset_bottom = 84.0
+	toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	toast.pivot_offset = Vector2(230, 28)
+	
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.12, 0.08, 0.24, 0.96)
+	sb.border_width_left = 2
+	sb.border_width_top = 2
+	sb.border_width_right = 2
+	sb.border_width_bottom = 3
+	sb.border_color = Color(0.95, 0.78, 0.25, 1.0)
+	sb.set_corner_radius_all(12)
+	sb.content_margin_left = 16
+	sb.content_margin_top = 8
+	sb.content_margin_right = 16
+	sb.content_margin_bottom = 8
+	toast.add_theme_stylebox_override("panel", sb)
+	
+	var lbl = Label.new()
+	lbl.text = text
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35, 1.0))
+	toast.add_child(lbl)
+	
+	hud_node.add_child(toast)
+	
+	toast.scale = Vector2(0.8, 0.8)
+	toast.modulate.a = 0.0
+	var tw = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(toast, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(toast, "modulate:a", 1.0, 0.25)
+	tw.chain().tween_interval(3.5)
+	tw.chain().tween_property(toast, "modulate:a", 0.0, 0.35)
+	tw.tween_callback(toast.queue_free)
 
 # ─── Tycoon Superstore Modal ────────────────────────────────────────────────
 func _init_shop_tab_styles() -> void:

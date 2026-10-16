@@ -1091,10 +1091,12 @@ class StatsPanel extends StatelessWidget {
               _statRow('👔 Staff Members', '$staffCount'),
               _statRow('⭐ Managers Active', '$assignedManagers'),
               _statRow('📈 Reputation', 'Level ${gs.reputation}'),
+              _statRow('🏛️ Valuation', _fmt.format(gs.getRestaurantValuation())),
               _statRow(
-                '👑 Prestige Stars',
-                '${gs.prestigeStars} ★ (+${(gs.prestigeStars * 25)}%)',
+                '👑 Franchise Prestige',
+                'Lv. ${gs.prestigeLevel} (+${(gs.prestigeLevel * 50)}%)',
               ),
+              _statRow('🔑 Golden Keys', '${gs.franchiseKeys} Keys'),
               _statRow('🏨 Restaurant', gs.hotelName),
               if (gs.vipActive)
                 _statRow(

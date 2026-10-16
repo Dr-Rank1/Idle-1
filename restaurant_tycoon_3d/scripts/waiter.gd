@@ -6,7 +6,9 @@ enum State {
 	WALKING_TO_TABLE,
 	SERVING,
 	RETURNING,
-	ON_BREAK
+	ON_BREAK,
+	CATERING_PICKUP,
+	CATERING_DELIVER
 }
 
 @export var staff_id: String = "waiter_1"
@@ -31,9 +33,13 @@ var break_spot: Vector3 = Vector3.ZERO
 var anim_player: AnimationPlayer = null
 
 # Kitchen Pass counter is located at Z = -3.4m under silver dome heat lamps (X = 6.5)
-const KITCHEN_PASS_POS: Vector3 = Vector3(6.5, 0.0, -3.1)
+const KITCHEN_PASS_POS: Vector3 = Vector3(6.5, 0.0, -3.4)
 const NORTH_CROSS_AISLE_Z: float = -1.0
+const DOOR_POS: Vector3 = Vector3(-1.5, 0.0, 10.5)
 var home_pos: Vector3 = Vector3(3.5, 0.0, 0.5)
+var catering_van: Node3D = null
+var catering_meals: int = 0
+var catering_lot: Node = null
 
 func _ready() -> void:
 	home_pos = position
@@ -223,6 +229,36 @@ func _get_waypoints_to_home(from_pos: Vector3) -> Array:
 			pts.append(home_pos)
 	return pts
 
+func deliver_catering_crate(van: Node3D, meals: int, lot: Node = null) -> bool:
+	if current_state != State.IDLE or van == null or meals <= 0:
+		return false
+	catering_van = van
+	catering_meals = meals
+	catering_lot = lot
+	target_table = null
+	is_cleaning_job = false
+	current_state = State.CATERING_PICKUP
+	waypoints = _get_waypoints_to_pass(position)
+	serving_tray.visible = false
+	if status_bubble != null:
+		status_bubble.text = "📦 Catering crate"
+		status_bubble.visible = true
+	_play_anim("walk")
+	return true
+
+func _get_waypoints_to_van(from_pos: Vector3, van_pos: Vector3) -> Array:
+	var pts: Array = []
+	pts.append(Vector3(6.5, 0.0, NORTH_CROSS_AISLE_Z))
+	pts.append(Vector3(3.3, 0.0, NORTH_CROSS_AISLE_Z))
+	pts.append(Vector3(-1.5, 0.0, 7.0))
+	pts.append(DOOR_POS)
+	pts.append(Vector3(-1.5, 0.0, 13.8))
+	var drop := Vector3(van_pos.x, 0.0, van_pos.z)
+	if abs(drop.x + 1.5) > 0.4:
+		pts.append(Vector3(drop.x, 0.0, 13.8))
+	pts.append(drop + Vector3(0.85, 0.0, 0.35))
+	return pts
+
 func serve_order(table: Node3D) -> void:
 	if current_state != State.IDLE:
 		return
@@ -384,6 +420,45 @@ func _on_all_waypoints_reached() -> void:
 			current_state = State.IDLE
 			_play_anim("idle")
 			rotation.y = 0.0
+
+		State.CATERING_PICKUP:
+			rotation.y = PI
+			serving_tray.visible = true
+			serving_tray.scale = Vector3(0.2, 0.2, 0.2)
+			var crate_tw = create_tween()
+			crate_tw.tween_property(serving_tray, "scale", Vector3(1.15, 1.15, 1.15), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			var am_cat = get_node_or_null("/root/AudioManager")
+			if am_cat != null and am_cat.has_method("play_sfx"):
+				am_cat.play_sfx("bell", 0.04, -2.0)
+			await get_tree().create_timer(0.28).timeout
+			if not is_instance_valid(catering_van):
+				serving_tray.visible = false
+				if status_bubble != null:
+					status_bubble.visible = false
+				current_state = State.RETURNING
+				waypoints = _get_waypoints_to_home(position)
+				_play_anim("walk")
+				return
+			current_state = State.CATERING_DELIVER
+			waypoints = _get_waypoints_to_van(position, catering_van.global_position)
+			_play_anim("walk")
+
+		State.CATERING_DELIVER:
+			if is_instance_valid(catering_van) and catering_lot != null and catering_lot.has_method("deliver_catering_meals"):
+				catering_lot.deliver_catering_meals(catering_van, catering_meals)
+			elif is_instance_valid(catering_van):
+				var lot_node = get_tree().get_root().find_child("ParkingLot", true, false)
+				if lot_node != null and lot_node.has_method("deliver_catering_meals"):
+					lot_node.deliver_catering_meals(catering_van, catering_meals)
+			serving_tray.visible = false
+			catering_van = null
+			catering_meals = 0
+			catering_lot = null
+			if status_bubble != null:
+				status_bubble.visible = false
+			current_state = State.RETURNING
+			waypoints = _get_waypoints_to_home(position)
+			_play_anim("walk")
 
 		State.ON_BREAK:
 			if status_bubble != null:

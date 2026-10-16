@@ -56,6 +56,9 @@ class SaveService {
       'star_rating': gs.starRating,
       'reputation': gs.reputation,
       'prestigeStars': gs.prestigeStars,
+      'prestige_level': gs.prestigeLevel,
+      'franchise_keys': gs.franchiseKeys,
+      'restaurant_valuation': gs.getRestaurantValuation(),
       'restaurant_name': gs.restaurantName,
       'hotelName': gs.hotelName,
       'restaurant_level': gs.restaurantLevel,
@@ -133,6 +136,9 @@ class SaveService {
       gs.starRating = (data['star_rating'] as num?)?.toDouble() ?? gs.starRating;
       gs.reputation = (data['reputation'] as int?) ?? gs.reputation;
       gs.prestigeStars = (data['prestigeStars'] as int?) ?? gs.prestigeStars;
+      gs.prestigeLevel = (data['prestige_level'] as int?) ?? gs.prestigeLevel;
+      gs.franchiseKeys = (data['franchise_keys'] as int?) ?? gs.franchiseKeys;
+      gs.restaurantValuation = (data['restaurant_valuation'] as num?)?.toDouble() ?? gs.getRestaurantValuation();
       gs.restaurantName = (data['restaurant_name'] as String?) ??
           (data['hotelName'] as String?) ??
           gs.restaurantName;

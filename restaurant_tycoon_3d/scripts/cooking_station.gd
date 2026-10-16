@@ -17,6 +17,14 @@ var highlight_ring: MeshInstance3D = null
 var is_highlighted: bool = false
 var highlight_time: float = 0.0
 
+signal catering_meal_cooked()
+
+var catering_active: bool = false
+var catering_meals_needed: int = 0
+var catering_meals_cooked: int = 0
+var catering_cook_accum: float = 0.0
+var catering_order_label: Label3D = null
+
 func _ready() -> void:
 	if badge_root != null:
 		initial_badge_y = badge_root.position.y
@@ -43,6 +51,9 @@ func _process(delta: float) -> void:
 		if action_badge != null and action_badge.visible:
 			var pulse = 1.0 + sin(time_passed * 6.0) * 0.12
 			action_badge.scale = Vector3(pulse, pulse, pulse)
+
+	if catering_active:
+		_process_catering_cook(delta)
 
 	# Subtle pulsing golden floor rim highlight for cooking station
 	if is_highlighted and highlight_ring != null and highlight_ring.visible:
@@ -287,3 +298,52 @@ func get_cooking_speed_multiplier() -> float:
 	if gm != null and gm.has_method("get_card_cook_speed_multiplier"):
 		return gm.get_card_cook_speed_multiplier()
 	return 1.0
+
+func start_catering_batch(meals: int) -> void:
+	catering_active = true
+	catering_meals_needed = max(1, meals)
+	catering_meals_cooked = 0
+	catering_cook_accum = 0.0
+	if catering_order_label == null:
+		catering_order_label = Label3D.new()
+		catering_order_label.name = "CateringBatchBadge"
+		catering_order_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		catering_order_label.double_sided = false
+		catering_order_label.font_size = 22
+		catering_order_label.outline_size = 6
+		catering_order_label.position = Vector3(0.0, 3.35, 0.0)
+		add_child(catering_order_label)
+	catering_order_label.visible = true
+	_refresh_catering_label()
+
+func stop_catering_batch() -> void:
+	catering_active = false
+	catering_cook_accum = 0.0
+	if catering_order_label != null:
+		catering_order_label.visible = false
+
+func _process_catering_cook(delta: float) -> void:
+	if catering_meals_cooked >= catering_meals_needed:
+		_refresh_catering_label()
+		return
+	var speed = get_cooking_speed_multiplier()
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_method("get_staff_cooking_multiplier"):
+		speed *= gm.get_staff_cooking_multiplier("chef_stove")
+	catering_cook_accum += delta * max(0.35, speed)
+	var meal_time := 1.6
+	while catering_cook_accum >= meal_time and catering_meals_cooked < catering_meals_needed:
+		catering_cook_accum -= meal_time
+		catering_meals_cooked += 1
+		catering_meal_cooked.emit()
+	_refresh_catering_label()
+
+func _refresh_catering_label() -> void:
+	if catering_order_label == null:
+		return
+	catering_order_label.text = "📦 CATERING BATCH  %d/%d" % [catering_meals_cooked, catering_meals_needed]
+	catering_order_label.modulate = Color(1.0, 0.82, 0.22, 1.0)
+	if action_badge != null and catering_active:
+		action_badge.visible = true
+		action_badge.text = "🚚 Van crate • Kitchen Pass"
+		action_badge.modulate = Color(1.0, 0.85, 0.25, 1.0)
