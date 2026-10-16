@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import os
 import math
+import generate_brand_assets
 
 OUT_DIR = "restaurant_tycoon_3d/assets/textures"
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -766,4 +767,5 @@ if __name__ == "__main__":
     create_icon_chest("silver")
     create_icon_chest("gold")
     create_icon_time_skip()
+    generate_brand_assets.generate_all(OUT_DIR)
     print("ALL FIDELITY ASSETS GENERATED!")
