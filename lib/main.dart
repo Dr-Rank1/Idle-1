@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'logic/game_state.dart';
-import 'ui/screens/game_screen.dart';
+import 'ui/screens/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,7 +34,7 @@ class HotelTycoonApp extends StatelessWidget {
           fontFamily: 'Roboto',
           scaffoldBackgroundColor: const Color(0xFF1A2744),
         ),
-        home: const GameScreen(),
+        home: const DrRankSplashScreen(),
       ),
     );
   }

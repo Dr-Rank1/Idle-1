@@ -58,6 +58,8 @@ var restaurant_node: Node3D = null
 		if preview_all_max_levels and is_inside_tree():
 			set_all_stations_max_level(true)
 
+var skip_boot_splash: bool = false
+
 # ─── Economy State ──────────────────────────────────────────────────────────
 var cash: float = 650.0
 var golden_coins: int = 150

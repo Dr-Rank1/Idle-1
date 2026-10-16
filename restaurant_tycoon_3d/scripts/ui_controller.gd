@@ -353,7 +353,28 @@ func _setup_currency_hud_icons() -> void:
 			p.add_child(tr)
 			p.move_child(tr, idx)
 
+func _check_cinematic_entrance() -> void:
+	var cam = get_viewport().get_camera_3d() if is_inside_tree() else null
+	if cam == null and get_parent() != null:
+		cam = get_parent().find_child("Camera3D", true, false)
+	if cam != null and cam.get("is_performing_cinematic_reveal") == true:
+		_setup_hud_entrance(cam)
+
+func _setup_hud_entrance(cam: Camera3D) -> void:
+	var hud_root = get_node_or_null("HUD")
+	if hud_root is Control:
+		hud_root.modulate.a = 0.0
+	if not cam.is_connected("cinematic_reveal_completed", _play_hud_entrance):
+		cam.cinematic_reveal_completed.connect(_play_hud_entrance, CONNECT_ONE_SHOT)
+
+func _play_hud_entrance() -> void:
+	var hud_root = get_node_or_null("HUD")
+	if hud_root is Control:
+		var tw = create_tween()
+		tw.tween_property(hud_root, "modulate:a", 1.0, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
 func _ready() -> void:
+	_check_cinematic_entrance()
 	_hide_all_modals()
 	_setup_currency_hud_icons()
 	_apply_mobile_kolibri_ui_styling()
@@ -2880,8 +2901,26 @@ func _get_gold_btn_style() -> StyleBoxFlat:
 	return create_mobile_action_button_style(Color(1.0, 0.624, 0.11, 1.0), Color(0.72, 0.35, 0.05, 1.0), false, 14)
 
 var welcome_modal: PanelContainer = null
+var _pending_offline_earnings: Array = []
 
 func _on_offline_earnings_available(earned: float, elapsed: float) -> void:
+	var cam = get_viewport().get_camera_3d() if is_inside_tree() else null
+	if cam == null and get_parent() != null:
+		cam = get_parent().find_child("Camera3D", true, false)
+	if cam != null and cam.get("is_performing_cinematic_reveal") == true:
+		_pending_offline_earnings = [earned, elapsed]
+		if not cam.is_connected("cinematic_reveal_completed", _on_camera_reveal_for_welcome):
+			cam.cinematic_reveal_completed.connect(_on_camera_reveal_for_welcome, CONNECT_ONE_SHOT)
+		return
+	_show_welcome_back_modal(earned, elapsed)
+
+func _on_camera_reveal_for_welcome() -> void:
+	if not _pending_offline_earnings.is_empty():
+		var args = _pending_offline_earnings
+		_pending_offline_earnings = []
+		_show_welcome_back_modal(args[0], args[1])
+
+func _show_welcome_back_modal(earned: float, elapsed: float) -> void:
 	if welcome_modal != null and is_instance_valid(welcome_modal):
 		welcome_modal.queue_free()
 

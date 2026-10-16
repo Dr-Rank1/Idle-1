@@ -1,5 +1,7 @@
 extends Camera3D
 
+signal cinematic_reveal_completed
+
 @export var pan_speed: float = 0.025
 @export var key_pan_speed: float = 14.0
 @export var zoom_speed: float = 1.4
@@ -10,8 +12,14 @@ extends Camera3D
 @export var max_zoom_dist: float = 32.0
 @export var inertia_friction: float = 5.5
 @export var max_drag_velocity: float = 38.0
+@export var auto_start_cinematic_reveal: bool = true
+
+const SIGN_ENTRANCE_CAM_POS: Vector3 = Vector3(13.5, 15.0, 29.6)
+const STANDARD_GAMEPLAY_CAM_POS: Vector3 = Vector3(14.2, 15.0, 16.8)
+const SIGN_ENTRANCE_SIZE: float = 8.5
 
 var is_dragging: bool = false
+var is_performing_cinematic_reveal: bool = false
 var last_mouse_pos: Vector2 = Vector2.ZERO
 var target_position: Vector3 = Vector3(14.2, 15.0, 16.8)
 var initialized: bool = false
@@ -25,14 +33,66 @@ var last_drag_time: float = 0.0
 var ground_right: Vector3 = Vector3.RIGHT
 var ground_forward: Vector3 = Vector3.FORWARD
 
+func should_skip_cinematic_reveal() -> bool:
+	if DisplayServer.get_name() == "headless":
+		return true
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.get("skip_boot_splash") == true:
+		return true
+	for arg in OS.get_cmdline_args():
+		if "capture_game.gd" in arg or "run_all_tests.gd" in arg:
+			return true
+	return false
+
 func _ready() -> void:
 	projection = PROJECTION_ORTHOGONAL
 	size = default_ortho_size
-	position = Vector3(14.2, 15.0, 16.8)
+	position = STANDARD_GAMEPLAY_CAM_POS
 	rotation_degrees = Vector3(-30.0, 45.0, 0.0)
 	target_position = position
 	_update_ground_vectors()
 	initialized = true
+
+	if should_skip_cinematic_reveal():
+		is_performing_cinematic_reveal = false
+		position = STANDARD_GAMEPLAY_CAM_POS
+		target_position = STANDARD_GAMEPLAY_CAM_POS
+		size = default_ortho_size
+		call_deferred("emit_signal", "cinematic_reveal_completed")
+		return
+
+	# When launched inside a full game scene (parent is Main, not isolated root runner),
+	# start focused on front roadside neon sign and entrance, then smoothly reveal
+	if auto_start_cinematic_reveal and get_parent() != null and get_parent().name != "root":
+		is_performing_cinematic_reveal = true
+		position = SIGN_ENTRANCE_CAM_POS
+		size = SIGN_ENTRANCE_SIZE
+		call_deferred("start_cinematic_reveal", 1.4)
+
+func start_cinematic_reveal(duration: float = 1.4) -> void:
+	if should_skip_cinematic_reveal():
+		is_performing_cinematic_reveal = false
+		position = STANDARD_GAMEPLAY_CAM_POS
+		target_position = STANDARD_GAMEPLAY_CAM_POS
+		size = default_ortho_size
+		emit_signal("cinematic_reveal_completed")
+		return
+	if pan_tween != null and pan_tween.is_valid():
+		pan_tween.kill()
+
+	is_performing_cinematic_reveal = true
+	position = SIGN_ENTRANCE_CAM_POS
+	target_position = STANDARD_GAMEPLAY_CAM_POS
+	size = SIGN_ENTRANCE_SIZE
+
+	pan_tween = create_tween()
+	pan_tween.parallel().tween_property(self, "position", STANDARD_GAMEPLAY_CAM_POS, duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	pan_tween.parallel().tween_property(self, "size", default_ortho_size, duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	pan_tween.tween_callback(func():
+		is_performing_cinematic_reveal = false
+		target_position = STANDARD_GAMEPLAY_CAM_POS
+		emit_signal("cinematic_reveal_completed")
+	)
 
 func _update_ground_vectors() -> void:
 	var r = transform.basis.x

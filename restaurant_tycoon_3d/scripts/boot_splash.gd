@@ -46,7 +46,23 @@ const STATUS_TEXTS = [
 	"Opening Idle Diner..."
 ]
 
+func should_skip_splash() -> bool:
+	if DisplayServer.get_name() == "headless":
+		return true
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.get("skip_boot_splash") == true:
+		return true
+	for arg in OS.get_cmdline_args():
+		if "run_all_tests.gd" in arg:
+			return true
+	return false
+
 func _ready() -> void:
+	if should_skip_splash():
+		_game_started = true
+		call_deferred("_transition_to_main")
+		return
+
 	# Ensure audio ambience is stopped during boot sequence
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("stop_ambience"):

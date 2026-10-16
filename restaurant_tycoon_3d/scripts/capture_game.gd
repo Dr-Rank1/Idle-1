@@ -2,6 +2,43 @@ extends SceneTree
 
 func _init():
 	print("Capturing game snapshot...")
+	var base_dir = ProjectSettings.globalize_path("res://../")
+	var gm = root.get_node_or_null("GameManager")
+
+	# 1. Capture Splash Screen
+	if gm != null:
+		gm.skip_boot_splash = false
+
+	var splash_scn = load("res://scenes/ui/boot_splash.tscn")
+	if splash_scn != null:
+		var splash_node = splash_scn.instantiate()
+		root.add_child(splash_node)
+		if splash_node is Control:
+			splash_node.size = Vector2(root.size)
+		
+		# Allow splash Stage 1 to animate into view with full radial glow and sheen
+		for i in range(25):
+			await process_frame
+		
+		var tex: Texture2D = null
+		if root.get_viewport() != null and root.get_viewport().get_texture() != null:
+			tex = root.get_viewport().get_texture()
+		elif root.has_method("get_texture"):
+			tex = root.get_texture()
+		if tex != null:
+			var img_splash = tex.get_image()
+			if img_splash != null:
+				var err = img_splash.save_png(base_dir + "/splash_view.png")
+				print("Splash snapshot result:", err)
+		
+		splash_node.queue_free()
+		for i in range(2):
+			await process_frame
+
+	# 2. Skip boot splash and camera swoop for subsequent gameplay captures
+	if gm != null:
+		gm.skip_boot_splash = true
+
 	var main_scn = load("res://scenes/main.tscn")
 	if not main_scn:
 		print("FAILED to load main.tscn")
@@ -42,13 +79,11 @@ func _init():
 	for i in range(200):
 		await process_frame
 		
-	var base_dir = ProjectSettings.globalize_path("res://../")
 	var img = root.get_viewport().get_texture().get_image()
 	if img != null:
 		var err = img.save_png(base_dir + "/gameplay_view.png")
 		print("Snapshot result:", err)
 
-	var gm = root.get_node_or_null("/root/GameManager")
 	if gm != null:
 		gm.set_all_stations_max_level(true)
 	var hud_node = root.find_child("HUD", true, false)
