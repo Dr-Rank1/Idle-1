@@ -9,21 +9,23 @@ var sounds: Dictionary = {}
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	
-	sounds["coin"] = load("res://assets/audio/coin_payout.wav")
-	sounds["bell"] = load("res://assets/audio/order_bell.wav")
-	sounds["upgrade"] = load("res://assets/audio/upgrade_fanfare.wav")
-	sounds["angry"] = load("res://assets/audio/angry_exit.wav")
-	sounds["ambience"] = load("res://assets/audio/restaurant_ambience.wav")
+	sounds["coin"] = _safe_load_sound("res://assets/audio/coin_payout.wav")
+	sounds["bell"] = _safe_load_sound("res://assets/audio/order_bell.wav")
+	sounds["upgrade"] = _safe_load_sound("res://assets/audio/upgrade_fanfare.wav")
+	sounds["angry"] = _safe_load_sound("res://assets/audio/angry_exit.wav")
+	sounds["ambience"] = _safe_load_sound("res://assets/audio/restaurant_ambience.wav")
 	sounds["ambient"] = sounds.get("ambience")
-	sounds["sizzle"] = load("res://assets/audio/cooking_sizzle.wav")
-	sounds["click"] = load("res://assets/audio/button_click.wav")
-	sounds["claim"] = load("res://assets/audio/quest_claim.wav")
-	sounds["diamond"] = load("res://assets/audio/diamond_chime.wav")
+	sounds["sizzle"] = _safe_load_sound("res://assets/audio/cooking_sizzle.wav")
+	sounds["click"] = _safe_load_sound("res://assets/audio/button_click.wav")
+	sounds["claim"] = _safe_load_sound("res://assets/audio/quest_claim.wav")
+	sounds["diamond"] = _safe_load_sound("res://assets/audio/diamond_chime.wav", "upgrade")
 	sounds["gem"] = sounds.get("diamond")
-	sounds["gold_coin"] = load("res://assets/audio/gold_coin_chime.wav")
-	sounds["energy"] = load("res://assets/audio/energy_spark.wav")
-	# Milestone chime: reuse diamond_chime at a higher pitch for the level 10/25/50 burst
-	sounds["milestone"] = sounds.get("diamond")
+	sounds["gold_coin"] = _safe_load_sound("res://assets/audio/gold_coin_chime.wav", "coin")
+	sounds["energy"] = _safe_load_sound("res://assets/audio/energy_spark.wav", "upgrade")
+	sounds["stinger"] = _safe_load_sound("res://assets/audio/studio_stinger.wav", "upgrade")
+	sounds["studio_chime"] = sounds.get("stinger")
+	# Milestone chime: reuse diamond_chime/upgrade at a higher pitch for the level 10/25/50 burst
+	sounds["milestone"] = sounds.get("diamond") if sounds.get("diamond") != null else sounds.get("upgrade")
 	
 	ambience_player = AudioStreamPlayer.new()
 	ambience_player.stream = sounds.get("ambience")
@@ -32,7 +34,26 @@ func _ready() -> void:
 	ambience_player.finished.connect(_on_ambience_finished)
 	if ambience_player.stream != null:
 		ambience_player.play()
-	
+
+func _safe_load_sound(path: String, fallback_key: String = "") -> AudioStream:
+	# Check if imported sample exists on disk before attempting load to prevent C++ errors
+	var import_path = path + ".import"
+	if FileAccess.file_exists(import_path):
+		var cfg = ConfigFile.new()
+		if cfg.load(import_path) == OK:
+			var sample_path = cfg.get_value("remap", "path", "")
+			if sample_path != "" and not FileAccess.file_exists(sample_path):
+				if fallback_key != "" and sounds.has(fallback_key):
+					return sounds.get(fallback_key)
+				return null
+	if ResourceLoader.exists(path):
+		var res = load(path)
+		if res is AudioStream:
+			return res
+	if fallback_key != "" and sounds.has(fallback_key):
+		return sounds.get(fallback_key)
+	return null
+
 	for i in range(max_sfx_channels):
 		var p = AudioStreamPlayer.new()
 		add_child(p)
@@ -40,6 +61,14 @@ func _ready() -> void:
 
 func _on_ambience_finished() -> void:
 	if ambience_player != null and is_instance_valid(ambience_player):
+		ambience_player.play()
+
+func stop_ambience() -> void:
+	if ambience_player != null and is_instance_valid(ambience_player):
+		ambience_player.stop()
+
+func start_ambience() -> void:
+	if ambience_player != null and is_instance_valid(ambience_player) and not ambience_player.playing:
 		ambience_player.play()
 
 func play_sfx(sound_name: String, pitch_range: float = 0.05, volume_offset: float = 0.0, custom_pitch: float = 1.0) -> void:
@@ -73,3 +102,12 @@ func play_milestone_chime(milestone_level: int = 10) -> void:
 	t1.timeout.connect(func(): play_sfx("milestone", 0.0, 2.0, base_pitch + 0.15))
 	var t2 = get_tree().create_timer(0.38)
 	t2.timeout.connect(func(): play_sfx("milestone", 0.0, 3.0, base_pitch + 0.30))
+
+func play_studio_stinger() -> void:
+	if sounds.get("stinger") != null:
+		play_sfx("stinger", 0.0, 3.5, 1.0)
+	elif sounds.get("diamond") != null:
+		play_sfx("diamond", 0.0, 3.5, 1.2)
+	else:
+		play_milestone_chime(50)
+

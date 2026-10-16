@@ -6,6 +6,11 @@ import math
 import random
 
 def create_wav(filename, samples, sample_rate=44100):
+    if not os.path.isabs(filename):
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        proj_dir = os.path.dirname(script_dir)
+        if filename.startswith("assets"):
+            filename = os.path.join(proj_dir, filename)
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with wave.open(filename, 'w') as wav_file:
         wav_file.setnchannels(1) # mono
@@ -262,6 +267,63 @@ def generate_energy_spark_sfx():
         samples.append(s)
     create_wav("assets/audio/energy_spark.wav", samples, sr)
 
+def generate_studio_stinger_sfx():
+    # Crisp, elegant ascending synth chime stinger for DR RANK Studio splash
+    # Warm stereo/harmonic spread with glass harmonics, shimmering overtone sweep,
+    # and crystal sustain
+    sr = 44100
+    duration = 1.35
+    total_samples = int(sr * duration)
+    samples = []
+    
+    # Ascending crystal synth chime arpeggio:
+    # C5, G5, C6, E6, G6, C7, E7
+    notes = [
+        (0.00, 523.25, 0.40, 0.35),
+        (0.07, 783.99, 0.40, 0.40),
+        (0.14, 1046.50, 0.45, 0.45),
+        (0.21, 1318.51, 0.50, 0.50),
+        (0.28, 1567.98, 0.60, 0.55),
+        (0.35, 2093.00, 0.80, 0.65),
+        (0.42, 2637.02, 0.90, 0.55),
+    ]
+    
+    # Warm sub-bass foundation
+    bass_freq = 261.63 # C4
+    
+    for i in range(total_samples):
+        t = i / sr
+        sample = 0.0
+        
+        # Warm sub-bass swell
+        if t < 1.1:
+            bass_env = math.sin(min(1.0, t / 0.15) * math.pi * 0.5) * math.exp(-t * 2.8)
+            bass = math.sin(2.0 * math.pi * bass_freq * t) * 0.28
+            bass += math.sin(2.0 * math.pi * (bass_freq * 0.5) * t) * 0.20 # C3 sub
+            sample += bass * bass_env
+            
+        for start_t, freq, note_dur, note_vol in notes:
+            if t >= start_t:
+                dt = t - start_t
+                env = math.exp(-dt * 4.2)
+                
+                # Shimmer / FM sparkle
+                fm = math.sin(2.0 * math.pi * (freq * 2.0) * dt) * 0.25
+                w = math.sin(2.0 * math.pi * (freq + fm * 40.0) * dt) * 0.65
+                w += math.sin(2.0 * math.pi * (freq * 2.0) * dt) * 0.22 # 2nd harmonic
+                w += math.sin(2.0 * math.pi * (freq * 3.0) * dt) * 0.10 # 3rd harmonic
+                w += math.sin(2.0 * math.pi * (freq * 4.0) * dt) * 0.05 # 4th glass sparkle
+                
+                # Stereo chorus / detune shimmer
+                w += math.sin(2.0 * math.pi * (freq * 1.004) * dt) * 0.18
+                
+                sample += w * env * note_vol * 0.5
+                
+        # Master limiter / soft clip
+        samples.append(sample * 0.75)
+        
+    create_wav("assets/audio/studio_stinger.wav", samples, sr)
+
 if __name__ == "__main__":
     generate_coin_sfx()
     generate_order_bell_sfx()
@@ -273,5 +335,6 @@ if __name__ == "__main__":
     generate_diamond_chime_sfx()
     generate_gold_coin_chime_sfx()
     generate_energy_spark_sfx()
+    generate_studio_stinger_sfx()
     print("All audio generated successfully!")
 

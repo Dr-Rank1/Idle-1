@@ -1,0 +1,302 @@
+[gd_scene load_steps=6 format=3 uid="uid://bootsplash123"]
+
+[ext_resource type="Script" path="res://scripts/boot_splash.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_track"]
+bg_color = Color(0.12, 0.07, 0.04, 0.95)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 5
+border_color = Color(0.24, 0.14, 0.07, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_fill"]
+bg_color = Color(1, 0.78, 0.15, 1)
+border_width_left = 2
+border_width_top = 3
+border_width_right = 2
+border_width_bottom = 4
+border_color = Color(1, 0.92, 0.45, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tap_normal"]
+bg_color = Color(0.18, 0.78, 0.35, 1)
+border_width_left = 3
+border_width_top = 2
+border_width_right = 3
+border_width_bottom = 7
+border_color = Color(0.08, 0.44, 0.18, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tap_pressed"]
+bg_color = Color(0.15, 0.7, 0.3, 1)
+border_width_left = 3
+border_width_top = 4
+border_width_right = 3
+border_width_bottom = 4
+border_color = Color(0.08, 0.44, 0.18, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
+[node name="BootSplash" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Stage1_DRRank" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="NavyBackground" type="ColorRect" parent="Stage1_DRRank"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.051, 0.075, 0.133, 1)
+
+[node name="RadialGlow" type="TextureRect" parent="Stage1_DRRank"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320.0
+offset_top = -320.0
+offset_right = 320.0
+offset_bottom = 320.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LogoContainer" type="Control" parent="Stage1_DRRank"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -140.0
+offset_right = 280.0
+offset_bottom = 140.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="StudioLogo" type="TextureRect" parent="Stage1_DRRank/LogoContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="SheenMask" type="Control" parent="Stage1_DRRank/LogoContainer"]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SheenBar" type="TextureRect" parent="Stage1_DRRank/LogoContainer/SheenMask"]
+layout_mode = 0
+offset_left = -220.0
+offset_top = -50.0
+offset_right = -100.0
+offset_bottom = 310.0
+expand_mode = 1
+
+[node name="Stage2_Diner" type="Control" parent="."]
+modulate = Color(1, 1, 1, 0)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SunburstBackground" type="TextureRect" parent="Stage2_Diner"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="TitleContainer" type="Control" parent="Stage2_Diner"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.38
+anchor_right = 0.5
+anchor_bottom = 0.38
+offset_left = -280.0
+offset_top = -140.0
+offset_right = 280.0
+offset_bottom = 140.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleLogo" type="TextureRect" parent="Stage2_Diner/TitleContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BottomControls" type="Control" parent="Stage2_Diner"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.82
+anchor_right = 0.5
+anchor_bottom = 0.82
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="LoadingBarContainer" type="Control" parent="Stage2_Diner/BottomControls"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -24.0
+offset_right = 240.0
+offset_bottom = 24.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BarTrack" type="Panel" parent="Stage2_Diner/BottomControls/LoadingBarContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_bar_track")
+
+[node name="BarFillClip" type="Control" parent="Stage2_Diner/BottomControls/LoadingBarContainer"]
+clip_contents = true
+layout_mode = 0
+offset_right = 0.0
+offset_bottom = 48.0
+
+[node name="BarFill" type="Panel" parent="Stage2_Diner/BottomControls/LoadingBarContainer/BarFillClip"]
+layout_mode = 0
+offset_right = 480.0
+offset_bottom = 48.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_bar_fill")
+
+[node name="BarGloss" type="ColorRect" parent="Stage2_Diner/BottomControls/LoadingBarContainer/BarFillClip"]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 476.0
+offset_bottom = 18.0
+color = Color(1, 1, 1, 0.35)
+
+[node name="LoadingLabel" type="Label" parent="Stage2_Diner/BottomControls/LoadingBarContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_outline_color = Color(0.12, 0.07, 0.03, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 16
+text = "Prepping Kitchen Stoves... 0%"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TapToPlayButton" type="Button" parent="Stage2_Diner/BottomControls"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -170.0
+offset_top = -28.0
+offset_right = 170.0
+offset_bottom = 32.0
+grow_horizontal = 2
+grow_vertical = 2
+focus_mode = 0
+theme_override_colors/font_outline_color = Color(0.06, 0.32, 0.12, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_tap_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_tap_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_tap_pressed")
+text = "▶  TAP TO START"
+
+[node name="WatermarkLabel" type="Label" parent="Stage2_Diner"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 0.95
+anchor_right = 0.5
+anchor_bottom = 0.95
+offset_left = -180.0
+offset_top = -20.0
+offset_right = 180.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 0.92, 0.65, 0.75)
+theme_override_colors/font_outline_color = Color(0.12, 0.05, 0.02, 0.8)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 13
+text = "POWERED BY DR RANK"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="FadeOverlay" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)

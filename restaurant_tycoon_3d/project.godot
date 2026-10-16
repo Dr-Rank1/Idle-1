@@ -11,8 +11,12 @@ config_version=5
 [application]
 
 config/name="Idle Restaurant Tycoon 3D"
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/ui/boot_splash.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
+boot_splash/bg_color=Color(0.0509804, 0.0745098, 0.133333, 1)
+boot_splash/image="res://assets/textures/dr_rank_logo.png"
+boot_splash/fullsize=false
+boot_splash/use_filter=true
 config/icon="res://icon.png"
 
 [autoload]
