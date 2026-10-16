@@ -1974,6 +1974,7 @@ func _on_staff_updated(staff_id: String) -> void:
 	_check_spawn_hired_staff()
 
 var critic_timer: float = 35.0
+var investor_spawn_timer: float = 90.0
 
 func _process(delta: float) -> void:
 	spawn_timer -= delta
@@ -1989,6 +1990,11 @@ func _process(delta: float) -> void:
 	if critic_timer <= 0.0:
 		critic_timer = randf_range(38.0, 52.0)
 		_try_spawn_critic()
+
+	investor_spawn_timer -= delta
+	if investor_spawn_timer <= 0.0:
+		investor_spawn_timer = 90.0
+		_try_spawn_roadside_investor()
 		
 	_check_seat_waiting_customers()
 	_process_catering_fulfillment(delta)
@@ -3408,7 +3414,7 @@ func _apply_toy_mobile_styling_to_node(node: Node) -> void:
 			mat.rim_enabled = true
 			mat.rim = 0.35
 			mat.roughness = clampf(mat.roughness, 0.35, 0.45)
-		elif mi.mesh != null and mi.mesh is ArrayMesh:
+		elif mi.mesh != null and mi.mesh is ArrayMesh and mi.mesh.get_rid().is_valid():
 			var sc = mi.mesh.get_surface_count()
 			for s in range(sc):
 				var surf_mat = mi.get_surface_override_material(s)
@@ -3437,7 +3443,10 @@ func spawn_vip_investor(spawn_pos: Vector3) -> Node3D:
 		return null
 		
 	var cust = customer_scene.instantiate()
-	customers_container.add_child(cust)
+	if customers_container != null:
+		customers_container.add_child(cust)
+	else:
+		add_child(cust)
 	_apply_toy_mobile_styling_to_node(cust)
 	cust.global_position = spawn_pos
 	if cust.has_method("set_as_vip_investor"):
@@ -3476,6 +3485,36 @@ func spawn_vip_investor(spawn_pos: Vector3) -> Node3D:
 		cust.set_waypoints(waypoints)
 		
 	return cust
+
+func spawn_roadside_investor(custom_pos: Vector3 = Vector3.ZERO) -> Node3D:
+	if customer_scene == null:
+		customer_scene = load("res://scenes/customer.tscn")
+	if customer_scene == null:
+		return null
+		
+	var cust = customer_scene.instantiate()
+	if customers_container != null:
+		customers_container.add_child(cust)
+	else:
+		add_child(cust)
+	_apply_toy_mobile_styling_to_node(cust)
+	
+	# Spawn on the roadside / sidewalk right by the front entrance
+	var spawn_pos = custom_pos if custom_pos != Vector3.ZERO else Vector3(-1.5, 0.0, 12.5)
+	cust.global_position = spawn_pos
+	if cust.has_method("set_as_vip_investor"):
+		cust.set_as_vip_investor(true)
+		
+	cust.current_state = cust.State.AT_HOST
+	cust.set_waypoints([])
+	return cust
+
+func _try_spawn_roadside_investor() -> Node3D:
+	var container = customers_container if customers_container != null else self
+	for c in container.get_children():
+		if is_instance_valid(c) and c.get("is_vip_investor") == true and not c.get("vip_reward_claimed"):
+			return null
+	return spawn_roadside_investor()
 
 func get_sector_bottleneck_status() -> Dictionary:
 	# 1. Lobby Queue Full (red)

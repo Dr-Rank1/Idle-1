@@ -1361,8 +1361,10 @@ class GameState extends ChangeNotifier {
   /// Resets cash and stations in exchange for permanent franchise keys, diamonds and +50% profit
   bool prestigeReset() {
     if (!canPrestige) return false;
+    final stars = starsToEarnOnPrestige;
     final newKeys = keysToEarnOnPrestige;
     final newDiamonds = diamondsToEarnOnPrestige;
+    prestigeStars += stars;
     prestigeLevel += 1;
     franchiseKeys += newKeys;
     gems += newDiamonds;
@@ -1380,7 +1382,7 @@ class GameState extends ChangeNotifier {
     }
 
     // Starting cash bonus based on prestige level
-    cash = 500.0 * (1.0 + prestigeLevel);
+    cash = 500.0 * (1.0 + stars);
 
     // Remove existing guests so resort starts fresh
     characters.removeWhere((c) => c.isGuest);

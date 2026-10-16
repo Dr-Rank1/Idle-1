@@ -53,6 +53,8 @@ signal manager_skill_ended(sector_id: String)
 signal manager_skill_ready(sector_id: String)
 signal manager_assigned(sector_id: String, tier: String)
 signal star_dish_unlocked(star_tier: int, dish_info: Dictionary)
+signal piggy_bank_updated(current: int, max_cap: int)
+signal investor_offer_requested(investor_node: Node3D, cash_amount: float, diamond_amount: int)
 
 var restaurant_node: Node3D = null
 
@@ -157,6 +159,8 @@ var is_manager_inspection_active: bool = false
 var daily_gift_claimed: bool = false
 var unlocked_star_tiers: Array = [1]
 var claimed_star_rewards: Array = []
+const PIGGY_BANK_CAP: int = 250
+var piggy_bank_diamonds: int = 0
 
 # ─── Play Store Star Rating Signature Dishes ────────────────────────────────
 const STAR_DISH_TIERS: Dictionary = {
@@ -1295,6 +1299,7 @@ func save_game() -> void:
 		},
 		"prestige_level": prestige_level,
 		"franchise_keys": franchise_keys,
+		"piggy_bank_diamonds": piggy_bank_diamonds,
 		"unlocked_star_tiers": unlocked_star_tiers,
 		"claimed_star_rewards": claimed_star_rewards,
 		"restaurant_valuation": get_restaurant_valuation(),
@@ -1444,12 +1449,16 @@ func load_game() -> void:
 		for t in parsed["claimed_star_rewards"]:
 			claimed_star_rewards.append(int(t))
 
+	if parsed.has("piggy_bank_diamonds"):
+		piggy_bank_diamonds = clampi(int(parsed["piggy_bank_diamonds"]), 0, PIGGY_BANK_CAP)
+
 	currencies_updated.emit(cash, golden_coins, diamonds, energy)
 	cash_changed.emit(cash)
 	diamonds_changed.emit(diamonds)
 	gems_changed.emit(diamonds)
 	golden_coins_changed.emit(golden_coins)
 	energy_changed.emit(energy)
+	piggy_bank_updated.emit(piggy_bank_diamonds, PIGGY_BANK_CAP)
 
 func _notify_offline_earnings(earned: float, elapsed: float) -> void:
 	await get_tree().create_timer(0.6).timeout
@@ -1963,6 +1972,7 @@ func upgrade_station_multi(station_id: String, mode: String, consecutive_step: i
 				station_milestone_reached.emit(station_id, m, 5, 25)
 
 		progress_objective("station_level", info.levels, station_id)
+		deposit_piggy_bank(info.levels)
 
 		save_game()
 		
@@ -2609,6 +2619,7 @@ func _progress_quest(quest_id: String, amount: int = 1) -> void:
 func record_customer_served() -> void:
 	_progress_quest("serve_customers", 1)
 	progress_objective("serve_customers", 1)
+	deposit_piggy_bank(1)
 
 func claim_quest(quest_id: String) -> bool:
 	for q in active_quests:
@@ -2749,8 +2760,52 @@ func award_vip_investor_reward(world_pos: Vector3 = Vector3.ZERO) -> float:
 		am.play_sfx("claim")
 	return grant
 
+func award_investor_choice(choice: String, world_pos: Vector3 = Vector3.ZERO) -> Dictionary:
+	var cash_grant = max(15000.0, round(get_effective_cash_per_sec() * 120.0))
+	var diamond_grant = 15
+	vip_revenue_multiplier_timer = 60.0
+	add_xp(350.0)
+	var result = {}
+	if choice == "cash":
+		add_cash(cash_grant, world_pos)
+		vip_investor_awarded.emit(cash_grant)
+		result = {"type": "cash", "amount": cash_grant}
+	else:
+		add_diamonds(diamond_grant, world_pos)
+		vip_investor_awarded.emit(float(diamond_grant))
+		result = {"type": "diamonds", "amount": diamond_grant}
+	save_game()
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("claim")
+	return result
+
 func start_vip_boost(duration: float = 60.0) -> void:
 	vip_revenue_multiplier_timer = max(vip_revenue_multiplier_timer, duration)
+
+# ─── Golden Piggy Bank System ────────────────────────────────────────────────
+func deposit_piggy_bank(amount: int = 1) -> void:
+	if piggy_bank_diamonds < PIGGY_BANK_CAP:
+		piggy_bank_diamonds = mini(PIGGY_BANK_CAP, piggy_bank_diamonds + amount)
+		piggy_bank_updated.emit(piggy_bank_diamonds, PIGGY_BANK_CAP)
+
+func smash_piggy_bank() -> int:
+	var claim_amount = piggy_bank_diamonds
+	if claim_amount > 0:
+		add_diamonds(claim_amount)
+		piggy_bank_diamonds = 0
+		piggy_bank_updated.emit(piggy_bank_diamonds, PIGGY_BANK_CAP)
+		save_game()
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("claim")
+	return claim_amount
+
+func get_piggy_bank_diamonds() -> int:
+	return piggy_bank_diamonds
+
+func is_piggy_bank_full() -> bool:
+	return piggy_bank_diamonds >= PIGGY_BANK_CAP
 
 # ─── World Map Restaurants API ──────────────────────────────────────────────
 func get_world_restaurants() -> Dictionary:

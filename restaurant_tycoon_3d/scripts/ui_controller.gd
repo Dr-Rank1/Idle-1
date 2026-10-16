@@ -59,6 +59,8 @@ extends CanvasLayer
 @onready var upgrade_milestone_bar: ProgressBar = get_node_or_null("UpgradePanel/VBox/MilestoneBar")
 var _station_progress_bar: ProgressBar = null
 var star_dish_unlock_modal: Control = null
+var piggy_bank_modal: Control = null
+var investor_offer_modal: Control = null
 var station_progress_bar: ProgressBar:
 	get:
 		if _station_progress_bar != null and is_instance_valid(_station_progress_bar):
@@ -118,6 +120,8 @@ var milestone_labels_hbox: HBoxContainer:
 # ─── World Map & Right Action Dock ──────────────────────────────────────────
 @onready var map_btn: Button = get_node_or_null("HUD/LeftDock/MapBtn") if get_node_or_null("HUD/LeftDock/MapBtn") != null else (get_node_or_null("HUD/TopBar/MapBtn") if get_node_or_null("HUD/TopBar/MapBtn") != null else get_node_or_null("HUD/RightDock/SideMapBtn"))
 @onready var side_map_btn: Button = get_node_or_null("HUD/LeftDock/MapBtn") if get_node_or_null("HUD/LeftDock/MapBtn") != null else get_node_or_null("HUD/RightDock/SideMapBtn")
+@onready var side_piggy_bank_btn: Button = get_node_or_null("HUD/RightDock/SidePiggyBankBtn")
+@onready var piggy_counter_label: Label = get_node_or_null("HUD/RightDock/SidePiggyBankBtn/DiamondPill/CounterLabel")
 @onready var side_ad_btn: Button = get_node_or_null("HUD/RightDock/SideAdBtn")
 @onready var side_settings_btn: Button = get_node_or_null("HUD/RightDock/SideSettingsBtn")
 @onready var side_lightbulb_btn: Button = get_node_or_null("HUD/RightDock/SideLightbulbBtn")
@@ -593,6 +597,10 @@ func _ready() -> void:
 		side_settings_btn.pressed.connect(func():
 			_toggle_modal(marketing_panel, _refresh_marketing_panel)
 		)
+	if side_piggy_bank_btn != null:
+		side_piggy_bank_btn.pressed.connect(func():
+			open_piggy_bank_modal()
+		)
 	if side_lightbulb_btn != null:
 		side_lightbulb_btn.pressed.connect(func():
 			_toggle_modal(perks_panel, _refresh_perks_panel)
@@ -712,6 +720,13 @@ func _ready() -> void:
 		gm.critic_review_awarded.connect(_on_critic_review_awarded)
 		if gm.has_signal("star_dish_unlocked") and not gm.star_dish_unlocked.is_connected(_on_star_dish_unlocked):
 			gm.star_dish_unlocked.connect(_on_star_dish_unlocked)
+		if gm.has_signal("piggy_bank_updated"):
+			if not gm.piggy_bank_updated.is_connected(_on_piggy_bank_updated):
+				gm.piggy_bank_updated.connect(_on_piggy_bank_updated)
+			_on_piggy_bank_updated(gm.get_piggy_bank_diamonds(), gm.PIGGY_BANK_CAP)
+		if gm.has_signal("investor_offer_requested"):
+			if not gm.investor_offer_requested.is_connected(_on_investor_offer_requested):
+				gm.investor_offer_requested.connect(_on_investor_offer_requested)
 		if gm.has_signal("spawn_flying_currency_trail"):
 			gm.spawn_flying_currency_trail.connect(spawn_flying_currency_trail)
 		if gm.has_signal("marketing_changed"):
@@ -1053,6 +1068,14 @@ func _hide_all_modals() -> void:
 		star_dish_unlock_modal.visible = false
 		star_dish_unlock_modal.queue_free()
 		star_dish_unlock_modal = null
+	if piggy_bank_modal != null and is_instance_valid(piggy_bank_modal):
+		piggy_bank_modal.visible = false
+		piggy_bank_modal.queue_free()
+		piggy_bank_modal = null
+	if investor_offer_modal != null and is_instance_valid(investor_offer_modal):
+		investor_offer_modal.visible = false
+		investor_offer_modal.queue_free()
+		investor_offer_modal = null
 
 func _open_modal(panel: PanelContainer) -> void:
 	if panel == null: return
@@ -3025,6 +3048,7 @@ func _apply_mobile_kolibri_ui_styling() -> void:
 	var edge_buttons = [
 		{"btn": shop_btn, "bg": Color(1.0, 0.624, 0.11, 1.0), "border": Color(0.58, 0.28, 0.05, 1.0)},
 		{"btn": map_btn, "bg": Color(0.12, 0.58, 0.95, 1.0), "border": Color(0.06, 0.28, 0.58, 1.0)},
+		{"btn": side_piggy_bank_btn, "bg": Color(1.0, 0.72, 0.16, 1.0), "border": Color(0.62, 0.36, 0.05, 1.0)},
 		{"btn": side_ad_btn, "bg": Color(0.98, 0.48, 0.08, 1.0), "border": Color(0.58, 0.22, 0.04, 1.0)},
 		{"btn": side_stats_btn, "bg": Color(0.16, 0.72, 0.52, 1.0), "border": Color(0.08, 0.38, 0.28, 1.0)},
 		{"btn": side_spin_btn, "bg": Color(0.58, 0.18, 0.88, 1.0), "border": Color(0.32, 0.08, 0.52, 1.0)},
@@ -3578,6 +3602,548 @@ func _show_star_dish_unlock_modal(star_tier: int, dish_info: Dictionary) -> void
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("play_sfx"):
 		am.play_sfx("upgrade", 0.0, 4.0)
+
+# ─── Golden Piggy Bank System ────────────────────────────────────────────────
+func _on_piggy_bank_updated(current: int, max_cap: int) -> void:
+	if piggy_counter_label != null:
+		if current >= max_cap:
+			piggy_counter_label.text = "MAX"
+			piggy_counter_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.2, 1.0))
+		else:
+			piggy_counter_label.text = str(current)
+			piggy_counter_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.4, 1.0))
+	if piggy_bank_modal != null and is_instance_valid(piggy_bank_modal):
+		_refresh_piggy_bank_modal_contents(current, max_cap)
+
+func _open_piggy_bank_modal() -> void:
+	open_piggy_bank_modal()
+
+func open_piggy_bank_modal() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	var hud_node = get_node_or_null("HUD")
+	if hud_node == null:
+		hud_node = self
+
+	# Clean up any existing modal instance
+	if piggy_bank_modal != null and is_instance_valid(piggy_bank_modal):
+		piggy_bank_modal.queue_free()
+		piggy_bank_modal = null
+
+	var current_diamonds = gm.get_piggy_bank_diamonds() if gm != null and gm.has_method("get_piggy_bank_diamonds") else 0
+	var max_cap = gm.PIGGY_BANK_CAP if gm != null and "PIGGY_BANK_CAP" in gm else 250
+
+	var modal_root = Control.new()
+	modal_root.name = "PiggyBankModal"
+	modal_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal_root.mouse_filter = Control.MOUSE_FILTER_STOP
+	piggy_bank_modal = modal_root
+
+	# Dark Navy Scrim
+	var scrim = ColorRect.new()
+	scrim.name = "Scrim"
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.color = Color(0.04, 0.07, 0.12, 0.85)
+	modal_root.add_child(scrim)
+
+	# Golden Sunburst Rays Container
+	var sunburst_ctrl = Control.new()
+	sunburst_ctrl.name = "SunburstRays"
+	sunburst_ctrl.set_anchors_preset(Control.PRESET_CENTER)
+	sunburst_ctrl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ray_count = 16
+	for r_i in range(ray_count):
+		var ray_poly = Polygon2D.new()
+		var a_start = (float(r_i) / float(ray_count)) * TAU
+		var a_end = ((float(r_i) + 0.5) / float(ray_count)) * TAU
+		var ray_pts = PackedVector2Array()
+		ray_pts.append(Vector2.ZERO)
+		var ray_radius = 560.0
+		var ray_steps = 6
+		for s_i in range(ray_steps + 1):
+			var a = a_start + (a_end - a_start) * (float(s_i) / float(ray_steps))
+			ray_pts.append(Vector2(cos(a), sin(a)) * ray_radius)
+		ray_poly.polygon = ray_pts
+		if r_i % 2 == 0:
+			ray_poly.color = Color(1.0, 0.82, 0.22, 0.18)
+		else:
+			ray_poly.color = Color(1.0, 0.90, 0.35, 0.07)
+		sunburst_ctrl.add_child(ray_poly)
+	modal_root.add_child(sunburst_ctrl)
+
+	var rot_tween = modal_root.create_tween().set_loops()
+	rot_tween.tween_property(sunburst_ctrl, "rotation", TAU, 18.0).as_relative()
+
+	# Center Card Container
+	var center_box = CenterContainer.new()
+	center_box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal_root.add_child(center_box)
+
+	var card_panel = PanelContainer.new()
+	card_panel.name = "CardPanel"
+	card_panel.custom_minimum_size = Vector2(390, 510)
+	
+	var card_style = StyleBoxFlat.new()
+	card_style.bg_color = Color(0.10, 0.13, 0.20, 0.98)
+	card_style.set_corner_radius_all(24)
+	card_style.border_width_left = 3
+	card_style.border_width_top = 3
+	card_style.border_width_right = 3
+	card_style.border_width_bottom = 3
+	card_style.border_color = Color(1.0, 0.82, 0.22, 1.0)
+	card_style.shadow_color = Color(0.0, 0.0, 0.0, 0.6)
+	card_style.shadow_size = 14
+	card_panel.add_theme_stylebox_override("panel", card_style)
+	center_box.add_child(card_panel)
+
+	var vbox = VBoxContainer.new()
+	vbox.name = "VBox"
+	vbox.add_theme_constant_override("separation", 12)
+	card_panel.add_child(vbox)
+
+	# 1. Header Bar with Close Button
+	var header_hbox = HBoxContainer.new()
+	vbox.add_child(header_hbox)
+
+	var title_lbl = Label.new()
+	title_lbl.name = "TitleLabel"
+	title_lbl.text = "🐷 GOLDEN PIGGY BANK 🐷"
+	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_font_size_override("font_size", 18)
+	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.88, 0.25, 1.0))
+	header_hbox.add_child(title_lbl)
+
+	var close_btn = Button.new()
+	close_btn.name = "CloseBtn"
+	close_btn.text = "✕"
+	close_btn.custom_minimum_size = Vector2(34, 34)
+	var close_sb = StyleBoxFlat.new()
+	close_sb.bg_color = Color(0.2, 0.2, 0.26, 0.85)
+	close_sb.set_corner_radius_all(17)
+	close_btn.add_theme_stylebox_override("normal", close_sb)
+	close_btn.add_theme_font_size_override("font_size", 14)
+	close_btn.add_theme_color_override("font_color", Color.WHITE)
+	header_hbox.add_child(close_btn)
+
+	# Subtitle
+	var sub_lbl = Label.new()
+	sub_lbl.text = "Every station upgrade & completed order\nsaves free Diamonds into your Piggy Bank!"
+	sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub_lbl.add_theme_font_size_override("font_size", 11)
+	sub_lbl.add_theme_color_override("font_color", Color(0.78, 0.84, 0.95, 0.9))
+	vbox.add_child(sub_lbl)
+
+	# 2. Golden Graphic Card
+	var gfx_panel = PanelContainer.new()
+	gfx_panel.name = "GraphicCard"
+	gfx_panel.custom_minimum_size = Vector2(340, 200)
+	var gfx_sb = StyleBoxFlat.new()
+	gfx_sb.bg_color = Color(0.14, 0.11, 0.22, 0.92)
+	gfx_sb.border_width_left = 2
+	gfx_sb.border_width_top = 2
+	gfx_sb.border_width_right = 2
+	gfx_sb.border_width_bottom = 2
+	gfx_sb.border_color = Color(1.0, 0.82, 0.22, 0.6)
+	gfx_sb.set_corner_radius_all(18)
+	gfx_panel.add_theme_stylebox_override("panel", gfx_sb)
+	vbox.add_child(gfx_panel)
+
+	var gfx_vbox = VBoxContainer.new()
+	gfx_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	gfx_vbox.add_theme_constant_override("separation", 6)
+	gfx_panel.add_child(gfx_vbox)
+
+	var pig_icon = Label.new()
+	pig_icon.name = "PigIcon"
+	pig_icon.text = "🐷"
+	pig_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pig_icon.add_theme_font_size_override("font_size", 64)
+	gfx_vbox.add_child(pig_icon)
+
+	var pig_tw = modal_root.create_tween().set_loops()
+	pig_tw.tween_property(pig_icon, "scale", Vector2(1.08, 1.08), 0.75).set_trans(Tween.TRANS_SINE)
+	pig_tw.tween_property(pig_icon, "scale", Vector2.ONE, 0.75).set_trans(Tween.TRANS_SINE)
+	pig_icon.pivot_offset = Vector2(32, 32)
+
+	var count_lbl = Label.new()
+	count_lbl.name = "PiggyDiamondCount"
+	count_lbl.text = "%d / %d 💎" % [current_diamonds, max_cap]
+	count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	count_lbl.add_theme_font_size_override("font_size", 26)
+	count_lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.35, 1.0))
+	gfx_vbox.add_child(count_lbl)
+
+	# 3. Progress Track
+	var pbar = ProgressBar.new()
+	pbar.name = "PiggyProgressBar"
+	pbar.custom_minimum_size = Vector2(320, 18)
+	pbar.min_value = 0.0
+	pbar.max_value = float(max_cap)
+	pbar.value = float(current_diamonds)
+	pbar.show_percentage = false
+	
+	var pb_bg = StyleBoxFlat.new()
+	pb_bg.bg_color = Color(0.06, 0.08, 0.12, 0.95)
+	pb_bg.set_corner_radius_all(9)
+	pbar.add_theme_stylebox_override("background", pb_bg)
+
+	var pb_fill = StyleBoxFlat.new()
+	pb_fill.bg_color = Color(1.0, 0.75, 0.15, 1.0)
+	pb_fill.set_corner_radius_all(9)
+	pbar.add_theme_stylebox_override("fill", pb_fill)
+	vbox.add_child(pbar)
+
+	# Status Hint
+	var hint_lbl = Label.new()
+	hint_lbl.name = "StatusHint"
+	if current_diamonds >= max_cap:
+		hint_lbl.text = "🔥 BANK FULL! SMASH OPEN TO CLAIM! 🔥"
+		hint_lbl.add_theme_color_override("font_color", Color(1.0, 0.65, 0.2, 1.0))
+	else:
+		hint_lbl.text = "⚡ %d more Diamonds to reach capacity! ⚡" % (max_cap - current_diamonds)
+		hint_lbl.add_theme_color_override("font_color", Color(0.65, 0.85, 1.0, 0.85))
+	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint_lbl.add_theme_font_size_override("font_size", 12)
+	vbox.add_child(hint_lbl)
+
+	# 4. Smash Open Button
+	var smash_btn = Button.new()
+	smash_btn.name = "SmashOpenBtn"
+	smash_btn.custom_minimum_size = Vector2(340, 52)
+	if current_diamonds > 0:
+		smash_btn.text = "🔨 SMASH OPEN (CLAIM +%d 💎)" % current_diamonds
+	else:
+		smash_btn.text = "🔨 SMASH OPEN (+0 💎)"
+	
+	var btn_style = StyleBoxFlat.new()
+	btn_style.bg_color = Color(0.14, 0.72, 0.35, 1.0)
+	btn_style.set_corner_radius_all(18)
+	btn_style.border_width_left = 2
+	btn_style.border_width_top = 2
+	btn_style.border_width_right = 2
+	btn_style.border_width_bottom = 5
+	btn_style.border_color = Color(0.06, 0.42, 0.18, 1.0)
+	smash_btn.add_theme_stylebox_override("normal", btn_style)
+	
+	var btn_hover = btn_style.duplicate()
+	btn_hover.bg_color = Color(0.18, 0.78, 0.4, 1.0)
+	smash_btn.add_theme_stylebox_override("hover", btn_hover)
+	
+	var btn_pressed = btn_style.duplicate()
+	btn_pressed.border_width_bottom = 0
+	smash_btn.add_theme_stylebox_override("pressed", btn_pressed)
+	smash_btn.add_theme_font_size_override("font_size", 15)
+	smash_btn.add_theme_color_override("font_color", Color.WHITE)
+	vbox.add_child(smash_btn)
+
+	var dismiss_action = func():
+		if is_instance_valid(modal_root):
+			var tw_close = modal_root.create_tween()
+			tw_close.tween_property(card_panel, "scale", Vector2(0.3, 0.3), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+			tw_close.parallel().tween_property(modal_root, "modulate:a", 0.0, 0.2)
+			tw_close.tween_callback(func():
+				if is_instance_valid(modal_root):
+					modal_root.queue_free()
+				piggy_bank_modal = null
+			)
+
+	smash_btn.pressed.connect(func():
+		if gm != null:
+			var claimed = gm.smash_piggy_bank() if gm.has_method("smash_piggy_bank") else 0
+			if claimed > 0:
+				if has_method("spawn_flying_currency_trail"):
+					spawn_flying_currency_trail(Vector3.ZERO, float(claimed), "diamonds")
+		dismiss_action.call()
+	)
+
+	close_btn.pressed.connect(dismiss_action)
+	scrim.gui_input.connect(func(event):
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			dismiss_action.call()
+	)
+
+	hud_node.add_child(modal_root)
+
+	# Scale-in Elastic Entrance
+	card_panel.pivot_offset = card_panel.custom_minimum_size * 0.5
+	card_panel.scale = Vector2(0.2, 0.2)
+	modal_root.modulate.a = 0.0
+	
+	var in_tw = modal_root.create_tween()
+	in_tw.tween_property(modal_root, "modulate:a", 1.0, 0.15)
+	in_tw.parallel().tween_property(card_panel, "scale", Vector2.ONE, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.0, 3.0)
+
+func _refresh_piggy_bank_modal_contents(current: int, max_cap: int) -> void:
+	if piggy_bank_modal == null or not is_instance_valid(piggy_bank_modal):
+		return
+	var count_lbl = piggy_bank_modal.find_child("PiggyDiamondCount", true, false)
+	if count_lbl is Label:
+		count_lbl.text = "%d / %d 💎" % [current, max_cap]
+	var pbar = piggy_bank_modal.find_child("PiggyProgressBar", true, false)
+	if pbar is ProgressBar:
+		pbar.value = float(current)
+		pbar.max_value = float(max_cap)
+	var hint_lbl = piggy_bank_modal.find_child("StatusHint", true, false)
+	if hint_lbl is Label:
+		if current >= max_cap:
+			hint_lbl.text = "🔥 BANK FULL! SMASH OPEN TO CLAIM! 🔥"
+			hint_lbl.add_theme_color_override("font_color", Color(1.0, 0.65, 0.2, 1.0))
+		else:
+			hint_lbl.text = "⚡ %d more Diamonds to reach capacity! ⚡" % (max_cap - current)
+			hint_lbl.add_theme_color_override("font_color", Color(0.65, 0.85, 1.0, 0.85))
+	var smash_btn = piggy_bank_modal.find_child("SmashOpenBtn", true, false)
+	if smash_btn is Button:
+		if current > 0:
+			smash_btn.text = "🔨 SMASH OPEN (CLAIM +%d 💎)" % current
+		else:
+			smash_btn.text = "🔨 SMASH OPEN (+0 💎)"
+
+# ─── Roadside VIP Angel Investor Offers ──────────────────────────────────────
+func _on_investor_offer_requested(investor_node: Node3D, cash_amount: float, diamond_amount: int) -> void:
+	open_investor_offer_modal(investor_node, cash_amount, diamond_amount)
+
+func _open_investor_offer_modal(investor_node: Node3D = null, cash_amount: float = 0.0, diamond_amount: int = 0) -> void:
+	open_investor_offer_modal(investor_node, cash_amount, diamond_amount)
+
+func open_investor_offer_modal(investor_node: Node3D = null, cash_amount: float = 0.0, diamond_amount: int = 0) -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	var hud_node = get_node_or_null("HUD")
+	if hud_node == null:
+		hud_node = self
+
+	# Clean up any existing modal instance
+	if investor_offer_modal != null and is_instance_valid(investor_offer_modal):
+		investor_offer_modal.queue_free()
+		investor_offer_modal = null
+
+	if cash_amount <= 0.0:
+		var eff_rate = gm.get_effective_cash_per_sec() if gm != null and gm.has_method("get_effective_cash_per_sec") else 125.0
+		cash_amount = max(15000.0, round(eff_rate * 120.0))
+	if diamond_amount <= 0:
+		diamond_amount = 15
+
+	var modal_root = Control.new()
+	modal_root.name = "InvestorOfferModal"
+	modal_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal_root.mouse_filter = Control.MOUSE_FILTER_STOP
+	investor_offer_modal = modal_root
+
+	# Dark Navy Scrim
+	var scrim = ColorRect.new()
+	scrim.name = "Scrim"
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.color = Color(0.04, 0.07, 0.12, 0.85)
+	modal_root.add_child(scrim)
+
+	# Sunburst Rays Container (Royal Blue & Gold rays)
+	var sunburst_ctrl = Control.new()
+	sunburst_ctrl.name = "SunburstRays"
+	sunburst_ctrl.set_anchors_preset(Control.PRESET_CENTER)
+	sunburst_ctrl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ray_count = 16
+	for r_i in range(ray_count):
+		var ray_poly = Polygon2D.new()
+		var a_start = (float(r_i) / float(ray_count)) * TAU
+		var a_end = ((float(r_i) + 0.5) / float(ray_count)) * TAU
+		var ray_pts = PackedVector2Array()
+		ray_pts.append(Vector2.ZERO)
+		var ray_radius = 560.0
+		var ray_steps = 6
+		for s_i in range(ray_steps + 1):
+			var a = a_start + (a_end - a_start) * (float(s_i) / float(ray_steps))
+			ray_pts.append(Vector2(cos(a), sin(a)) * ray_radius)
+		ray_poly.polygon = ray_pts
+		if r_i % 2 == 0:
+			ray_poly.color = Color(1.0, 0.82, 0.22, 0.18)
+		else:
+			ray_poly.color = Color(0.2, 0.5, 1.0, 0.09)
+		sunburst_ctrl.add_child(ray_poly)
+	modal_root.add_child(sunburst_ctrl)
+
+	var rot_tween = modal_root.create_tween().set_loops()
+	rot_tween.tween_property(sunburst_ctrl, "rotation", TAU, 20.0).as_relative()
+
+	# Center Card Container
+	var center_box = CenterContainer.new()
+	center_box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal_root.add_child(center_box)
+
+	var card_panel = PanelContainer.new()
+	card_panel.name = "CardPanel"
+	card_panel.custom_minimum_size = Vector2(410, 520)
+	
+	var card_style = StyleBoxFlat.new()
+	card_style.bg_color = Color(0.08, 0.11, 0.19, 0.98)
+	card_style.set_corner_radius_all(24)
+	card_style.border_width_left = 3
+	card_style.border_width_top = 3
+	card_style.border_width_right = 3
+	card_style.border_width_bottom = 3
+	card_style.border_color = Color(1.0, 0.84, 0.22, 1.0)
+	card_style.shadow_color = Color(0.0, 0.0, 0.0, 0.6)
+	card_style.shadow_size = 14
+	card_panel.add_theme_stylebox_override("panel", card_style)
+	center_box.add_child(card_panel)
+
+	var vbox = VBoxContainer.new()
+	vbox.name = "VBox"
+	vbox.add_theme_constant_override("separation", 12)
+	card_panel.add_child(vbox)
+
+	# 1. Header with Close Button
+	var header_hbox = HBoxContainer.new()
+	vbox.add_child(header_hbox)
+
+	var title_lbl = Label.new()
+	title_lbl.name = "TitleLabel"
+	title_lbl.text = "💼 VIP ANGEL INVESTOR 💼"
+	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_font_size_override("font_size", 18)
+	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.88, 0.25, 1.0))
+	header_hbox.add_child(title_lbl)
+
+	var close_btn = Button.new()
+	close_btn.name = "CloseBtn"
+	close_btn.text = "✕"
+	close_btn.custom_minimum_size = Vector2(34, 34)
+	var close_sb = StyleBoxFlat.new()
+	close_sb.bg_color = Color(0.2, 0.2, 0.26, 0.85)
+	close_sb.set_corner_radius_all(17)
+	close_btn.add_theme_stylebox_override("normal", close_sb)
+	close_btn.add_theme_font_size_override("font_size", 14)
+	close_btn.add_theme_color_override("font_color", Color.WHITE)
+	header_hbox.add_child(close_btn)
+
+	# Subtitle
+	var sub_lbl = Label.new()
+	sub_lbl.text = "A Wall Street venture capitalist has arrived at your diner\nwith a lucrative roadside investment deal!"
+	sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub_lbl.add_theme_font_size_override("font_size", 11)
+	sub_lbl.add_theme_color_override("font_color", Color(0.8, 0.86, 0.95, 0.9))
+	vbox.add_child(sub_lbl)
+
+	# Briefcase Illustration
+	var case_icon = Label.new()
+	case_icon.name = "BriefcaseIcon"
+	case_icon.text = "💼"
+	case_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	case_icon.add_theme_font_size_override("font_size", 54)
+	vbox.add_child(case_icon)
+
+	var choice_title = Label.new()
+	choice_title.text = "CHOOSE YOUR VENTURE CAPITAL DEAL:"
+	choice_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	choice_title.add_theme_font_size_override("font_size", 12)
+	choice_title.add_theme_color_override("font_color", Color(1.0, 0.82, 0.22, 1.0))
+	vbox.add_child(choice_title)
+
+	# 2. Offer A: Massive Cash Injection Button
+	var cash_btn = Button.new()
+	cash_btn.name = "AcceptCashBtn"
+	cash_btn.custom_minimum_size = Vector2(360, 68)
+	var cash_str = gm.format_currency(cash_amount) if gm != null and gm.has_method("format_currency") else ("$%d" % round(cash_amount))
+	cash_btn.text = "💵  ACCEPT %s CASH\n(120x Instant Revenue Boost! 🚀)" % cash_str
+	
+	var cash_sb = StyleBoxFlat.new()
+	cash_sb.bg_color = Color(0.12, 0.65, 0.32, 1.0)
+	cash_sb.set_corner_radius_all(18)
+	cash_sb.border_width_left = 2
+	cash_sb.border_width_top = 2
+	cash_sb.border_width_right = 2
+	cash_sb.border_width_bottom = 5
+	cash_sb.border_color = Color(0.06, 0.38, 0.16, 1.0)
+	cash_btn.add_theme_stylebox_override("normal", cash_sb)
+	
+	var cash_hover = cash_sb.duplicate()
+	cash_hover.bg_color = Color(0.16, 0.72, 0.38, 1.0)
+	cash_btn.add_theme_stylebox_override("hover", cash_hover)
+	
+	var cash_press = cash_sb.duplicate()
+	cash_press.border_width_bottom = 0
+	cash_btn.add_theme_stylebox_override("pressed", cash_press)
+	cash_btn.add_theme_font_size_override("font_size", 14)
+	cash_btn.add_theme_color_override("font_color", Color.WHITE)
+	vbox.add_child(cash_btn)
+
+	# 3. Offer B: Diamond Pack Button
+	var diamond_btn = Button.new()
+	diamond_btn.name = "AcceptDiamondsBtn"
+	diamond_btn.custom_minimum_size = Vector2(360, 68)
+	diamond_btn.text = "💎  ACCEPT +%d DIAMONDS\n(Permanent Upgrades & Vault Boosts! 💎)" % diamond_amount
+	
+	var dia_sb = StyleBoxFlat.new()
+	dia_sb.bg_color = Color(0.55, 0.22, 0.85, 1.0)
+	dia_sb.set_corner_radius_all(18)
+	dia_sb.border_width_left = 2
+	dia_sb.border_width_top = 2
+	dia_sb.border_width_right = 2
+	dia_sb.border_width_bottom = 5
+	dia_sb.border_color = Color(0.32, 0.10, 0.52, 1.0)
+	diamond_btn.add_theme_stylebox_override("normal", dia_sb)
+	
+	var dia_hover = dia_sb.duplicate()
+	dia_hover.bg_color = Color(0.62, 0.28, 0.92, 1.0)
+	diamond_btn.add_theme_stylebox_override("hover", dia_hover)
+	
+	var dia_press = dia_sb.duplicate()
+	dia_press.border_width_bottom = 0
+	diamond_btn.add_theme_stylebox_override("pressed", dia_press)
+	diamond_btn.add_theme_font_size_override("font_size", 14)
+	diamond_btn.add_theme_color_override("font_color", Color.WHITE)
+	vbox.add_child(diamond_btn)
+
+	var dismiss_action = func():
+		if is_instance_valid(modal_root):
+			var tw_close = modal_root.create_tween()
+			tw_close.tween_property(card_panel, "scale", Vector2(0.3, 0.3), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+			tw_close.parallel().tween_property(modal_root, "modulate:a", 0.0, 0.2)
+			tw_close.tween_callback(func():
+				if is_instance_valid(modal_root):
+					modal_root.queue_free()
+				investor_offer_modal = null
+			)
+
+	cash_btn.pressed.connect(func():
+		if investor_node != null and is_instance_valid(investor_node) and investor_node.has_method("claim_vip_investor_choice"):
+			investor_node.claim_vip_investor_choice("cash")
+		elif gm != null and gm.has_method("award_investor_choice"):
+			gm.award_investor_choice("cash")
+		dismiss_action.call()
+	)
+
+	diamond_btn.pressed.connect(func():
+		if investor_node != null and is_instance_valid(investor_node) and investor_node.has_method("claim_vip_investor_choice"):
+			investor_node.claim_vip_investor_choice("diamonds")
+		elif gm != null and gm.has_method("award_investor_choice"):
+			gm.award_investor_choice("diamonds")
+		dismiss_action.call()
+	)
+
+	close_btn.pressed.connect(dismiss_action)
+	scrim.gui_input.connect(func(event):
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			dismiss_action.call()
+	)
+
+	hud_node.add_child(modal_root)
+
+	# Scale-in Elastic Entrance
+	card_panel.pivot_offset = card_panel.custom_minimum_size * 0.5
+	card_panel.scale = Vector2(0.2, 0.2)
+	modal_root.modulate.a = 0.0
+	
+	var in_tw = modal_root.create_tween()
+	in_tw.tween_property(modal_root, "modulate:a", 1.0, 0.15)
+	in_tw.parallel().tween_property(card_panel, "scale", Vector2.ONE, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("bell", 0.0, 3.0)
 
 # ─── Michelin Critic & VIP Arrival Toast Banner ──────────────────────────────
 func _on_vip_arrived(vip_node: Node3D, title: String, type: String, duration: float) -> void:

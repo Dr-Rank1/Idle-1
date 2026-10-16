@@ -102,6 +102,7 @@ var critic_badge: Label3D = null
 var is_vip_investor: bool = false
 var investor_badge: Label3D = null
 var briefcase_prop: Node3D = null
+var briefcase_icon: Label3D = null
 var vip_reward_claimed: bool = false
 signal vip_reward_awarded(amount: float)
 
@@ -167,8 +168,18 @@ func _setup_bubble_bg() -> void:
 
 func _on_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		if is_vip_investor:
-			claim_vip_investor_reward()
+		if is_vip_investor and not vip_reward_claimed:
+			var gm = get_node_or_null("/root/GameManager")
+			var eff_rate = gm.get_effective_cash_per_sec() if gm != null and gm.has_method("get_effective_cash_per_sec") else 125.0
+			var cash_offer = max(15000.0, round(eff_rate * 120.0))
+			var diamond_offer = 15
+			var ui = get_tree().root.find_child("UIController", true, false) if get_tree() != null else null
+			if ui != null and ui.has_method("open_investor_offer_modal"):
+				ui.open_investor_offer_modal(self, cash_offer, diamond_offer)
+			elif gm != null and gm.has_signal("investor_offer_requested"):
+				gm.investor_offer_requested.emit(self, cash_offer, diamond_offer)
+			else:
+				claim_vip_investor_choice("cash")
 
 func set_as_critic(is_critic: bool = true) -> void:
 	is_vip_critic = is_critic
@@ -211,8 +222,19 @@ func set_as_vip_investor(is_investor: bool = true) -> void:
 			investor_badge.outline_modulate = Color(0.25, 0.08, 0.0, 0.95)
 			investor_badge.position = Vector3(0, 1.95, 0)
 			add_child(investor_badge)
+
+		# 2. Floating Golden Briefcase Billboard Icon above head
+		if briefcase_icon == null:
+			briefcase_icon = Label3D.new()
+			briefcase_icon.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			briefcase_icon.double_sided = false
+			briefcase_icon.font_size = 28
+			briefcase_icon.outline_size = 6
+			briefcase_icon.text = "💼"
+			briefcase_icon.position = Vector3(0, 2.25, 0)
+			add_child(briefcase_icon)
 			
-		# 2. Golden Briefcase Prop
+		# 3. Golden Briefcase Prop
 		if mesh_root == null:
 			mesh_root = get_node_or_null("MeshRoot")
 		var target_parent = mesh_root if mesh_root != null else self
@@ -247,9 +269,84 @@ func set_as_vip_investor(is_investor: bool = true) -> void:
 			
 			target_parent.add_child(briefcase_prop)
 
+		# 4. Dark Charcoal Navy Suit Styling
+		_apply_investor_dark_suit()
+
 		var gm = get_node_or_null("/root/GameManager")
 		if gm != null and gm.has_method("notify_vip_arrival"):
 			gm.notify_vip_arrival(self, "💼 VIP Investor Landing!", "investor", max_patience)
+
+func _apply_investor_dark_suit() -> void:
+	var target = mesh_root if mesh_root != null else self
+	var suit_mat = StandardMaterial3D.new()
+	suit_mat.albedo_color = Color(0.12, 0.14, 0.18, 1.0)
+	suit_mat.roughness = 0.35
+	suit_mat.rim_enabled = true
+	suit_mat.rim = 0.4
+	_apply_clothing_material(target, suit_mat)
+
+func _apply_clothing_material(node: Node, mat: Material) -> void:
+	if node is MeshInstance3D and node != briefcase_prop:
+		var mi: MeshInstance3D = node
+		if mi.mesh != null and mi.mesh is ArrayMesh and mi.mesh.get_rid().is_valid():
+			var sc = mi.mesh.get_surface_count()
+			for s in range(sc):
+				var orig = mi.get_surface_override_material(s)
+				if orig == null:
+					orig = mi.mesh.surface_get_material(s)
+				if orig != null and orig is StandardMaterial3D:
+					var col = orig.albedo_color
+					var is_skin = (col.r > 0.6 and col.g > 0.4 and col.b > 0.3 and col.r > col.b * 1.3)
+					if not is_skin:
+						mi.set_surface_override_material(s, mat)
+				else:
+					mi.set_surface_override_material(s, mat)
+	for child in node.get_children():
+		if child != briefcase_prop:
+			_apply_clothing_material(child, mat)
+
+func claim_vip_investor_choice(choice: String) -> Dictionary:
+	if not is_vip_investor or vip_reward_claimed:
+		return {}
+	vip_reward_claimed = true
+	
+	var gm = get_node_or_null("/root/GameManager")
+	var res = {}
+	if gm != null and gm.has_method("award_investor_choice"):
+		res = gm.award_investor_choice(choice, global_position + Vector3(0, 1.5, 0))
+	elif gm != null:
+		var c_grant = 15000.0
+		gm.add_cash(c_grant, global_position + Vector3(0, 1.5, 0))
+		res = {"type": "cash", "amount": c_grant}
+		
+	if investor_badge != null:
+		if choice == "cash":
+			var c_amt = res.get("amount", 15000.0)
+			var c_str = gm.format_currency(c_amt) if gm != null and gm.has_method("format_currency") else ("$%d" % round(c_amt))
+			investor_badge.text = "💰 %s INVESTOR CASH SECURED! 🚀" % c_str
+			set_bubble_text("💵 +%s" % c_str)
+		else:
+			investor_badge.text = "💎 +15 DIAMONDS INVESTED! 🚀"
+			set_bubble_text("💎 +15")
+		investor_badge.modulate = Color(0.3, 1.0, 0.5, 1.0)
+		if is_inside_tree():
+			var tw = create_tween()
+			tw.tween_property(investor_badge, "scale", Vector3(1.3, 1.3, 1.3), 0.2)
+			tw.tween_property(investor_badge, "scale", Vector3.ONE, 0.25)
+			
+	if celebration_particles != null:
+		celebration_particles.restart()
+		
+	_play_anim("emote-yes")
+	vip_reward_awarded.emit(float(res.get("amount", 15.0)))
+	
+	if get_tree() != null:
+		get_tree().create_timer(1.8).timeout.connect(func():
+			if is_instance_valid(self):
+				current_state = State.WALKING_TO_EXIT
+				set_waypoints([DOOR_POS, Vector3(-1.5, 0.0, 13.8), Vector3(-1.5, 0.0, 16.5), Vector3(-22.0, 0.0, 16.5)])
+		, CONNECT_ONE_SHOT)
+	return res
 
 func claim_vip_investor_reward() -> float:
 	if not is_vip_investor or vip_reward_claimed:
@@ -311,7 +408,7 @@ func _apply_toy_mobile_styling(node: Node) -> void:
 			mat.rim_enabled = true
 			mat.rim = 0.35
 			mat.roughness = clampf(mat.roughness, 0.35, 0.45)
-		elif mi.mesh != null and mi.mesh is ArrayMesh:
+		elif mi.mesh != null and mi.mesh is ArrayMesh and mi.mesh.get_rid().is_valid():
 			var sc = mi.mesh.get_surface_count()
 			for s in range(sc):
 				var surf_mat = mi.get_surface_override_material(s)
@@ -395,6 +492,9 @@ func _physics_process(delta: float) -> void:
 	if status_bubble != null and status_bubble.visible:
 		var base_y = 1.35 if (current_state == State.SEATED_ORDERING or current_state == State.EATING) else initial_bubble_y
 		status_bubble.position.y = base_y + sin(time_passed * 3.2) * 0.06
+
+	if briefcase_icon != null and is_instance_valid(briefcase_icon):
+		briefcase_icon.position.y = 2.25 + sin(time_passed * 3.6) * 0.08
 	
 	# Handle Patience Timer depletion while customer is seated waiting for order
 	if is_waiting_for_food:

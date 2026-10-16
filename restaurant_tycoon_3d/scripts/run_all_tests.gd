@@ -522,7 +522,94 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 	_assert_test(hud_inst.star_dish_unlock_modal == null, "Celebration modal cleanly dismissed on _hide_all_modals")
 	hud_inst.queue_free()
 
-	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, and recipe progression validated.")
+	# Part 6: Golden Piggy Bank System & VIP Investor Briefcase Popup
+	print("\n--- [FRAME 20 Part 6] Asserting Golden Piggy Bank & VIP Investor Systems ---")
+	_assert_test(gm.PIGGY_BANK_CAP == 250, "PIGGY_BANK_CAP is exactly 250 Diamonds")
+	gm.piggy_bank_diamonds = 0
+	_assert_test(gm.get_piggy_bank_diamonds() == 0, "Piggy Bank starts at 0 Diamonds")
+	_assert_test(gm.is_piggy_bank_full() == false, "is_piggy_bank_full() is false when empty")
+
+	# Test deposits
+	gm.deposit_piggy_bank(1)
+	_assert_test(gm.get_piggy_bank_diamonds() == 1, "deposit_piggy_bank(1) increments saved diamonds to 1")
+
+	# Test customer served deposit
+	gm.record_customer_served()
+	_assert_test(gm.get_piggy_bank_diamonds() == 2, "record_customer_served deposits +1 Diamond into Piggy Bank")
+
+	# Test station upgrade deposit
+	gm.add_cash(50000.0)
+	gm.station_levels["table_1"] = 1
+	var pre_piggy = gm.get_piggy_bank_diamonds()
+	var up_ok = gm.upgrade_station("table_1")
+	_assert_test(up_ok == true, "Station table_1 successfully upgraded")
+	_assert_test(gm.get_piggy_bank_diamonds() >= pre_piggy + 1, "Station upgrade deposits Diamonds into Piggy Bank")
+
+	# Test capacity cap at 250
+	gm.deposit_piggy_bank(500)
+	_assert_test(gm.get_piggy_bank_diamonds() == 250, "Piggy Bank hard-capped at 250 Diamonds")
+	_assert_test(gm.is_piggy_bank_full() == true, "is_piggy_bank_full() is true at 250 Diamonds")
+
+	# Test Smash Open
+	var pre_dia = gm.diamonds
+	var smashed_dia = gm.smash_piggy_bank()
+	_assert_test(smashed_dia == 250, "smash_piggy_bank() returns exactly 250 Diamonds")
+	_assert_test(gm.diamonds == pre_dia + 250, "Smashing Piggy Bank awards +250 Diamonds to player balance")
+	_assert_test(gm.get_piggy_bank_diamonds() == 0, "Piggy Bank balance resets to 0 after smash")
+	_assert_test(gm.is_piggy_bank_full() == false, "Piggy Bank is no longer full after smash")
+
+	# Test VIP Investor Roadside Spawn & Behavior
+	_assert_test(rest.investor_spawn_timer <= 90.0 and rest.investor_spawn_timer > 0.0, "VIP Investor spawn timer active with 90s base")
+	var investor = rest.spawn_roadside_investor(Vector3(-1.5, 0.0, 12.5))
+	_assert_test(investor != null, "Roadside VIP Investor spawned successfully")
+	_assert_test(investor.is_vip_investor == true, "Customer marked as VIP Investor")
+	_assert_test(investor.investor_badge != null, "VIP Investor has 3D billboard title badge")
+	_assert_test(investor.briefcase_prop != null, "VIP Investor carries 3D golden briefcase mesh")
+	_assert_test(investor.briefcase_icon != null, "VIP Investor displays floating golden briefcase icon above head")
+
+	# Test Investor Choices (Cash Grant & Diamond Reserve)
+	var cash_deal = gm.award_investor_choice("cash")
+	_assert_test(cash_deal["type"] == "cash" and cash_deal["amount"] >= 15000.0, "Investor Cash Deal awards >= $15,000 cash grant")
+	_assert_test(gm.vip_revenue_multiplier_timer > 0.0, "VIP Investor cash grant activates 60s revenue multiplier")
+
+	var dia_deal = gm.award_investor_choice("diamonds")
+	_assert_test(dia_deal["type"] == "diamonds" and dia_deal["amount"] == 15, "Investor Diamond Deal awards exactly 15 Diamonds")
+
+	# Test HUD RightDock Piggy Bank Button & Modals
+	var test_hud = hud_scn.instantiate()
+	root.add_child(test_hud)
+	var piggy_btn = test_hud.find_child("SidePiggyBankBtn", true, false)
+	_assert_test(piggy_btn != null, "SidePiggyBankBtn exists on HUD RightDock")
+	var counter_pill = test_hud.find_child("CounterLabel", true, false)
+	_assert_test(counter_pill != null, "Piggy Bank live counter pill badge exists")
+
+	test_hud._on_piggy_bank_updated(180, 250)
+	_assert_test(counter_pill.text == "180", "Counter pill reflects live saved diamonds")
+	test_hud._on_piggy_bank_updated(250, 250)
+	_assert_test(counter_pill.text == "MAX", "Counter pill reflects MAX when bank is full")
+
+	# Test Piggy Bank Modal
+	test_hud.open_piggy_bank_modal()
+	_assert_test(test_hud.piggy_bank_modal != null, "Piggy Bank Modal opened successfully")
+	var smash_btn_node = test_hud.piggy_bank_modal.find_child("SmashOpenBtn", true, false)
+	_assert_test(smash_btn_node != null, "Piggy Bank Modal features green SMASH OPEN button")
+	test_hud._hide_all_modals()
+	_assert_test(test_hud.piggy_bank_modal == null, "Piggy Bank Modal dismissed cleanly on _hide_all_modals")
+
+	# Test Investor Offer Modal
+	test_hud.open_investor_offer_modal(investor, 25000.0, 15)
+	_assert_test(test_hud.investor_offer_modal != null, "VIP Investor Offer Modal opened successfully")
+	var accept_cash = test_hud.investor_offer_modal.find_child("AcceptCashBtn", true, false)
+	var accept_dia = test_hud.investor_offer_modal.find_child("AcceptDiamondsBtn", true, false)
+	_assert_test(accept_cash != null, "Investor Offer Modal features 120x Cash Grant option")
+	_assert_test(accept_dia != null, "Investor Offer Modal features 15 Diamonds option")
+	test_hud._hide_all_modals()
+	_assert_test(test_hud.investor_offer_modal == null, "Investor Offer Modal dismissed cleanly on _hide_all_modals")
+
+	test_hud.queue_free()
+	investor.queue_free()
+
+	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, and VIP Investor validated.")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Frame 25: Teardown & Summary
