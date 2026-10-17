@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../services/sprite_cache.dart';
 import 'game_screen.dart';
 
 /// Two-stage mobile startup sequence for Restaurant Tycoon 3D / Idle Diner:
@@ -44,6 +45,7 @@ class _DrRankSplashScreenState extends State<DrRankSplashScreen>
   @override
   void initState() {
     super.initState();
+    SpriteCache.preload();
 
     // 1. Stage 1 — DR RANK Studio Logo animation (0.0s to 1.9s)
     _stage1Controller = AnimationController(

@@ -6,7 +6,10 @@ import '../../logic/game_state.dart';
 
 final _fmt = NumberFormat.compactCurrency(symbol: '\$', decimalDigits: 0);
 
-/// Tycoon HUD Overlay matching reference video & screenshot HUD
+/// Clean, high-contrast mobile Tycoon HUD Overlay.
+/// Replaces dark web-style boxes and system emojis with crisp PNG icons,
+/// eliminates bottom collisions, collapses right buttons to 3,
+/// and compacts the top header to 12% of screen height.
 class HudOverlay extends StatefulWidget {
   final VoidCallback onManagersTap;
   final VoidCallback onStatsTap;
@@ -16,6 +19,8 @@ class HudOverlay extends StatefulWidget {
   final VoidCallback? onPiggyBankTap;
   final VoidCallback? onRecipeBookTap;
   final VoidCallback? onReviewDrawerTap;
+  final VoidCallback? onSettingsTap;
+  final VoidCallback? onUpgradesTap;
 
   const HudOverlay({
     super.key,
@@ -27,6 +32,8 @@ class HudOverlay extends StatefulWidget {
     this.onPiggyBankTap,
     this.onRecipeBookTap,
     this.onReviewDrawerTap,
+    this.onSettingsTap,
+    this.onUpgradesTap,
   });
 
   @override
@@ -34,8 +41,6 @@ class HudOverlay extends StatefulWidget {
 }
 
 class _HudOverlayState extends State<HudOverlay> {
-  bool _ribbonsExpanded = true;
-  bool _dockCollapsed = false;
   Timer? _clockTimer;
   DateTime _gameClock = DateTime(2026, 10, 14, 8, 34);
 
@@ -57,6 +62,105 @@ class _HudOverlayState extends State<HudOverlay> {
     super.dispose();
   }
 
+  void _showMoreMenu(BuildContext context, GameState gs) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E2430),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFFFD54F), width: 2.0),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+        contentPadding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD54F).withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.apps_rounded, color: Color(0xFFFFD54F), size: 22),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'DINER OPERATIONS',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () => Navigator.pop(ctx),
+              child: const Icon(Icons.close, color: Colors.white60, size: 22),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 320,
+          child: GridView.count(
+            shrinkWrap: true,
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.15,
+            children: [
+              _MoreGridTile(
+                title: 'Analytics',
+                subtitle: 'Pipeline & Stats',
+                icon: const Icon(Icons.bar_chart_rounded, color: Color(0xFF4CAF50), size: 28),
+                borderColor: const Color(0xFF4CAF50),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  widget.onStatsTap();
+                },
+              ),
+              _MoreGridTile(
+                title: 'Franchise',
+                subtitle: 'World Map',
+                icon: const Icon(Icons.public_rounded, color: Color(0xFF29B6F6), size: 28),
+                borderColor: const Color(0xFF29B6F6),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  widget.onWorldMapTap?.call();
+                },
+              ),
+              _MoreGridTile(
+                title: 'Recipes',
+                subtitle: '5★ Masteries',
+                icon: Image.asset(
+                  'restaurant_tycoon_3d/assets/textures/chalkboard_menu.png',
+                  width: 28,
+                  height: 28,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.menu_book_rounded, color: Color(0xFFFFB300), size: 28),
+                ),
+                borderColor: const Color(0xFFFFB300),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  widget.onRecipeBookTap?.call();
+                },
+              ),
+              _MoreGridTile(
+                title: 'Settings',
+                subtitle: 'Audio & Save',
+                icon: const Icon(Icons.settings_rounded, color: Color(0xFFAB47BC), size: 28),
+                borderColor: const Color(0xFFAB47BC),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  widget.onSettingsTap?.call();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<GameState>(
@@ -66,303 +170,161 @@ class _HudOverlayState extends State<HudOverlay> {
         return SafeArea(
           child: Stack(
             children: [
-              // ── 1. Top Milestone Star Bar & Status Cluster ─────────────────────
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Full-width dark grey progress bar across the very top edge with 5 silver stars
-                  GestureDetector(
-                    onTap: widget.onReviewDrawerTap ?? widget.onRecipeBookTap,
-                    child: _TopMilestoneStarBar(
-                      progress: (gs.starRating / 5.0).clamp(0.0, 1.0),
-                      starRating: gs.starRating,
-                    ),
-                  ),
-
-                  // Diner Fever Combo Bar
-                  _FeverComboBanner(
-                    charge: gs.feverCharge,
-                    maxCharge: GameState.feverMaxCharge,
-                    isActive: gs.isFeverActive,
-                    onSurgeTap: () => gs.tapFeverSurge(),
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  // Top-left status cluster
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          // Manager avatar in purple border with level badge
-                          _ManagerAvatarBadge(level: gs.restaurantLevel),
-                          const SizedBox(width: 8),
-
-                          // Green cash total + /s rate
-                          _CashPanel(cash: gs.cash, ratePerSec: gs.cashPerSecond),
-                          const SizedBox(width: 8),
-
-                          // Lightning energy counter
-                          _EnergyPill(energy: 833, maxEnergy: 880),
-                          const SizedBox(width: 8),
-
-                          // Gem counter
-                          _GemPill(gems: gs.gems),
-                          const SizedBox(width: 8),
-
-                          // Digital clock
-                          _ClockPill(time: timeStr),
-                          const SizedBox(width: 8),
-
-                          // Green "Live" pill
-                          _LivePill(),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  // 3-Stage Pipeline Balance Widget
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: _PipelineBalanceWidget(
-                      parkingRate: gs.parkingThroughputPerMin,
-                      kitchenRate: gs.kitchenThroughputPerMin,
-                      seatingRate: gs.seatingThroughputPerMin,
-                      bottleneck: gs.pipelineBottleneckSector,
-                      onSectorTap: (sector) {
-                        if (sector == 'parking') {
-                          widget.onStatsTap();
-                        } else if (sector == 'kitchen') {
-                          widget.onManagersTap();
-                        } else {
-                          widget.onRecipeBookTap?.call();
-                        }
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  // Collapsible red/green status ribbons below top-left cluster
-                  Padding(
-                    padding: const EdgeInsets.only(left: 12),
-                    child: GestureDetector(
-                      onTap: () => setState(() => _ribbonsExpanded = !_ribbonsExpanded),
-                      child: AnimatedCrossFade(
-                        duration: const Duration(milliseconds: 200),
-                        crossFadeState: _ribbonsExpanded
-                            ? CrossFadeState.showFirst
-                            : CrossFadeState.showSecond,
-                        firstChild: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Builder(
-                              builder: (context) {
-                                final b = gs.getSectorBottleneckStatus();
-                                final col = b['color'] as Color;
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 3),
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1E2430).withValues(alpha: 0.9),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border(left: BorderSide(color: col, width: 3)),
-                                  ),
-                                  child: Text(
-                                    '${b['icon']} ${b['text']}',
-                                    style: TextStyle(
-                                      color: col,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            const _StatusRibbon(
-                              text: '📉 - 50 Marketing',
-                              isPositive: false,
-                            ),
-                            const SizedBox(height: 3),
-                            const _StatusRibbon(
-                              text: '📈 + 25,830 Parking',
-                              isPositive: true,
-                            ),
-                            const SizedBox(height: 3),
-                            const _StatusRibbon(
-                              text: '🧹 - 300 Cleaning',
-                              isPositive: false,
-                            ),
-                          ],
-                        ),
-                        secondChild: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            '📊 Status Ribbons ▼',
-                            style: TextStyle(color: Colors.white70, fontSize: 10),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              // ── 2. Floating Action Buttons ─────────────────────────────────────
-              // Bottom-left: circular orange shopping cart button
+              // ── 1. Compact Top Header (12% Screen Height, 2 Tight Rows) ────
               Positioned(
-                left: 16,
-                bottom: 16,
-                child: _CircleOrangeButton(
-                  emoji: '🛒',
-                  size: 52,
-                  onTap: widget.onShopTap ??
-                      () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('🛒 Tycoon Superstore opening...'),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                ),
-              ),
-
-              // Bottom-center: white rounded pill button with orange play triangle and green "x2 BOOST!" text
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 16,
-                child: Center(
-                  child: _FloatingBoostPill(
-                    isBoosted: gs.vipActive,
-                    timer: gs.vipTimer,
-                    onTap: widget.onBoostTap ??
-                        () {
-                          gs.triggerVipEvent();
-                        },
-                  ),
-                ),
-              ),
-
-              // Bottom-right: Smart Quick-Upgrade HUD Pill
-              if (gs.recommendedUpgradeStation != null)
-                Positioned(
-                  right: 16,
-                  bottom: 76,
-                  child: _SmartQuickUpgradePill(
-                    rec: gs.recommendedUpgradeStation!,
-                    onBuyTap: () {
-                      final rec = gs.recommendedUpgradeStation;
-                      if (rec != null) {
-                        gs.upgradeStation(rec['id'] as String);
-                      }
-                    },
-                  ),
-                ),
-
-              // Right edge: vertical column of circular buttons
-              Positioned(
+                top: 4,
+                left: 12,
                 right: 12,
-                top: 90,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Circular dock collapse/expand chevron button
-                    _CircleOrangeButton(
-                      emoji: _dockCollapsed ? '◀' : '▼',
-                      size: 38,
-                      onTap: () {
-                        setState(() => _dockCollapsed = !_dockCollapsed);
-                      },
+                    // Row 1: Avatar + 5-Star Milestone Rating Bar + Clock
+                    Row(
+                      children: [
+                        // Avatar Badge
+                        _AvatarPill(level: gs.restaurantLevel),
+                        const SizedBox(width: 8),
+
+                        // Interactive 5-Star Milestone Rating Bar Capsule
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: widget.onReviewDrawerTap ?? widget.onRecipeBookTap,
+                            child: _TopRatingCapsule(
+                              progress: (gs.starRating / 5.0).clamp(0.0, 1.0),
+                              starRating: gs.starRating,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // Time & Live indicator
+                        _LiveTimeCapsule(time: timeStr),
+                      ],
                     ),
-                    const SizedBox(height: 8),
 
-                    // Golden Piggy Bank
-                    _PiggyBankButton(
-                      balance: gs.piggyBankBalance,
-                      cap: GameState.piggyBankCap,
-                      onTap: widget.onPiggyBankTap,
+                    const SizedBox(height: 6),
+
+                    // Row 2: Cash, Diamonds, and Energy High-Contrast Capsules
+                    Row(
+                      children: [
+                        // Cash Capsule with +$/s rate
+                        Expanded(
+                          flex: 5,
+                          child: _CashCapsule(
+                            cash: gs.cash,
+                            ratePerSec: gs.cashPerSecond,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // Diamonds Capsule
+                        Expanded(
+                          flex: 3,
+                          child: _DiamondCapsule(gems: gs.gems),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // Energy Capsule
+                        Expanded(
+                          flex: 3,
+                          child: const _EnergyCapsule(energy: 833, maxEnergy: 880),
+                        ),
+                      ],
                     ),
-                    if (!_dockCollapsed) ...[
-                      const SizedBox(height: 10),
+                  ],
+                ),
+              ),
 
-                      // 5-Star Recipe Book
-                      _CircleOrangeButton(
-                        emoji: '📖',
-                        onTap: widget.onRecipeBookTap ?? () {},
-                      ),
-                      const SizedBox(height: 8),
+              // ── 2. Collapsed Right Margin (Only 3 Compact 52x52 Buttons) ───
+              Positioned(
+                right: 16,
+                top: MediaQuery.of(context).size.height * 0.28,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Button 1: Golden Piggy Bank (52x52)
+                    _CompactMarginButton(
+                      size: 52,
+                      tooltip: 'Piggy Bank',
+                      iconAsset: 'restaurant_tycoon_3d/assets/textures/icon_chest_gold.png',
+                      fallbackIcon: Icons.savings_rounded,
+                      badgeText: gs.piggyBankBalance > 0 ? '${gs.piggyBankBalance}' : null,
+                      gradient: const [Color(0xFFFF8F00), Color(0xFFD84315)],
+                      borderColor: const Color(0xFFFFD54F),
+                      onTap: widget.onPiggyBankTap ?? () {},
+                    ),
+                    const SizedBox(height: 12),
 
-                      // World Map
-                      _CircleOrangeButton(
-                        emoji: '🌍',
-                        onTap: widget.onWorldMapTap ??
-                            () {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                    // Button 2: Manager Cards (52x52)
+                    _CompactMarginButton(
+                      size: 52,
+                      tooltip: 'Staff & Managers',
+                      iconAsset: 'restaurant_tycoon_3d/assets/textures/idle_diner_mascot_icon.png',
+                      fallbackIcon: Icons.badge_rounded,
+                      gradient: const [Color(0xFF8E24AA), Color(0xFF4A148C)],
+                      borderColor: const Color(0xFFFFD54F),
+                      onTap: widget.onManagersTap,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Button 3: More Drawer Toggle (52x52)
+                    _CompactMarginButton(
+                      size: 52,
+                      tooltip: 'More Options',
+                      fallbackIcon: Icons.grid_view_rounded,
+                      gradient: const [Color(0xFF37474F), Color(0xFF212121)],
+                      borderColor: const Color(0xFFFFD54F),
+                      onTap: () => _showMoreMenu(context, gs),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── 3. Non-Overlapping Bottom Bar (3 Elements, 16px Padding) ────
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 16,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Left: 64x64 3D-Beveled Shop Button
+                    _BeveledBottomButton(
+                      size: 64,
+                      title: 'SHOP',
+                      iconAsset: 'restaurant_tycoon_3d/assets/textures/icon_chest_gold.png',
+                      fallbackIcon: Icons.storefront_rounded,
+                      gradient: const [Color(0xFFFFB300), Color(0xFFE65100)],
+                      borderColor: const Color(0xFFFFE082),
+                      shadowColor: const Color(0xFFBF360C),
+                      onTap: widget.onShopTap ??
+                          () => ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('🌍 World Restaurant Empire Map'),
+                                  content: Text('🛒 Tycoon Superstore opening...'),
                                   duration: Duration(seconds: 1),
                                 ),
-                              );
-                            },
-                      ),
-                      const SizedBox(height: 8),
-                      // TV Ad
-                      _CircleOrangeButton(
-                        emoji: '📺',
-                        onTap: () {
-                          gs.triggerVipEvent();
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      // Settings Gear
-                      _CircleOrangeButton(
-                        emoji: '⚙️',
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('⚙️ Diner Settings'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      // Lightbulb (Quests / Tips)
-                      _CircleOrangeButton(
-                        emoji: '💡',
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('💡 Chef Tips & Objectives'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      // Bar Chart
-                      _CircleOrangeButton(
-                        emoji: '📊',
-                        onTap: widget.onStatsTap,
-                      ),
-                      const SizedBox(height: 8),
-                      // Staff / Build
-                      _CircleOrangeButton(
-                        emoji: '🔨',
-                        onTap: widget.onManagersTap,
-                      ),
-                    ],
+                              ),
+                    ),
+
+                    // Center: Compact x2 BOOST! Pill Button (180x52)
+                    _CompactBoostPill(
+                      isBoosted: gs.vipActive,
+                      timer: gs.vipTimer,
+                      onTap: widget.onBoostTap ?? () => gs.triggerVipEvent(),
+                    ),
+
+                    // Right: 64x64 Upgrades / Stations Drawer Button
+                    _BeveledBottomButton(
+                      size: 64,
+                      title: 'UPGRADE',
+                      iconAsset: 'restaurant_tycoon_3d/assets/textures/idle_diner_mascot_icon.png',
+                      fallbackIcon: Icons.arrow_upward_rounded,
+                      gradient: const [Color(0xFF43A047), Color(0xFF1B5E20)],
+                      borderColor: const Color(0xFFA5D6A7),
+                      shadowColor: const Color(0xFF0D5302),
+                      onTap: widget.onUpgradesTap ?? widget.onManagersTap,
+                    ),
                   ],
                 ),
               ),
@@ -374,118 +336,125 @@ class _HudOverlayState extends State<HudOverlay> {
   }
 }
 
-// ── Top Milestone Star Bar ────────────────────────────────────────────────────
-class _TopMilestoneStarBar extends StatelessWidget {
-  final double progress;
-  final num starRating;
+// ═════════════════════════════════════════════════════════════════════════════
+// TOP HEADER CAPSULES (HIGH CONTRAST, BRIGHT BORDERS)
+// ═════════════════════════════════════════════════════════════════════════════
 
-  const _TopMilestoneStarBar({
-    required this.progress,
-    this.starRating = 1,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 22,
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E2430),
-        border: Border(
-          bottom: BorderSide(color: Color(0xFF12161F), width: 1.5),
-        ),
-      ),
-      child: Stack(
-        alignment: Alignment.centerLeft,
-        children: [
-          // Blue progress bar fill
-          FractionallySizedBox(
-            widthFactor: progress.clamp(0.0, 1.0),
-            child: Container(
-              height: 8,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF29B6F6), Color(0xFF0288D1)],
-                ),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ),
-          // 5 silver/gold milestone stars
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(5, (index) {
-              final active = (index + 1) <= starRating;
-              final label = index == 4 ? '★ Grand Diner' : '★ Star ${index + 1}';
-              return _StarItem(label: label, isActive: active);
-            }),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StarItem extends StatelessWidget {
-  final String label;
-  final bool isActive;
-
-  const _StarItem({required this.label, this.isActive = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: TextStyle(
-        color: isActive ? const Color(0xFFFFD54F) : const Color(0xFFD6DBE5),
-        fontWeight: FontWeight.w700,
-        fontSize: 10,
-        shadows: const [
-          Shadow(color: Colors.black87, blurRadius: 3),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Top-Left Cluster Components ──────────────────────────────────────────────
-class _ManagerAvatarBadge extends StatelessWidget {
+class _AvatarPill extends StatelessWidget {
   final int level;
 
-  const _ManagerAvatarBadge({required this.level});
+  const _AvatarPill({required this.level});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 44,
       height: 44,
-      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A1544),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFB854F6), width: 2),
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFFFD54F), width: 2.2),
         boxShadow: const [
-          BoxShadow(
-            color: Color(0x66B854F6),
-            blurRadius: 6,
+          BoxShadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          ClipOval(
+            child: Image.asset(
+              'restaurant_tycoon_3d/assets/textures/idle_diner_mascot_icon.png',
+              width: 38,
+              height: 38,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Color(0xFF5D4037), size: 24),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF8F00),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.white, width: 1),
+              ),
+              child: Text(
+                'Lv.$level',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 8,
+                ),
+              ),
+            ),
           ),
         ],
       ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
+    );
+  }
+}
+
+class _TopRatingCapsule extends StatelessWidget {
+  final double progress;
+  final num starRating;
+
+  const _TopRatingCapsule({required this.progress, required this.starRating});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 34,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: const Color(0xFFFFB300), width: 2.0),
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: Stack(
+          alignment: Alignment.centerLeft,
           children: [
-            const Text('👩‍🍳', style: TextStyle(fontSize: 16, height: 1.1)),
-            Text(
-              'Lv. $level',
-              style: const TextStyle(
-                color: Color(0xFFFFE082),
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
-                height: 1.0,
+            FractionallySizedBox(
+              widthFactor: progress,
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFFFE082), Color(0xFFFFB300)],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.star_rounded, color: Color(0xFFFF8F00), size: 18),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${starRating.toStringAsFixed(1)} ★★★★★ Diner Rating',
+                    style: const TextStyle(
+                      color: Color(0xFF3E2723),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    'REVIEWS ▼',
+                    style: TextStyle(
+                      color: Color(0xFFE65100),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 9,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -495,181 +464,41 @@ class _ManagerAvatarBadge extends StatelessWidget {
   }
 }
 
-class _CashPanel extends StatelessWidget {
-  final double cash;
-  final double ratePerSec;
-
-  const _CashPanel({required this.cash, required this.ratePerSec});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF132F20),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF00E676), width: 1.5),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x3300E676),
-            blurRadius: 6,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('💵', style: TextStyle(fontSize: 18)),
-          const SizedBox(width: 5),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _fmt.format(cash),
-                style: const TextStyle(
-                  color: Color(0xFF69F0AE),
-                  fontWeight: FontWeight.w900,
-                  fontSize: 13,
-                ),
-              ),
-              Text(
-                '📈 +${_fmt.format(ratePerSec > 0 ? ratePerSec : 6220)}/s',
-                style: const TextStyle(
-                  color: Color(0xFFA7F3D0),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EnergyPill extends StatelessWidget {
-  final int energy;
-  final int maxEnergy;
-
-  const _EnergyPill({required this.energy, required this.maxEnergy});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF102438),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF40C4FF), width: 1.5),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x3340C4FF),
-            blurRadius: 6,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('⚡', style: TextStyle(fontSize: 14)),
-          const SizedBox(width: 4),
-          Text(
-            '$energy/$maxEnergy',
-            style: const TextStyle(
-              color: Color(0xFFB3E5FC),
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0091EA),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Icon(Icons.add, size: 11, color: Colors.white),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GemPill extends StatelessWidget {
-  final int gems;
-
-  const _GemPill({required this.gems});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A153A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFCE93D8), width: 1.5),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33CE93D8),
-            blurRadius: 6,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('💎', style: TextStyle(fontSize: 14)),
-          const SizedBox(width: 4),
-          Text(
-            NumberFormat('#,###').format(gems),
-            style: const TextStyle(
-              color: Color(0xFFF3E5F5),
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              color: const Color(0xFFAB47BC),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Icon(Icons.add, size: 11, color: Colors.white),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ClockPill extends StatelessWidget {
+class _LiveTimeCapsule extends StatelessWidget {
   final String time;
 
-  const _ClockPill({required this.time});
+  const _LiveTimeCapsule({required this.time});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF181E28),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF5A6678), width: 1),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: const Color(0xFF90A4AE), width: 1.8),
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('🕒', style: TextStyle(fontSize: 12)),
-          const SizedBox(width: 4),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Color(0xFF00E676),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
           Text(
             time,
             style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
+              color: Color(0xFF263238),
+              fontWeight: FontWeight.w900,
               fontSize: 11,
             ),
           ),
@@ -679,36 +508,56 @@ class _ClockPill extends StatelessWidget {
   }
 }
 
-class _LivePill extends StatelessWidget {
-  const _LivePill();
+class _CashCapsule extends StatelessWidget {
+  final double cash;
+  final double ratePerSec;
+
+  const _CashCapsule({required this.cash, required this.ratePerSec});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF10281C),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF00E676), width: 1.5),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: const Color(0xFF4CAF50), width: 2.0),
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4),
+        ],
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: const [
+        children: [
+          Image.asset(
+            'restaurant_tycoon_3d/assets/textures/icon_gold_coin.png',
+            width: 20,
+            height: 20,
+            errorBuilder: (_, __, ___) => const Icon(Icons.attach_money, color: Color(0xFF2E7D32), size: 18),
+          ),
+          const SizedBox(width: 6),
           Text(
-            '●',
-            style: TextStyle(
-              color: Color(0xFF00E676),
-              fontSize: 10,
+            _fmt.format(cash),
+            style: const TextStyle(
+              color: Color(0xFF1B5E20),
               fontWeight: FontWeight.w900,
+              fontSize: 13,
             ),
           ),
-          SizedBox(width: 4),
-          Text(
-            'Live',
-            style: TextStyle(
-              color: Color(0xFFD7FFE7),
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '+${_fmt.format(ratePerSec)}/s',
+              style: const TextStyle(
+                color: Color(0xFF2E7D32),
+                fontWeight: FontWeight.w900,
+                fontSize: 10,
+              ),
             ),
           ),
         ],
@@ -717,50 +566,203 @@ class _LivePill extends StatelessWidget {
   }
 }
 
-// ── Collapsible Status Ribbon ────────────────────────────────────────────────
-class _StatusRibbon extends StatelessWidget {
-  final String text;
-  final bool isPositive;
+class _DiamondCapsule extends StatelessWidget {
+  final int gems;
 
-  const _StatusRibbon({required this.text, required this.isPositive});
+  const _DiamondCapsule({required this.gems});
 
   @override
   Widget build(BuildContext context) {
-    final bg = isPositive ? const Color(0xFF155427) : const Color(0xFF6B1818);
-    final border = isPositive ? const Color(0xFF00E676) : const Color(0xFFFF5252);
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(6),
-        border: Border(left: BorderSide(color: border, width: 3)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: const Color(0xFF0288D1), width: 2.0),
         boxShadow: const [
-          BoxShadow(color: Colors.black45, blurRadius: 4),
+          BoxShadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4),
         ],
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: isPositive ? const Color(0xFFB9F6CA) : const Color(0xFFFFCDD2),
-          fontWeight: FontWeight.w800,
-          fontSize: 10,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset(
+            'restaurant_tycoon_3d/assets/textures/icon_diamond.png',
+            width: 20,
+            height: 20,
+            errorBuilder: (_, __, ___) => const Icon(Icons.diamond_rounded, color: Color(0xFF0288D1), size: 18),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$gems',
+            style: const TextStyle(
+              color: Color(0xFF01579B),
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EnergyCapsule extends StatelessWidget {
+  final int energy;
+  final int maxEnergy;
+
+  const _EnergyCapsule({required this.energy, required this.maxEnergy});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: const Color(0xFFFF8F00), width: 2.0),
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset(
+            'restaurant_tycoon_3d/assets/textures/icon_energy.png',
+            width: 20,
+            height: 20,
+            errorBuilder: (_, __, ___) => const Icon(Icons.bolt_rounded, color: Color(0xFFFF8F00), size: 18),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$energy',
+            style: const TextStyle(
+              color: Color(0xFFE65100),
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// RIGHT MARGIN BUTTONS (COLLAPSED TO 3 COMPACT 52x52 BUTTONS)
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _CompactMarginButton extends StatelessWidget {
+  final double size;
+  final String tooltip;
+  final String? iconAsset;
+  final IconData fallbackIcon;
+  final String? badgeText;
+  final List<Color> gradient;
+  final Color borderColor;
+  final VoidCallback onTap;
+
+  const _CompactMarginButton({
+    required this.size,
+    required this.tooltip,
+    this.iconAsset,
+    required this.fallbackIcon,
+    this.badgeText,
+    required this.gradient,
+    required this.borderColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: gradient,
+            ),
+            border: Border.all(color: borderColor, width: 2.2),
+            boxShadow: const [
+              BoxShadow(color: Colors.black38, offset: Offset(0, 3), blurRadius: 5),
+            ],
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              if (iconAsset != null)
+                Image.asset(
+                  iconAsset!,
+                  width: size * 0.55,
+                  height: size * 0.55,
+                  errorBuilder: (_, __, ___) => Icon(fallbackIcon, color: Colors.white, size: size * 0.52),
+                )
+              else
+                Icon(fallbackIcon, color: borderColor, size: size * 0.52),
+
+              if (badgeText != null)
+                Positioned(
+                  top: -4,
+                  right: -4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0288D1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white, width: 1.2),
+                    ),
+                    child: Text(
+                      badgeText!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ── Circular Orange Action Button ────────────────────────────────────────────
-class _CircleOrangeButton extends StatelessWidget {
-  final String emoji;
-  final VoidCallback onTap;
-  final double size;
+// ═════════════════════════════════════════════════════════════════════════════
+// BOTTOM BAR (3 NON-OVERLAPPING ELEMENTS WITH 16PX PADDING)
+// ═════════════════════════════════════════════════════════════════════════════
 
-  const _CircleOrangeButton({
-    required this.emoji,
+class _BeveledBottomButton extends StatelessWidget {
+  final double size;
+  final String title;
+  final String? iconAsset;
+  final IconData fallbackIcon;
+  final List<Color> gradient;
+  final Color borderColor;
+  final Color shadowColor;
+  final VoidCallback onTap;
+
+  const _BeveledBottomButton({
+    required this.size,
+    required this.title,
+    this.iconAsset,
+    required this.fallbackIcon,
+    required this.gradient,
+    required this.borderColor,
+    required this.shadowColor,
     required this.onTap,
-    this.size = 46,
   });
 
   @override
@@ -771,117 +773,60 @@ class _CircleOrangeButton extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(
+          borderRadius: BorderRadius.circular(18),
+          gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFFFA726), Color(0xFFF57C00)],
+            colors: gradient,
           ),
-          border: Border.all(color: const Color(0xFFFFE082), width: 2),
+          border: Border(
+            top: BorderSide(color: borderColor, width: 3.0),
+            left: BorderSide(color: borderColor, width: 2.0),
+            right: BorderSide(color: borderColor, width: 2.0),
+            bottom: BorderSide(color: shadowColor, width: 4.5),
+          ),
           boxShadow: const [
-            BoxShadow(
-              color: Colors.black45,
-              blurRadius: 6,
-              offset: Offset(0, 3),
-            ),
+            BoxShadow(color: Colors.black45, offset: Offset(0, 4), blurRadius: 6),
           ],
         ),
-        child: Center(
-          child: Text(
-            emoji,
-            style: TextStyle(fontSize: size * 0.44),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Golden Piggy Bank Button ────────────────────────────────────────────────
-class _PiggyBankButton extends StatelessWidget {
-  final int balance;
-  final int cap;
-  final VoidCallback? onTap;
-
-  const _PiggyBankButton({
-    required this.balance,
-    required this.cap,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFFFFD54F), Color(0xFFFF8F00)],
-              ),
-              border: Border.all(color: const Color(0xFFFFF9C4), width: 2),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black45,
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: const Center(
-              child: Text(
-                '🐷',
-                style: TextStyle(fontSize: 22),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -6,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0D1220),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFFFD54F), width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('💎', style: TextStyle(fontSize: 8)),
-                  const SizedBox(width: 2),
-                  Text(
-                    '$balance',
-                    style: const TextStyle(
-                      color: Color(0xFFFFD54F),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (iconAsset != null)
+              Image.asset(
+                iconAsset!,
+                width: 28,
+                height: 28,
+                errorBuilder: (_, __, ___) => Icon(fallbackIcon, color: Colors.white, size: 26),
+              )
+            else
+              Icon(fallbackIcon, color: Colors.white, size: 26),
+            const SizedBox(height: 2),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 10,
+                letterSpacing: 0.5,
+                shadows: [
+                  Shadow(color: Colors.black87, offset: Offset(1, 1), blurRadius: 2),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-// ── Floating White Boost Pill ────────────────────────────────────────────────
-class _FloatingBoostPill extends StatelessWidget {
+class _CompactBoostPill extends StatelessWidget {
   final bool isBoosted;
   final double timer;
   final VoidCallback onTap;
 
-  const _FloatingBoostPill({
+  const _CompactBoostPill({
     required this.isBoosted,
     required this.timer,
     required this.onTap,
@@ -892,38 +837,105 @@ class _FloatingBoostPill extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        width: 180,
+        height: 52,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFE0E0E0), width: 1.5),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(
+            color: isBoosted ? const Color(0xFF2E7D32) : const Color(0xFFFFB300),
+            width: 2.8,
+          ),
           boxShadow: const [
-            BoxShadow(
-              color: Colors.black38,
-              blurRadius: 8,
-              offset: Offset(0, 3),
-            ),
+            BoxShadow(color: Colors.black38, offset: Offset(0, 4), blurRadius: 6),
           ],
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFF8F00),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.play_arrow, color: Colors.white, size: 14),
+            Image.asset(
+              'restaurant_tycoon_3d/assets/textures/icon_energy.png',
+              width: 26,
+              height: 26,
+              errorBuilder: (_, __, ___) => const Icon(Icons.bolt, color: Color(0xFFFF8F00), size: 24),
             ),
             const SizedBox(width: 8),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isBoosted ? 'x2 ACTIVE!' : 'x2 BOOST!',
+                  style: TextStyle(
+                    color: isBoosted ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                Text(
+                  isBoosted ? '${timer.toInt()}s left' : 'Tap for 2x Speed',
+                  style: const TextStyle(
+                    color: Color(0xFF546E7A),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 9,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MoreGridTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget icon;
+  final Color borderColor;
+  final VoidCallback onTap;
+
+  const _MoreGridTile({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.borderColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF263238),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderColor.withValues(alpha: 0.6), width: 1.5),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            icon,
+            const SizedBox(height: 6),
             Text(
-              isBoosted ? '🔥 ACTIVE (${timer.toInt()}s)' : 'x2 BOOST!',
+              title,
               style: const TextStyle(
-                color: Color(0xFF2E7D32),
+                color: Colors.white,
                 fontWeight: FontWeight.w900,
                 fontSize: 13,
-                letterSpacing: 0.5,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -933,7 +945,322 @@ class _FloatingBoostPill extends StatelessWidget {
   }
 }
 
-/// Welcome Back Modal (offline earnings) matching Godot's WelcomeBackModal
+// ═════════════════════════════════════════════════════════════════════════════
+// STATS / ANALYTICS MODAL (HOUSES PIPELINE, FEVER COMBO, AND EXPENSE RIBBONS)
+// ═════════════════════════════════════════════════════════════════════════════
+
+class StatsPanel extends StatelessWidget {
+  final VoidCallback onClose;
+
+  const StatsPanel({super.key, required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<GameState>(
+      builder: (context, gs, _) {
+        final guestCount = gs.characters.where((c) => c.isGuest).length;
+        final staffCount = gs.characters.where((c) => c.isStaff).length;
+        final assignedManagers = gs.managers.where((m) => m.isAssigned).length;
+
+        return Container(
+          width: 330,
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E2430).withValues(alpha: 0.96),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFFFD54F), width: 2.0),
+            boxShadow: const [
+              BoxShadow(color: Colors.black54, offset: Offset(0, 8), blurRadius: 16),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  const Icon(Icons.insights_rounded, color: Color(0xFFFFD54F), size: 22),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'RESTAURANT ANALYTICS',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: onClose,
+                    child: const Icon(Icons.close, color: Colors.white70, size: 20),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // 3-Stage Pipeline Balance Widget (Moved from permanent screen)
+              const Text(
+                '3-STAGE PIPELINE THROUGHPUT',
+                style: TextStyle(
+                  color: Color(0xFFFFD54F),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(height: 6),
+              _PipelineBalanceWidget(
+                parkingRate: gs.parkingThroughputPerMin,
+                kitchenRate: gs.kitchenThroughputPerMin,
+                seatingRate: gs.seatingThroughputPerMin,
+                bottleneck: gs.pipelineBottleneckSector,
+                onSectorTap: (_) {},
+              ),
+              const SizedBox(height: 12),
+
+              // Diner Fever Combo Bar (Moved from permanent screen)
+              const Text(
+                'DINER FEVER OVERDRIVE',
+                style: TextStyle(
+                  color: Color(0xFFFF8F00),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(height: 6),
+              _FeverComboBanner(
+                charge: gs.feverCharge,
+                maxCharge: GameState.feverMaxCharge,
+                isActive: gs.isFeverActive,
+                onSurgeTap: () => gs.tapFeverSurge(),
+              ),
+              const SizedBox(height: 12),
+
+              // 4 Operational Status Ribbons (Moved from permanent screen)
+              const Text(
+                'OPERATIONAL STATUS RIBBONS',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Builder(
+                builder: (context) {
+                  final b = gs.getSectorBottleneckStatus();
+                  final col = b['color'] as Color;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: col.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: col, width: 1.2),
+                    ),
+                    child: Text(
+                      '${b['text']}',
+                      style: TextStyle(color: col, fontWeight: FontWeight.w800, fontSize: 11),
+                    ),
+                  );
+                },
+              ),
+              const _StatusRibbon(text: '- 50 Marketing Upkeep', isPositive: false),
+              const SizedBox(height: 4),
+              const _StatusRibbon(text: '+ 25,830 Parking Revenue', isPositive: true),
+              const SizedBox(height: 4),
+              const _StatusRibbon(text: '- 300 Cleaning Upkeep', isPositive: false),
+
+              const Divider(color: Colors.white24, height: 20),
+
+              // Overview Stats
+              _statRow('Total Earned', _fmt.format(gs.totalEarned)),
+              _statRow('Active Patrons', '$guestCount guests'),
+              _statRow('Service Staff', '$staffCount on floor'),
+              _statRow('Managers', '$assignedManagers active'),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _statRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11.5)),
+          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11.5)),
+        ],
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// COMPONENT WIDGETS USED IN STATS MODAL
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _PipelineBalanceWidget extends StatelessWidget {
+  final int parkingRate;
+  final int kitchenRate;
+  final int seatingRate;
+  final String bottleneck;
+  final ValueChanged<String> onSectorTap;
+
+  const _PipelineBalanceWidget({
+    required this.parkingRate,
+    required this.kitchenRate,
+    required this.seatingRate,
+    required this.bottleneck,
+    required this.onSectorTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF263238),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _pipelineStage('Parking', '$parkingRate/m', bottleneck == 'parking', () => onSectorTap('parking')),
+          const Icon(Icons.arrow_forward_rounded, color: Colors.white38, size: 14),
+          _pipelineStage('Kitchen', '$kitchenRate/m', bottleneck == 'kitchen', () => onSectorTap('kitchen')),
+          const Icon(Icons.arrow_forward_rounded, color: Colors.white38, size: 14),
+          _pipelineStage('Seating', '$seatingRate/m', bottleneck == 'seating', () => onSectorTap('seating')),
+        ],
+      ),
+    );
+  }
+
+  Widget _pipelineStage(String name, String rate, bool isBottleneck, VoidCallback onTap) {
+    final col = isBottleneck ? const Color(0xFFFF5252) : const Color(0xFF00E676);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: col.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: col, width: 1.2),
+        ),
+        child: Column(
+          children: [
+            Text(name, style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.bold)),
+            Text(rate, style: TextStyle(color: col, fontSize: 11, fontWeight: FontWeight.w900)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeverComboBanner extends StatelessWidget {
+  final double charge;
+  final double maxCharge;
+  final bool isActive;
+  final VoidCallback onSurgeTap;
+
+  const _FeverComboBanner({
+    required this.charge,
+    required this.maxCharge,
+    required this.isActive,
+    required this.onSurgeTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final frac = (charge / maxCharge).clamp(0.0, 1.0);
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF263238),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: isActive ? const Color(0xFFFFD54F) : Colors.white24),
+      ),
+      child: Row(
+        children: [
+          Text(
+            isActive ? '🔥 FEVER ACTIVE (2x)' : 'FEVER COMBO',
+            style: TextStyle(
+              color: isActive ? const Color(0xFFFFD54F) : Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: frac,
+                minHeight: 8,
+                backgroundColor: Colors.black38,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isActive ? const Color(0xFFFFD54F) : const Color(0xFFFF7043),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onSurgeTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF8F00),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'SURGE',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 9),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusRibbon extends StatelessWidget {
+  final String text;
+  final bool isPositive;
+
+  const _StatusRibbon({required this.text, required this.isPositive});
+
+  @override
+  Widget build(BuildContext context) {
+    final col = isPositive ? const Color(0xFF00E676) : const Color(0xFFFF5252);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: col.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border(left: BorderSide(color: col, width: 3)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: col, fontSize: 10, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
+/// Welcome Back Modal (offline earnings)
 class WelcomeBackModal extends StatelessWidget {
   final double earnings;
   final void Function(double multiplier) onClaim;
@@ -967,7 +1294,6 @@ class WelcomeBackModal extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Orange-to-Golden-Yellow Gradient Header
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
               decoration: const BoxDecoration(
@@ -978,8 +1304,8 @@ class WelcomeBackModal extends StatelessWidget {
                 ),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(17)),
               ),
-              child: Column(
-                children: const [
+              child: const Column(
+                children: [
                   Text(
                     '✨ WELCOME BACK, CHEF! ✨',
                     style: TextStyle(
@@ -1006,27 +1332,11 @@ class WelcomeBackModal extends StatelessWidget {
                 ],
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Red / Green status income & expense pills
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: const [
-                      _StatusRibbon(text: '📈 + 85% Offline Earnings', isPositive: true),
-                      _StatusRibbon(text: '🕒 Max 8h Capped', isPositive: true),
-                      _StatusRibbon(text: '📉 - 0 Idle Penalties', isPositive: false),
-                    ],
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // Big Currency Vault Card with emerald formatting
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
@@ -1035,10 +1345,7 @@ class WelcomeBackModal extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: const Color(0xFF00E676), width: 1.5),
                       boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x3300E676),
-                          blurRadius: 10,
-                        ),
+                        BoxShadow(color: Color(0x3300E676), blurRadius: 10),
                       ],
                     ),
                     child: Column(
@@ -1065,13 +1372,9 @@ class WelcomeBackModal extends StatelessWidget {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Action Buttons: Collect (1X) & 2X Promo Boost
                   Row(
                     children: [
-                      // Collect 1X
                       Expanded(
                         child: GestureDetector(
                           onTap: () => onClaim(1.0),
@@ -1086,29 +1389,19 @@ class WelcomeBackModal extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: const Color(0xFF4CAF50), width: 1.5),
                               boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x661B5E20),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 3),
-                                ),
+                                BoxShadow(color: Color(0x661B5E20), blurRadius: 6, offset: Offset(0, 3)),
                               ],
                             ),
                             child: const Center(
                               child: Text(
-                                'COLLECT (1X)',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                  letterSpacing: 0.5,
-                                ),
+                                'COLLECT',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13),
                               ),
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // 2X Promo Boost
                       Expanded(
                         child: GestureDetector(
                           onTap: () => onClaim(2.0),
@@ -1116,29 +1409,20 @@ class WelcomeBackModal extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [Color(0xFFFFA000), Color(0xFFFF6F00)],
+                                colors: [Color(0xFFFF8F00), Color(0xFFE65100)],
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                               ),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: const Color(0xFFFFD54F), width: 1.5),
                               boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x66FF6F00),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 3),
-                                ),
+                                BoxShadow(color: Color(0x66E65100), blurRadius: 6, offset: Offset(0, 3)),
                               ],
                             ),
                             child: const Center(
                               child: Text(
-                                '⚡ 2X PROMO BOOST!',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                  letterSpacing: 0.5,
-                                ),
+                                '⚡ 2X BOOST!',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13),
                               ),
                             ),
                           ),
@@ -1156,438 +1440,4 @@ class WelcomeBackModal extends StatelessWidget {
   }
 }
 
-/// Backwards compatibility alias
 typedef OfflineEarningsDialog = WelcomeBackModal;
-
-/// Stats overlay panel.
-class StatsPanel extends StatelessWidget {
-  final VoidCallback onClose;
-
-  const StatsPanel({super.key, required this.onClose});
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<GameState>(
-      builder: (context, gs, _) {
-        final guestCount = gs.characters.where((c) => c.isGuest).length;
-        final staffCount = gs.characters.where((c) => c.isStaff).length;
-        final assignedManagers = gs.managers.where((m) => m.isAssigned).length;
-
-        return Container(
-          margin: const EdgeInsets.all(12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Text(
-                    '📊 Restaurant Stats',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: onClose,
-                    child: const Icon(Icons.close, color: Colors.white54, size: 20),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Sector Bottleneck Status Pill
-              Builder(
-                builder: (context) {
-                  final b = gs.getSectorBottleneckStatus();
-                  final col = b['color'] as Color;
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: col.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: col, width: 1.5),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(b['icon'] as String, style: const TextStyle(fontSize: 16)),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'OPERATIONAL STATUS',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            Text(
-                              b['text'] as String,
-                              style: TextStyle(
-                                color: col,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              _statRow('💵 Total Earned', _fmt.format(gs.totalEarned)),
-              _statRow('👥 Guests On-Site', '$guestCount'),
-              _statRow('👔 Staff Members', '$staffCount'),
-              _statRow('⭐ Managers Active', '$assignedManagers'),
-              _statRow('📈 Reputation', 'Level ${gs.reputation}'),
-              _statRow('🏛️ Valuation', _fmt.format(gs.getRestaurantValuation())),
-              _statRow(
-                '👑 Franchise Prestige',
-                'Lv. ${gs.prestigeLevel} (+${(gs.prestigeLevel * 50)}%)',
-              ),
-              _statRow('🔑 Golden Keys', '${gs.franchiseKeys} Keys'),
-              _statRow('🏨 Restaurant', gs.hotelName),
-              if (gs.vipActive)
-                _statRow(
-                  '👑 VIP Multiplier',
-                  '×${gs.revenueMultiplier.toStringAsFixed(0)}',
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _statRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.6),
-              fontSize: 12,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Fever Combo / Overdrive Banner ──────────────────────────────────────────
-class _FeverComboBanner extends StatelessWidget {
-  final double charge;
-  final double maxCharge;
-  final bool isActive;
-  final VoidCallback onSurgeTap;
-
-  const _FeverComboBanner({
-    required this.charge,
-    required this.maxCharge,
-    required this.isActive,
-    required this.onSurgeTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (charge / maxCharge).clamp(0.0, 1.0);
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: isActive
-            ? const Color(0xFF6B3A05).withValues(alpha: 0.95)
-            : const Color(0xFF1B1813).withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isActive ? const Color(0xFFFFD54F) : const Color(0xFF5D4037),
-          width: isActive ? 2 : 1,
-        ),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: const Color(0xFFFF9800).withValues(alpha: 0.5),
-                  blurRadius: 8,
-                )
-              ]
-            : null,
-      ),
-      child: Row(
-        children: [
-          Text(
-            isActive ? '🔥 2X OVERDRIVE!' : '🔥 FEVER COMBO',
-            style: TextStyle(
-              color: isActive ? const Color(0xFFFFE082) : Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 10,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: pct,
-                minHeight: 8,
-                backgroundColor: Colors.black45,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  isActive ? const Color(0xFFFFD54F) : const Color(0xFFFF9800),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            isActive ? '${(pct * 20).ceil()}s' : '${(pct * 100).round()}%',
-            style: TextStyle(
-              color: isActive ? const Color(0xFFFFD54F) : Colors.white70,
-              fontWeight: FontWeight.bold,
-              fontSize: 10,
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onSurgeTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: isActive ? const Color(0xFFFF8F00) : const Color(0xFFE65100),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFFFFD54F), width: 1),
-              ),
-              child: Text(
-                isActive ? '🔥 2X ACTIVE' : '⚡ SURGE (+2%)',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 9,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── 3-Stage Pipeline Balance Widget ─────────────────────────────────────────
-class _PipelineBalanceWidget extends StatelessWidget {
-  final int parkingRate;
-  final int kitchenRate;
-  final int seatingRate;
-  final String bottleneck;
-  final ValueChanged<String> onSectorTap;
-
-  const _PipelineBalanceWidget({
-    required this.parkingRate,
-    required this.kitchenRate,
-    required this.seatingRate,
-    required this.bottleneck,
-    required this.onSectorTap,
-  });
-
-  Widget _buildStagePill(String id, String icon, int rate, bool isBottleneck) {
-    return GestureDetector(
-      onTap: () => onSectorTap(id),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: isBottleneck ? const Color(0xFFC62828) : const Color(0xFF263238),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isBottleneck ? const Color(0xFFFF8A80) : const Color(0xFF455A64),
-            width: isBottleneck ? 1.5 : 1,
-          ),
-        ),
-        child: Text(
-          '$icon $rate/m',
-          style: TextStyle(
-            color: isBottleneck ? Colors.white : Colors.white70,
-            fontWeight: isBottleneck ? FontWeight.w900 : FontWeight.w600,
-            fontSize: 10,
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xFF10141C).withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF2E3846)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildStagePill('parking', '🚗', parkingRate, bottleneck == 'parking'),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4),
-            child: Text('➔', style: TextStyle(color: Colors.white38, fontSize: 10)),
-          ),
-          _buildStagePill('kitchen', '🍳', kitchenRate, bottleneck == 'kitchen'),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4),
-            child: Text('➔', style: TextStyle(color: Colors.white38, fontSize: 10)),
-          ),
-          _buildStagePill('seating', '🪑', seatingRate, bottleneck == 'seating'),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Smart Quick-Upgrade HUD Pill ────────────────────────────────────────────
-class _SmartQuickUpgradePill extends StatelessWidget {
-  final Map<String, dynamic> rec;
-  final VoidCallback onBuyTap;
-
-  const _SmartQuickUpgradePill({
-    required this.rec,
-    required this.onBuyTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final name = rec['name'] as String? ?? 'Station';
-    final icon = rec['icon'] as String? ?? '⭐';
-    final lvl = rec['level'] as int? ?? 1;
-    final nextLvl = rec['nextLevel'] as int? ?? 2;
-    final cost = rec['cost'] as num? ?? 0;
-    final isMilestone = rec['isMilestone'] as bool? ?? false;
-    final milestoneTarget = rec['milestoneTarget'] as int? ?? 0;
-    final canAfford = rec['canAfford'] as bool? ?? false;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A212D).withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isMilestone ? const Color(0xFFFFD54F) : const Color(0xFF3B485A),
-          width: isMilestone ? 2 : 1,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black54,
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFF2C384A),
-            ),
-            alignment: Alignment.center,
-            child: Text(icon, style: const TextStyle(fontSize: 18)),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                ),
-              ),
-              Row(
-                children: [
-                  Text(
-                    'Lv. $lvl ➔ $nextLvl',
-                    style: const TextStyle(
-                      color: Color(0xFF90CAF9),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 10,
-                    ),
-                  ),
-                  if (isMilestone) ...[
-                    const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF8F00),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '⭐ MILESTONE ($milestoneTarget)',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: onBuyTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: canAfford ? const Color(0xFF2E7D32) : const Color(0xFF455A64),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: canAfford ? const Color(0xFF81C784) : const Color(0xFF78909C),
-                  width: 1.5,
-                ),
-              ),
-              child: Text(
-                'BUY\n\$${NumberFormat.compact().format(cost)}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 10,
-                  height: 1.1,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

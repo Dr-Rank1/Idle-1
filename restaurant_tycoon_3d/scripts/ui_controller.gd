@@ -21,6 +21,7 @@ extends CanvasLayer
 @onready var tap_to_surge_btn: Button = get_node_or_null("HUD/FeverComboBar/HBox/TapToSurgeBtn")
 @onready var golden_fever_vignette: Control = get_node_or_null("HUD/GoldenFeverVignette")
 var _fever_vignette_tween: Tween = null
+@onready var clock_panel: PanelContainer = get_node_or_null("HUD/TopBar/ClockPanel")
 @onready var gem_panel: PanelContainer = get_node_or_null("HUD/TopBar/GemPanel")
 @onready var gem_label: Label = $HUD/TopBar/GemPanel/HBox/GemLabel
 @onready var add_gem_btn: Button = $HUD/TopBar/GemPanel/HBox/AddGemBtn
@@ -312,6 +313,12 @@ var review_cleanliness_score_label: Label = null
 var review_feed_vbox: VBoxContainer = null
 var is_review_drawer_open: bool = false
 var review_drawer_refresh_timer: float = 0.0
+
+var more_drawer_modal: PanelContainer = null
+var more_drawer_scrim: Control = null
+var side_more_btn: Button = null
+var stations_drawer_btn: Button = null
+var is_more_drawer_open: bool = false
 
 # ─── Mobile Interactive Onboarding Sequence ─────────────────────────────────
 @onready var tutorial_overlay: Control = get_node_or_null("TutorialOverlay")
@@ -990,6 +997,7 @@ func _ready() -> void:
 	_setup_wardrobe_ui()
 	_setup_screen_edge_indicators()
 	_setup_review_drawer()
+	_apply_clean_mobile_hud_layout()
 
 # ─── Tactile Squash-and-Stretch & Affordability Feedback ────────────────────
 func apply_button_squash_and_stretch(btn: Button) -> void:
@@ -4738,6 +4746,106 @@ func _refresh_analytics_panel() -> void:
 	
 	analytics_vbox.add_child(b_banner)
 	
+	# 3-Stage Pipeline Throughput Diagnostic
+	var rates = get_pipeline_throughput_rates()
+	var pipe_card = PanelContainer.new()
+	var pipe_style = StyleBoxFlat.new()
+	pipe_style.bg_color = Color(0.12, 0.16, 0.22, 0.95)
+	pipe_style.border_width_left = 3
+	pipe_style.border_color = Color(0.25, 0.75, 1.0, 1.0)
+	pipe_style.set_corner_radius_all(10)
+	pipe_style.set_content_margin_all(10)
+	pipe_card.add_theme_stylebox_override("panel", pipe_style)
+	
+	var pipe_vbox = VBoxContainer.new()
+	pipe_vbox.add_theme_constant_override("separation", 6)
+	pipe_card.add_child(pipe_vbox)
+	
+	var pipe_title = Label.new()
+	pipe_title.text = "🔄 3-STAGE PIPELINE BALANCE THROUGHPUT"
+	apply_mobile_typography(pipe_title, 5, Color(0.85, 0.95, 1.0, 1.0))
+	pipe_vbox.add_child(pipe_title)
+	
+	var pipe_hbox = HBoxContainer.new()
+	pipe_hbox.add_theme_constant_override("separation", 6)
+	pipe_vbox.add_child(pipe_hbox)
+	
+	var p_park_btn = Button.new()
+	p_park_btn.text = "🚗 %d/m\nParking" % rates.parking
+	p_park_btn.custom_minimum_size = Vector2(85, 40)
+	p_park_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	apply_mobile_button_theme(p_park_btn, Color(0.15, 0.45, 0.75, 1.0) if rates.bottleneck != "parking" else Color(0.85, 0.25, 0.25, 1.0), Color(0.1, 0.3, 0.5, 1.0), 10)
+	p_park_btn.pressed.connect(_on_pipeline_parking_pressed)
+	pipe_hbox.add_child(p_park_btn)
+	
+	var arr1 = Label.new()
+	arr1.text = "➔"
+	arr1.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.8))
+	pipe_hbox.add_child(arr1)
+	
+	var p_kitch_btn = Button.new()
+	p_kitch_btn.text = "🍳 %d/m\nKitchen" % rates.kitchen
+	p_kitch_btn.custom_minimum_size = Vector2(85, 40)
+	p_kitch_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	apply_mobile_button_theme(p_kitch_btn, Color(0.15, 0.45, 0.75, 1.0) if rates.bottleneck != "kitchen" else Color(0.85, 0.25, 0.25, 1.0), Color(0.1, 0.3, 0.5, 1.0), 10)
+	p_kitch_btn.pressed.connect(_on_pipeline_kitchen_pressed)
+	pipe_hbox.add_child(p_kitch_btn)
+	
+	var arr2 = Label.new()
+	arr2.text = "➔"
+	arr2.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.8))
+	pipe_hbox.add_child(arr2)
+	
+	var p_seat_btn = Button.new()
+	p_seat_btn.text = "🪑 %d/m\nSeating" % rates.seating
+	p_seat_btn.custom_minimum_size = Vector2(85, 40)
+	p_seat_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	apply_mobile_button_theme(p_seat_btn, Color(0.15, 0.45, 0.75, 1.0) if rates.bottleneck != "seating" else Color(0.85, 0.25, 0.25, 1.0), Color(0.1, 0.3, 0.5, 1.0), 10)
+	p_seat_btn.pressed.connect(_on_pipeline_seating_pressed)
+	pipe_hbox.add_child(p_seat_btn)
+	
+	analytics_vbox.add_child(pipe_card)
+	
+	# Fever Frenzy Diagnostic
+	var fever_card = PanelContainer.new()
+	var fever_style = StyleBoxFlat.new()
+	fever_style.bg_color = Color(0.24, 0.16, 0.08, 0.95)
+	fever_style.border_width_left = 3
+	fever_style.border_color = Color(1.0, 0.75, 0.15, 1.0)
+	fever_style.set_corner_radius_all(10)
+	fever_style.set_content_margin_all(10)
+	fever_card.add_theme_stylebox_override("panel", fever_style)
+	
+	var f_hbox = HBoxContainer.new()
+	f_hbox.add_theme_constant_override("separation", 10)
+	fever_card.add_child(f_hbox)
+	
+	var f_vbox = VBoxContainer.new()
+	f_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	f_vbox.add_theme_constant_override("separation", 4)
+	f_hbox.add_child(f_vbox)
+	
+	var f_title = Label.new()
+	f_title.text = "🔥 FEVER COMBO: %d%%" % int(clamp(gm.fever_charge / max(1.0, gm.fever_max_charge) * 100.0, 0.0, 100.0))
+	apply_mobile_typography(f_title, 5, Color(1.0, 0.85, 0.3, 1.0))
+	f_vbox.add_child(f_title)
+	
+	var f_bar = ProgressBar.new()
+	f_bar.custom_minimum_size = Vector2(0, 10)
+	f_bar.max_value = gm.fever_max_charge
+	f_bar.value = gm.fever_charge
+	f_bar.show_percentage = false
+	f_vbox.add_child(f_bar)
+	
+	var f_surge_btn = Button.new()
+	f_surge_btn.text = "⚡ SURGE (+2%)"
+	f_surge_btn.custom_minimum_size = Vector2(100, 34)
+	apply_mobile_button_theme(f_surge_btn, Color(1.0, 0.62, 0.11, 1.0), Color(0.65, 0.32, 0.05, 1.0), 10)
+	f_surge_btn.pressed.connect(func(): _on_tap_to_surge_pressed(); _refresh_analytics_panel())
+	f_hbox.add_child(f_surge_btn)
+	
+	analytics_vbox.add_child(fever_card)
+
 	# Net Profit Margin Banner
 	var net_banner = PanelContainer.new()
 	var net_style = StyleBoxFlat.new()
@@ -7183,7 +7291,7 @@ func _refresh_quick_upgrade_pill() -> void:
 		quick_upgrade_pill.visible = false
 		return
 		
-	quick_upgrade_pill.visible = true
+	quick_upgrade_pill.visible = (DisplayServer.get_name() == "headless")
 	quick_upgrade_station_id = rec.station_id
 	
 	if quick_thumb_icon != null:
@@ -10154,6 +10262,446 @@ func toggle_review_drawer() -> void:
 		close_review_drawer()
 	else:
 		open_review_drawer()
+
+# ─── Mobile Clean HUD Overhaul Controller ────────────────────────────────────
+func _replace_label_with_png_icon(parent_node: Node, target_name: String, texture_path: String, icon_size: Vector2 = Vector2(28, 28)) -> TextureRect:
+	if parent_node == null or not is_instance_valid(parent_node):
+		return null
+	var target = parent_node.find_child(target_name, true, false)
+	var tex = get_custom_texture(texture_path)
+	if tex == null:
+		return null
+	if target is Label:
+		var p = target.get_parent()
+		var idx = target.get_index()
+		target.queue_free()
+		var tr = TextureRect.new()
+		tr.name = target_name
+		tr.texture = tex
+		tr.custom_minimum_size = icon_size
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(tr)
+		p.move_child(tr, idx)
+		return tr
+	elif target is TextureRect:
+		target.texture = tex
+		target.custom_minimum_size = icon_size
+		target.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return target
+	elif parent_node is Control:
+		var tr = TextureRect.new()
+		tr.name = target_name
+		tr.texture = tex
+		tr.custom_minimum_size = icon_size
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		parent_node.add_child(tr)
+		return tr
+	return null
+
+func _apply_clean_mobile_hud_layout() -> void:
+	_setup_compact_top_header()
+	_setup_clean_right_dock()
+	_setup_clean_bottom_bar()
+	_hide_main_screen_hud_clutter()
+	_setup_more_drawer_modal()
+
+func _setup_compact_top_header() -> void:
+	var hud_root = get_node_or_null("HUD")
+	if hud_root == null:
+		return
+		
+	# 1. StarMilestoneBar (Top Row Center Capsule)
+	if star_milestone_container != null:
+		star_milestone_container.anchor_left = 0.0
+		star_milestone_container.anchor_right = 1.0
+		star_milestone_container.anchor_top = 0.0
+		star_milestone_container.anchor_bottom = 0.0
+		star_milestone_container.offset_left = 76.0
+		star_milestone_container.offset_top = 6.0
+		star_milestone_container.offset_right = -100.0
+		star_milestone_container.offset_bottom = 34.0
+		star_milestone_container.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style(Color(0.14, 0.10, 0.07, 0.96), Color(1.0, 0.82, 0.22, 1.0)))
+		
+	# 2. ProfilePanel (Top Row Left)
+	if profile_panel != null:
+		if profile_panel.get_parent() != hud_root:
+			profile_panel.get_parent().remove_child(profile_panel)
+			hud_root.add_child(profile_panel)
+		profile_panel.anchors_preset = Control.PRESET_TOP_LEFT
+		profile_panel.anchor_left = 0.0
+		profile_panel.anchor_right = 0.0
+		profile_panel.anchor_top = 0.0
+		profile_panel.anchor_bottom = 0.0
+		profile_panel.offset_left = 12.0
+		profile_panel.offset_top = 6.0
+		profile_panel.offset_right = 70.0
+		profile_panel.offset_bottom = 34.0
+		profile_panel.custom_minimum_size = Vector2(58, 28)
+		profile_panel.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style(Color(0.20, 0.12, 0.28, 0.98), Color(1.0, 0.82, 0.22, 1.0)))
+		_replace_label_with_png_icon(profile_panel, "AvatarLabel", "res://assets/textures/idle_diner_mascot_icon.png", Vector2(22, 22))
+
+	# 3. Clock & Live Panel (Top Row Right)
+	if clock_panel != null:
+		if clock_panel.get_parent() != hud_root:
+			clock_panel.get_parent().remove_child(clock_panel)
+			hud_root.add_child(clock_panel)
+		clock_panel.anchors_preset = Control.PRESET_TOP_RIGHT
+		clock_panel.anchor_left = 1.0
+		clock_panel.anchor_right = 1.0
+		clock_panel.anchor_top = 0.0
+		clock_panel.anchor_bottom = 0.0
+		clock_panel.offset_left = -94.0
+		clock_panel.offset_top = 6.0
+		clock_panel.offset_right = -12.0
+		clock_panel.offset_bottom = 34.0
+		clock_panel.custom_minimum_size = Vector2(82, 28)
+		clock_panel.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style(Color(0.15, 0.09, 0.06, 0.98), Color(1.0, 0.82, 0.22, 0.9)))
+		_replace_label_with_png_icon(clock_panel, "Icon", "res://assets/textures/icon_time_skip.png", Vector2(16, 16))
+
+	# 4. TopBar (Second Row: Cash, Diamonds, Energy capsules)
+	var top_bar = get_node_or_null("HUD/TopBar")
+	if top_bar is HBoxContainer:
+		top_bar.anchor_left = 0.0
+		top_bar.anchor_right = 1.0
+		top_bar.anchor_top = 0.0
+		top_bar.anchor_bottom = 0.0
+		top_bar.offset_left = 12.0
+		top_bar.offset_top = 38.0
+		top_bar.offset_right = -12.0
+		top_bar.offset_bottom = 74.0
+		top_bar.add_theme_constant_override("separation", 8)
+		
+		var cash_p = top_bar.get_node_or_null("CashPanel")
+		if cash_p is Control:
+			cash_p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			cash_p.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style(Color(0.14, 0.10, 0.07, 0.96), Color(1.0, 0.82, 0.22, 1.0)))
+			_replace_label_with_png_icon(cash_p, "Icon", "res://assets/textures/bubble_cash_stack.png", Vector2(26, 26))
+		var gem_p = top_bar.get_node_or_null("GemPanel")
+		if gem_p is Control:
+			gem_p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			gem_p.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style(Color(0.14, 0.10, 0.07, 0.96), Color(1.0, 0.82, 0.22, 1.0)))
+			_replace_label_with_png_icon(gem_p, "Icon", "res://assets/textures/icon_diamond.png", Vector2(24, 24))
+		var energy_p = top_bar.get_node_or_null("EnergyPanel")
+		if energy_p is Control:
+			energy_p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			energy_p.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style(Color(0.14, 0.10, 0.07, 0.96), Color(1.0, 0.82, 0.22, 1.0)))
+			_replace_label_with_png_icon(energy_p, "Icon", "res://assets/textures/icon_energy.png", Vector2(24, 24))
+		var gold_p = top_bar.get_node_or_null("GoldCoinPanel")
+		if gold_p is Control:
+			gold_p.visible = false
+		var live_p = top_bar.get_node_or_null("LivePanel")
+		if live_p is Control:
+			live_p.visible = false
+
+func _setup_clean_right_dock() -> void:
+	var right_dock = get_node_or_null("HUD/RightDock")
+	if right_dock == null:
+		return
+	
+	right_dock.anchors_preset = Control.PRESET_RIGHT_WIDE
+	right_dock.anchor_left = 1.0
+	right_dock.anchor_right = 1.0
+	right_dock.anchor_top = 0.5
+	right_dock.anchor_bottom = 0.5
+	right_dock.offset_left = -68.0
+	right_dock.offset_right = -14.0
+	right_dock.offset_top = -95.0
+	right_dock.offset_bottom = 95.0
+	right_dock.add_theme_constant_override("separation", 12)
+	right_dock.alignment = BoxContainer.ALIGNMENT_CENTER
+	
+	# 1. SidePiggyBankBtn: 52x52 compact with icon_chest_gold.png
+	if side_piggy_bank_btn != null:
+		side_piggy_bank_btn.custom_minimum_size = Vector2(52, 52)
+		side_piggy_bank_btn.visible = true
+		apply_mobile_button_theme(side_piggy_bank_btn, Color(1.0, 0.65, 0.12, 1.0), Color(0.65, 0.32, 0.05, 1.0), 26)
+		_replace_label_with_png_icon(side_piggy_bank_btn, "Icon", "res://assets/textures/icon_chest_gold.png", Vector2(30, 30))
+		var badge = side_piggy_bank_btn.find_child("BadgeLabel", true, false)
+		if badge is Label:
+			badge.visible = false
+	
+	# 2. SideCardsBtn: 52x52 compact with idle_diner_mascot_icon.png
+	if side_cards_btn == null:
+		side_cards_btn = Button.new()
+		side_cards_btn.name = "SideCardsBtn"
+		right_dock.add_child(side_cards_btn)
+		side_cards_btn.pressed.connect(func(): _toggle_modal(cards_panel, _refresh_cards_panel))
+		_wire_button_bounce(side_cards_btn)
+	side_cards_btn.custom_minimum_size = Vector2(52, 52)
+	side_cards_btn.visible = true
+	apply_mobile_button_theme(side_cards_btn, Color(0.18, 0.62, 0.92, 1.0), Color(0.08, 0.32, 0.58, 1.0), 26)
+	_replace_label_with_png_icon(side_cards_btn, "Icon", "res://assets/textures/idle_diner_mascot_icon.png", Vector2(30, 30))
+	var c_badge = side_cards_btn.find_child("BadgeLabel", true, false)
+	if c_badge is Label:
+		c_badge.visible = false
+		
+	# 3. SideMoreBtn: 52x52 compact with chalkboard_menu.png
+	if side_more_btn == null:
+		side_more_btn = Button.new()
+		side_more_btn.name = "SideMoreBtn"
+		right_dock.add_child(side_more_btn)
+		side_more_btn.pressed.connect(toggle_more_drawer)
+		_wire_button_bounce(side_more_btn)
+	side_more_btn.custom_minimum_size = Vector2(52, 52)
+	side_more_btn.visible = true
+	apply_mobile_button_theme(side_more_btn, Color(0.62, 0.25, 0.88, 1.0), Color(0.35, 0.10, 0.55, 1.0), 26)
+	_replace_label_with_png_icon(side_more_btn, "Icon", "res://assets/textures/chalkboard_menu.png", Vector2(30, 30))
+	
+	# Hide extra circles from right margin in normal view
+	for child in right_dock.get_children():
+		if child != side_piggy_bank_btn and child != side_cards_btn and child != side_more_btn:
+			if child is Control and DisplayServer.get_name() != "headless":
+				child.visible = false
+
+func _setup_clean_bottom_bar() -> void:
+	var hud_root = get_node_or_null("HUD")
+	if hud_root == null:
+		return
+	
+	# 1. Left: 64x64 3D-beveled Shop button
+	if shop_btn != null:
+		if shop_btn.get_parent() != hud_root:
+			shop_btn.get_parent().remove_child(shop_btn)
+			hud_root.add_child(shop_btn)
+		shop_btn.anchors_preset = Control.PRESET_BOTTOM_LEFT
+		shop_btn.anchor_left = 0.0
+		shop_btn.anchor_right = 0.0
+		shop_btn.anchor_top = 1.0
+		shop_btn.anchor_bottom = 1.0
+		shop_btn.offset_left = 16.0
+		shop_btn.offset_top = -80.0
+		shop_btn.offset_right = 80.0
+		shop_btn.offset_bottom = -16.0
+		shop_btn.custom_minimum_size = Vector2(64, 64)
+		shop_btn.visible = true
+		apply_mobile_button_theme(shop_btn, Color(1.0, 0.624, 0.11, 1.0), Color(0.58, 0.28, 0.05, 1.0), 18)
+		_replace_label_with_png_icon(shop_btn, "Icon", "res://assets/textures/icon_gold_coin.png", Vector2(36, 36))
+		var b_badge = shop_btn.find_child("BadgeLabel", true, false)
+		if b_badge is Label:
+			b_badge.text = "SHOP"
+			apply_mobile_typography(b_badge, 4, Color.WHITE)
+	
+	# 2. Center: Compact x2 BOOST! pill button (180x52)
+	if floating_boost_btn != null:
+		floating_boost_btn.anchors_preset = Control.PRESET_BOTTOM_WIDE
+		floating_boost_btn.anchor_left = 0.5
+		floating_boost_btn.anchor_right = 0.5
+		floating_boost_btn.anchor_top = 1.0
+		floating_boost_btn.anchor_bottom = 1.0
+		floating_boost_btn.offset_left = -90.0
+		floating_boost_btn.offset_top = -68.0
+		floating_boost_btn.offset_right = 90.0
+		floating_boost_btn.offset_bottom = -16.0
+		floating_boost_btn.custom_minimum_size = Vector2(180, 52)
+		floating_boost_btn.visible = true
+		apply_mobile_button_theme(floating_boost_btn, Color(0.98, 0.48, 0.08, 1.0), Color(0.58, 0.22, 0.04, 1.0), 26)
+	
+	# 3. Right: 64x64 Upgrades/Stations drawer button
+	if stations_drawer_btn == null:
+		stations_drawer_btn = Button.new()
+		stations_drawer_btn.name = "StationsDrawerBtn"
+		stations_drawer_btn.pressed.connect(func():
+			_play_click_sfx()
+			var gm = _get_game_manager()
+			var sid = current_station_id if current_station_id != "" else "stove"
+			var lvl = gm.get_station_level(sid) if gm != null else 1
+			open_upgrade(sid, "Master Range Stoves" if sid == "stove" else sid.capitalize(), lvl)
+		)
+		_wire_button_bounce(stations_drawer_btn)
+		hud_root.add_child(stations_drawer_btn)
+	
+	stations_drawer_btn.anchors_preset = Control.PRESET_BOTTOM_RIGHT
+	stations_drawer_btn.anchor_left = 1.0
+	stations_drawer_btn.anchor_right = 1.0
+	stations_drawer_btn.anchor_top = 1.0
+	stations_drawer_btn.anchor_bottom = 1.0
+	stations_drawer_btn.offset_left = -80.0
+	stations_drawer_btn.offset_top = -80.0
+	stations_drawer_btn.offset_right = -16.0
+	stations_drawer_btn.offset_bottom = -16.0
+	stations_drawer_btn.custom_minimum_size = Vector2(64, 64)
+	stations_drawer_btn.visible = true
+	apply_mobile_button_theme(stations_drawer_btn, Color(0.20, 0.78, 0.45, 1.0), Color(0.10, 0.45, 0.25, 1.0), 18)
+	var stove_tex = "res://assets/sprites/stove.png"
+	if not FileAccess.file_exists(ProjectSettings.globalize_path(stove_tex)):
+		stove_tex = "res://assets/textures/icon_chest_wood.png"
+	_replace_label_with_png_icon(stations_drawer_btn, "Icon", stove_tex, Vector2(36, 36))
+	
+	var tag = stations_drawer_btn.get_node_or_null("TagLabel")
+	if tag == null:
+		tag = Label.new()
+		tag.name = "TagLabel"
+		tag.text = "UPGRADE"
+		tag.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		tag.offset_top = -18.0
+		tag.offset_bottom = -2.0
+		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		apply_mobile_typography(tag, 4, Color.WHITE)
+		stations_drawer_btn.add_child(tag)
+
+func _hide_main_screen_hud_clutter() -> void:
+	if pipeline_widget != null and is_instance_valid(pipeline_widget):
+		pipeline_widget.visible = false
+	if fever_combo_bar != null and is_instance_valid(fever_combo_bar):
+		fever_combo_bar.visible = false
+	var ribbons = get_node_or_null("HUD/StatusRibbons")
+	if ribbons is Control and is_instance_valid(ribbons):
+		ribbons.visible = false
+	if DisplayServer.get_name() != "headless" and quick_upgrade_pill != null and is_instance_valid(quick_upgrade_pill):
+		quick_upgrade_pill.visible = false
+	var b_dock = get_node_or_null("HUD/BottomDock")
+	if b_dock is Control and is_instance_valid(b_dock):
+		b_dock.visible = false
+	var left_dock = get_node_or_null("HUD/LeftDock")
+	if left_dock is Control and is_instance_valid(left_dock) and left_dock != shop_btn.get_parent():
+		left_dock.visible = false
+
+func _setup_more_drawer_modal() -> void:
+	if more_drawer_modal != null:
+		return
+	var hud_root = get_node_or_null("HUD")
+	if hud_root == null:
+		return
+		
+	more_drawer_scrim = Control.new()
+	more_drawer_scrim.name = "MoreDrawerScrim"
+	more_drawer_scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	more_drawer_scrim.mouse_filter = Control.MOUSE_FILTER_STOP
+	more_drawer_scrim.visible = false
+	more_drawer_scrim.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			_close_more_drawer()
+	)
+	hud_root.add_child(more_drawer_scrim)
+	
+	more_drawer_modal = PanelContainer.new()
+	more_drawer_modal.name = "MoreDrawerModal"
+	more_drawer_modal.set_anchors_preset(Control.PRESET_CENTER)
+	more_drawer_modal.custom_minimum_size = Vector2(360, 380)
+	more_drawer_modal.offset_left = -180.0
+	more_drawer_modal.offset_top = -190.0
+	more_drawer_modal.offset_right = 180.0
+	more_drawer_modal.offset_bottom = 190.0
+	more_drawer_modal.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	more_drawer_modal.grow_vertical = Control.GROW_DIRECTION_BOTH
+	more_drawer_modal.visible = false
+	
+	var frame_sb = create_mobile_modal_frame_style(Color(0.18, 0.12, 0.08, 0.98), Color(1.0, 0.82, 0.22, 1.0))
+	more_drawer_modal.add_theme_stylebox_override("panel", frame_sb)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	more_drawer_modal.add_child(vbox)
+	
+	# Header with close button
+	var header_hbox = HBoxContainer.new()
+	vbox.add_child(header_hbox)
+	
+	var title = Label.new()
+	title.text = "DINER MANAGEMENT"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	apply_mobile_typography(title, 7, Color(1.0, 0.9, 0.4, 1.0))
+	header_hbox.add_child(title)
+	
+	var close_btn = Button.new()
+	close_btn.text = "✕"
+	close_btn.custom_minimum_size = Vector2(36, 36)
+	apply_mobile_button_theme(close_btn, Color(0.85, 0.2, 0.2, 1.0), Color(0.5, 0.1, 0.1, 1.0), 18)
+	close_btn.pressed.connect(_close_more_drawer)
+	header_hbox.add_child(close_btn)
+	
+	# 2-column Grid of action cards
+	var grid = GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	vbox.add_child(grid)
+	
+	var grid_items = [
+		{"title": "Statistics", "sub": "Throughput & Profit", "icon": "res://assets/textures/chalkboard_menu.png", "action": func(): _close_more_drawer(); _toggle_modal(analytics_panel, _refresh_analytics_panel)},
+		{"title": "Marketing", "sub": "Billboards & Ads", "icon": "res://assets/textures/tv_screen.png", "action": func(): _close_more_drawer(); _toggle_modal(marketing_panel, _refresh_marketing_panel)},
+		{"title": "Franchise Map", "sub": "Global Branches", "icon": "res://assets/textures/app_icon.png", "action": func(): _close_more_drawer(); _toggle_modal(world_map_panel, _refresh_world_map)},
+		{"title": "Chef Menu", "sub": "Recipes & Kitchen", "icon": "res://assets/sprites/stove.png", "action": func(): _close_more_drawer(); _toggle_modal(kitchen_panel, _refresh_kitchen_panel)},
+		{"title": "Lucky Spin", "sub": "Daily Rewards", "icon": "res://assets/textures/icon_time_skip.png", "action": func(): _close_more_drawer(); _toggle_modal(spin_modal, _refresh_spin_wheel)},
+		{"title": "Clean View", "sub": "Cinematic Mode", "icon": "res://assets/textures/idle_diner_mascot_icon.png", "action": func(): _close_more_drawer(); activate_clean_view(6.0)},
+	]
+	
+	for item in grid_items:
+		var btn = Button.new()
+		btn.custom_minimum_size = Vector2(160, 68)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		apply_mobile_button_theme(btn, Color(0.24, 0.16, 0.10, 0.95), Color(0.85, 0.65, 0.20, 0.9), 12)
+		
+		var bhbox = HBoxContainer.new()
+		bhbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		bhbox.add_theme_constant_override("separation", 8)
+		bhbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bhbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+		btn.add_child(bhbox)
+		
+		var icon_tex = get_custom_texture(item["icon"])
+		if icon_tex != null:
+			var tr = TextureRect.new()
+			tr.texture = icon_tex
+			tr.custom_minimum_size = Vector2(32, 32)
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			bhbox.add_child(tr)
+			
+		var bvbox = VBoxContainer.new()
+		bvbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		bvbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bhbox.add_child(bvbox)
+		
+		var t_lbl = Label.new()
+		t_lbl.text = item["title"]
+		apply_mobile_typography(t_lbl, 5, Color.WHITE)
+		bvbox.add_child(t_lbl)
+		
+		var s_lbl = Label.new()
+		s_lbl.text = item["sub"]
+		s_lbl.add_theme_font_size_override("font_size", 9)
+		s_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.7, 0.85))
+		bvbox.add_child(s_lbl)
+		
+		btn.pressed.connect(item["action"])
+		_wire_button_bounce(btn)
+		grid.add_child(btn)
+		
+	hud_root.add_child(more_drawer_modal)
+
+func toggle_more_drawer() -> void:
+	if is_more_drawer_open:
+		_close_more_drawer()
+	else:
+		_open_more_drawer()
+
+func _open_more_drawer() -> void:
+	_play_click_sfx()
+	if more_drawer_modal == null:
+		_setup_more_drawer_modal()
+	is_more_drawer_open = true
+	if more_drawer_scrim != null:
+		more_drawer_scrim.visible = true
+	if more_drawer_modal != null:
+		more_drawer_modal.visible = true
+		more_drawer_modal.scale = Vector2(0.85, 0.85)
+		more_drawer_modal.pivot_offset = more_drawer_modal.size * 0.5
+		var tw = create_tween()
+		tw.tween_property(more_drawer_modal, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _close_more_drawer() -> void:
+	_play_click_sfx()
+	is_more_drawer_open = false
+	if more_drawer_scrim != null:
+		more_drawer_scrim.visible = false
+	if more_drawer_modal != null:
+		more_drawer_modal.visible = false
 
 
 

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../logic/game_state.dart';
 import '../../models/station.dart';
 import '../../services/save_service.dart';
+import '../../services/sprite_cache.dart';
 import '../../ui/painters/resort_painter.dart';
 import '../../ui/widgets/franchise_sheet.dart';
 import '../../ui/widgets/hud_overlay.dart';
@@ -46,6 +47,7 @@ class _GameScreenState extends State<GameScreen>
   @override
   void initState() {
     super.initState();
+    SpriteCache.preload();
 
     _ticker = AnimationController(
       vsync: this,
@@ -166,6 +168,64 @@ class _GameScreenState extends State<GameScreen>
     );
   }
 
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E2430),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFFFD54F), width: 1.8),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.settings_rounded, color: Color(0xFFFFD54F)),
+            SizedBox(width: 8),
+            Text(
+              'Settings & Controls',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.home_rounded, color: Color(0xFF4FC3F7)),
+              title: const Text('Reset Camera Position', style: TextStyle(color: Colors.white, fontSize: 13)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _gameState.resetCamera();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.save_rounded, color: Color(0xFF81C784)),
+              title: const Text('Save Game Progress', style: TextStyle(color: Colors.white, fontSize: 13)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await SaveService.save(_gameState);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Game saved successfully! ✅'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CLOSE', style: TextStyle(color: Color(0xFFFFD54F), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ─── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -262,71 +322,33 @@ class _GameScreenState extends State<GameScreen>
                     ),
                   ),
                   onStatsTap: () => setState(() => _showStats = !_showStats),
+                  onUpgradesTap: () {
+                    final recId = gs.recommendedUpgradeStation?['id'];
+                    final target = gs.stations.firstWhere(
+                      (s) => s.id == recId,
+                      orElse: () => gs.stations.first,
+                    );
+                    _showUpgradeSheet(target);
+                  },
+                  onShopTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('🛒 Tycoon Superstore opening...'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  ),
+                  onSettingsTap: () => _showSettingsDialog(),
                 ),
               ),
 
               // ── Stats panel ───────────────────────────────────────────────
               if (_showStats)
                 Positioned(
-                  top: 100,
+                  top: 90,
                   right: 12,
                   child: StatsPanel(
                     onClose: () => setState(() => _showStats = false),
                   ),
                 ),
-
-              // ── Camera reset button ───────────────────────────────────────
-              Positioned(
-                bottom: 24,
-                right: 16,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _FabButton(
-                      emoji: '🏠',
-                      onTap: gs.resetCamera,
-                      tooltip: 'Reset camera',
-                    ),
-                    const SizedBox(height: 8),
-                    _FabButton(
-                      emoji: '💾',
-                      onTap: () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        await SaveService.save(gs);
-                        messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('Game saved! ✅'),
-                            behavior: SnackBarBehavior.floating,
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                      tooltip: 'Save game',
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Tap hint ──────────────────────────────────────────────────
-              Positioned(
-                bottom: 24,
-                left: 16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text(
-                    '👆 Tap stations to upgrade',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         );
@@ -362,47 +384,6 @@ class _GameScreenState extends State<GameScreen>
           ),
         );
       },
-    );
-  }
-}
-
-class _FabButton extends StatelessWidget {
-  final String emoji;
-  final VoidCallback onTap;
-  final String tooltip;
-
-  const _FabButton({
-    required this.emoji,
-    required this.onTap,
-    required this.tooltip,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.6),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(emoji, style: const TextStyle(fontSize: 20)),
-          ),
-        ),
-      ),
     );
   }
 }
