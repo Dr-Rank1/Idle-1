@@ -831,22 +831,67 @@ func _handle_customer_walkout() -> void:
 	else:
 		set_waypoints(_get_waypoints_from_table(position))
 
-func _spawn_floating_text(txt: String, col: Color) -> void:
+func _spawn_floating_text(txt: String, col: Color = Color(0.35, 1.0, 0.55), is_critical: bool = false) -> void:
 	var label = Label3D.new()
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.double_sided = false
-	label.font_size = 22
-	label.outline_size = 5
 	label.text = txt
-	label.modulate = col
-	label.outline_modulate = Color(0.1, 0.1, 0.1, 0.9)
 	label.position = Vector3(0, 1.6, 0)
 	add_child(label)
 	
 	var tw = create_tween()
-	tw.tween_property(label, "position:y", 2.5, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(label, "modulate:a", 0.0, 0.9).set_delay(0.3)
+	if is_critical:
+		label.font_size = 32
+		label.outline_size = 9
+		label.modulate = Color(1.0, 0.94, 0.45, 1.0)
+		label.outline_modulate = Color(0.85, 0.55, 0.08, 1.0)
+		label.scale = Vector3(0.4, 0.4, 0.4)
+		tw.tween_property(label, "scale", Vector3(1.35, 1.35, 1.35), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(label, "scale", Vector3.ONE, 0.10)
+		tw.parallel().tween_property(label, "position:y", 2.8, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(label, "modulate:a", 0.0, 0.85).set_delay(0.4)
+
+		# Rising sparkle trail
+		for i in range(4):
+			var spk = Label3D.new()
+			spk.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			spk.double_sided = false
+			spk.text = "✨"
+			spk.font_size = 18
+			spk.modulate = Color(1.0, 0.9, 0.3, 1.0)
+			spk.position = Vector3(randf_range(-0.35, 0.35), 1.6 + randf_range(0.0, 0.3), randf_range(-0.3, 0.3))
+			add_child(spk)
+			var spk_tw = create_tween()
+			spk_tw.tween_property(spk, "position:y", spk.position.y + randf_range(0.7, 1.2), randf_range(0.8, 1.2)).set_ease(Tween.EASE_OUT)
+			spk_tw.parallel().tween_property(spk, "position:x", spk.position.x + randf_range(-0.2, 0.2), 1.0)
+			spk_tw.parallel().tween_property(spk, "modulate:a", 0.0, 0.7).set_delay(randf_range(0.2, 0.4))
+			spk_tw.tween_callback(spk.queue_free)
+	else:
+		label.font_size = 22
+		label.outline_size = 5
+		label.modulate = col
+		label.outline_modulate = Color(0.1, 0.1, 0.1, 0.9)
+		tw.tween_property(label, "position:y", 2.5, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(label, "modulate:a", 0.0, 0.9).set_delay(0.3)
 	tw.tween_callback(label.queue_free)
+
+func _spawn_payout_floater(amount: float, payout_type: String = "standard", custom_label: String = "") -> void:
+	var is_crit = (payout_type in ["critical", "speedy_tip", "divine", "divine_dish", "critic", "michelin_critic"])
+	var gm = get_node_or_null("/root/GameManager")
+	var amt_str = gm.format_money(amount) if gm != null and gm.has_method("format_money") else ("$%d" % round(amount))
+	var txt = custom_label
+	if txt == "":
+		match payout_type:
+			"speedy_tip":
+				txt = "⚡ +%s SPEEDY TIP! ⚡" % amt_str
+			"divine", "divine_dish":
+				txt = "✨ 5x DIVINE DISH! +%s ✨" % amt_str
+			"critic", "michelin_critic":
+				txt = "👑 3x MICHELIN CRITIC! +%s ⭐" % amt_str
+			_:
+				txt = "💵 +%s" % amt_str
+	var col = Color(1.0, 0.92, 0.45) if is_crit else Color(0.35, 1.0, 0.55)
+	_spawn_floating_text(txt, col, is_crit)
 
 func _on_all_waypoints_reached() -> void:
 	match current_state:
@@ -1091,11 +1136,23 @@ func _on_timer_complete() -> void:
 			var is_divine: bool = bool(get_meta("is_divine", false))
 			if is_divine:
 				total_revenue *= 5.0
+			elif is_vip_critic:
+				total_revenue *= 3.0
 			var form_rev = gm.format_money(total_revenue) if gm != null and gm.has_method("format_money") else ("$%d" % round(total_revenue))
+			var p_type = "standard"
 			if is_divine:
+				p_type = "divine_dish"
 				set_bubble_text("✨ 5x DIVINE! +" + form_rev)
+			elif is_vip_critic:
+				p_type = "michelin_critic"
+				set_bubble_text("👑 3x CRITIC! +" + form_rev)
 			else:
 				set_bubble_text("💵 +" + form_rev)
+
+			if table_ref != null and table_ref.has_method("spawn_payout_floater"):
+				table_ref.spawn_payout_floater(total_revenue, p_type)
+			else:
+				_spawn_payout_floater(total_revenue, p_type)
 			
 			if gm != null:
 				gm.add_cash(total_revenue, global_position + Vector3(0, 1.8, 0))
@@ -1218,7 +1275,10 @@ func on_food_delivered() -> void:
 			if gm.has_method("add_fever_charge"):
 				gm.add_fever_charge(8.0)
 		var tip_str = gm.format_money(tip) if gm != null and gm.has_method("format_money") else ("$%d" % round(tip))
-		_spawn_floating_text("+" + tip_str + " Speedy Tip! ⚡", Color(0.35, 1.0, 0.5, 1.0))
+		if table_ref != null and table_ref.has_method("spawn_payout_floater"):
+			table_ref.spawn_payout_floater(tip, "speedy_tip")
+		else:
+			_spawn_payout_floater(tip, "speedy_tip")
 		set_bubble_badge("fork_knife")
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):

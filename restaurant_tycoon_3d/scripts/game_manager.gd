@@ -2238,7 +2238,7 @@ func upgrade_station_multi(station_id: String, mode: String, consecutive_step: i
 		
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null:
-			if consecutive_step > 0 and am.has_method("play_upgrade_sfx"):
+			if am.has_method("play_upgrade_sfx"):
 				am.play_upgrade_sfx(consecutive_step)
 			elif am.has_method("play_sfx"):
 				am.play_sfx("upgrade")
@@ -3132,8 +3132,11 @@ func upgrade_staff(staff_id: String) -> bool:
 		staff_updated.emit(staff_id)
 		save_game()
 		var am = get_node_or_null("/root/AudioManager")
-		if am != null and am.has_method("play_sfx"):
-			am.play_sfx("upgrade")
+		if am != null:
+			if am.has_method("play_upgrade_sfx"):
+				am.play_upgrade_sfx()
+			elif am.has_method("play_sfx"):
+				am.play_sfx("upgrade")
 		return true
 	return false
 

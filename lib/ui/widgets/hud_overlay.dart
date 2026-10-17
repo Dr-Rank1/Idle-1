@@ -15,6 +15,7 @@ class HudOverlay extends StatefulWidget {
   final VoidCallback? onBoostTap;
   final VoidCallback? onPiggyBankTap;
   final VoidCallback? onRecipeBookTap;
+  final VoidCallback? onReviewDrawerTap;
 
   const HudOverlay({
     super.key,
@@ -25,6 +26,7 @@ class HudOverlay extends StatefulWidget {
     this.onBoostTap,
     this.onPiggyBankTap,
     this.onRecipeBookTap,
+    this.onReviewDrawerTap,
   });
 
   @override
@@ -71,7 +73,7 @@ class _HudOverlayState extends State<HudOverlay> {
                 children: [
                   // Full-width dark grey progress bar across the very top edge with 5 silver stars
                   GestureDetector(
-                    onTap: widget.onRecipeBookTap,
+                    onTap: widget.onReviewDrawerTap ?? widget.onRecipeBookTap,
                     child: _TopMilestoneStarBar(
                       progress: (gs.starRating / 5.0).clamp(0.0, 1.0),
                       starRating: gs.starRating,

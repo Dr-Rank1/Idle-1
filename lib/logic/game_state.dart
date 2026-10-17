@@ -6,6 +6,8 @@ import '../models/enums.dart';
 import '../models/franchise.dart';
 import '../models/manager.dart';
 import '../models/particles.dart';
+import '../models/gear.dart';
+import '../models/guest_review.dart';
 import '../models/recipe.dart';
 import '../models/sector_manager.dart';
 import '../models/station.dart';
@@ -129,6 +131,148 @@ class GameState extends ChangeNotifier {
     gems += 25;
     cash += 500.0;
     notifyListeners();
+  }
+
+  void skipTutorial() {
+    completeTutorial();
+  }
+
+  // ─── Collectible Gear & Uniform Loadout System ──────────────────────────────
+  Map<String, String> equippedGear = GearItem.createDefaultEquipped();
+  Map<String, GearItem> gearInventory = GearItem.createDefaultInventory();
+
+  double get gearInstantCookChance {
+    double total = 0.0;
+    for (final slot in equippedGear.keys) {
+      final gid = equippedGear[slot];
+      if (gid != null && gearInventory.containsKey(gid)) {
+        total += gearInventory[gid]!.effectiveInstantCook;
+      }
+    }
+    return total;
+  }
+
+  double get gearDivineDishChance {
+    double total = 0.0;
+    for (final slot in equippedGear.keys) {
+      final gid = equippedGear[slot];
+      if (gid != null && gearInventory.containsKey(gid)) {
+        total += gearInventory[gid]!.effectiveDivineDish;
+      }
+    }
+    return total;
+  }
+
+  double get gearStaffWalkSpeedMultiplier {
+    double totalPct = 0.0;
+    for (final slot in equippedGear.keys) {
+      final gid = equippedGear[slot];
+      if (gid != null && gearInventory.containsKey(gid)) {
+        totalPct += gearInventory[gid]!.effectiveWalkSpeed;
+      }
+    }
+    return 1.0 + (totalPct / 100.0);
+  }
+
+  bool equipGearItem(String itemId) {
+    if (!gearInventory.containsKey(itemId)) return false;
+    final item = gearInventory[itemId]!;
+    if (!item.unlocked) return false;
+    final slot = item.slot;
+    if (!equippedGear.containsKey(slot)) return false;
+    equippedGear[slot] = itemId;
+    notifyListeners();
+    return true;
+  }
+
+  void addGearCopies(String itemId, [int amount = 1]) {
+    if (!gearInventory.containsKey(itemId)) return;
+    final item = gearInventory[itemId]!;
+    item.count += amount;
+    item.unlocked = true;
+    notifyListeners();
+  }
+
+  bool canMergeGear(String itemId) {
+    if (!gearInventory.containsKey(itemId)) return false;
+    final item = gearInventory[itemId]!;
+    if (item.count < 3) return false;
+    return item.rarity != GearRarity.legendary;
+  }
+
+  Map<String, dynamic> mergeGearItem(String itemId) {
+    if (!canMergeGear(itemId)) {
+      return {'success': false, 'reason': 'Not enough copies or max rarity'};
+    }
+    final item = gearInventory[itemId]!;
+    GearRarity nextRarity;
+    switch (item.rarity) {
+      case GearRarity.common:
+        nextRarity = GearRarity.rare;
+        break;
+      case GearRarity.rare:
+        nextRarity = GearRarity.epic;
+        break;
+      case GearRarity.epic:
+      case GearRarity.legendary:
+        nextRarity = GearRarity.legendary;
+        break;
+    }
+    item.rarity = nextRarity;
+    item.count = max(1, item.count - 2);
+    notifyListeners();
+    return {'success': true, 'item_id': itemId, 'new_rarity': nextRarity.name, 'count': item.count};
+  }
+
+  // ─── Live Customer Reviews & Star Rating System ─────────────────────────────
+  List<GuestReview> recentGuestReviews = GuestReview.createStarterReviews();
+
+  void addGuestReview(GuestReview review) {
+    if (recentGuestReviews.isEmpty) {
+      recentGuestReviews = GuestReview.createStarterReviews();
+    }
+    recentGuestReviews.insert(0, review);
+    while (recentGuestReviews.length > 8) {
+      recentGuestReviews.removeLast();
+    }
+    notifyListeners();
+  }
+
+  StarRatingBreakdown getStarRatingBreakdown() {
+    // 1. Food Quality
+    final stove = stations.where((s) => s.id == 'stove' || s.id == 'kitchen_cook').firstOrNull;
+    final stoveLvl = stove?.level ?? 1;
+    final unlockedRecipes = unlockedStarTiers.length;
+    final foodScore = (3.8 + min(0.7, (stoveLvl - 1) * 0.08) + min(0.5, (unlockedRecipes - 1) * 0.15)).clamp(3.0, 5.0);
+
+    // 2. Service Speed
+    final hiredWaiters = managers.where((m) => m.affectsZone == ZoneType.diningRoom && m.isUnlocked).length;
+    final count = hiredWaiters > 0 ? hiredWaiters : 2;
+    final serviceScore = (3.5 + min(0.8, (count - 1) * 0.4) + min(0.7, (restaurantLevel - 1) * 0.1)).clamp(3.0, 5.0);
+
+    // 3. Ambience
+    final shakeStation = stations.where((s) => s.id == 'milkshake_bar').firstOrNull;
+    final shakeLvl = shakeStation?.level ?? 1;
+    final loungeStation = stations.where((s) => s.id == 'lounge_bar').firstOrNull;
+    final loungeLvl = loungeStation?.level ?? 1;
+    final jukeboxStation = stations.where((s) => s.id == 'jukebox').firstOrNull;
+    final jukeboxUnlocked = (jukeboxStation?.level ?? 0) >= 1;
+    final ambienceScore = (3.6 + min(0.6, (shakeLvl - 1) * 0.12) + min(0.5, (loungeLvl - 1) * 0.1) + (jukeboxUnlocked ? 0.3 : 0.0)).clamp(3.0, 5.0);
+
+    // 4. Cleanliness
+    final cleanScore = (reputation * 0.8 + 3.4).clamp(2.0, 5.0);
+
+    final compositeRating = ((foodScore + serviceScore + ambienceScore + cleanScore) / 4.0).clamp(3.5, 5.0);
+    starRating = compositeRating;
+
+    return StarRatingBreakdown(
+      overall: compositeRating,
+      overallFormatted: compositeRating.toStringAsFixed(1),
+      foodQuality: foodScore,
+      serviceSpeed: serviceScore,
+      ambience: ambienceScore,
+      cleanliness: cleanScore,
+    );
   }
 
   // ─── 3-Stage Pipeline Throughput Balance (Play Store Parity) ───────────────

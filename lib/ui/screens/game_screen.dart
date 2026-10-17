@@ -12,6 +12,7 @@ import '../../ui/widgets/hud_overlay.dart';
 import '../../ui/widgets/managers_sheet.dart';
 import '../../ui/widgets/piggy_bank_modal.dart';
 import '../../ui/widgets/recipe_book_modal.dart';
+import '../../ui/widgets/review_drawer_modal.dart';
 import '../../ui/widgets/upgrade_sheet.dart';
 import '../../utils/iso_math.dart';
 
@@ -243,6 +244,22 @@ class _GameScreenState extends State<GameScreen>
                   onRecipeBookTap: () => showDialog(
                     context: context,
                     builder: (_) => const RecipeBookModal(),
+                  ),
+                  onReviewDrawerTap: () => showDialog(
+                    context: context,
+                    builder: (_) => ReviewDrawerModal(
+                      onFixPressed: (target) {
+                        Navigator.of(context).pop();
+                        if (target == 'waiter' || target == 'staff') {
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            isScrollControlled: true,
+                            builder: (_) => const ManagersSheet(),
+                          );
+                        }
+                      },
+                    ),
                   ),
                   onStatsTap: () => setState(() => _showStats = !_showStats),
                 ),

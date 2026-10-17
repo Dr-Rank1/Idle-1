@@ -35,6 +35,11 @@ func _ready() -> void:
 	if ambience_player.stream != null:
 		ambience_player.play()
 
+	for i in range(max_sfx_channels):
+		var p = AudioStreamPlayer.new()
+		add_child(p)
+		sfx_players.append(p)
+
 func _safe_load_sound(path: String, fallback_key: String = "") -> AudioStream:
 	# Check if imported sample exists on disk before attempting load to prevent C++ errors
 	var import_path = path + ".import"
@@ -53,11 +58,6 @@ func _safe_load_sound(path: String, fallback_key: String = "") -> AudioStream:
 	if fallback_key != "" and sounds.has(fallback_key):
 		return sounds.get(fallback_key)
 	return null
-
-	for i in range(max_sfx_channels):
-		var p = AudioStreamPlayer.new()
-		add_child(p)
-		sfx_players.append(p)
 
 func _on_ambience_finished() -> void:
 	if ambience_player != null and is_instance_valid(ambience_player):
@@ -93,24 +93,64 @@ func play_sfx(sound_name: String, pitch_range: float = 0.05, volume_offset: floa
 			p.play()
 			return
 
-func play_upgrade_sfx(consecutive_step: int = 0) -> void:
-	# Pitch increases with each consecutive upgrade hold step up to +0.85
-	var pitch: float = 1.0 + clamp(consecutive_step * 0.04, 0.0, 0.85)
-	play_sfx("upgrade", 0.02, 1.0, pitch)
+# ─── Pentatonic Pitch-Stepping on Rapid Upgrades ────────────────────────────
+const PENTATONIC_PITCHES: Array[float] = [1.0, 1.06, 1.12, 1.20, 1.26, 1.33, 1.42, 1.50]
+const RAPID_UPGRADE_WINDOW: float = 1.2
+var upgrade_pitch_step: int = 0
+var last_upgrade_time: float = -100.0
+
+func play_upgrade_sfx(consecutive_step: int = -1) -> void:
+	var now = Time.get_ticks_msec() / 1000.0
+	if now - last_upgrade_time > RAPID_UPGRADE_WINDOW:
+		upgrade_pitch_step = 0
+	else:
+		upgrade_pitch_step = min(upgrade_pitch_step + 1, PENTATONIC_PITCHES.size() - 1)
+	last_upgrade_time = now
+
+	var pitch: float = PENTATONIC_PITCHES[upgrade_pitch_step]
+	if consecutive_step > 0:
+		var step_idx = clamp(consecutive_step, 0, PENTATONIC_PITCHES.size() - 1)
+		pitch = max(pitch, PENTATONIC_PITCHES[step_idx])
+	play_sfx("upgrade", 0.012, 1.0, pitch)
+
+func get_current_upgrade_pitch_scale() -> float:
+	var now = Time.get_ticks_msec() / 1000.0
+	if now - last_upgrade_time > RAPID_UPGRADE_WINDOW:
+		return PENTATONIC_PITCHES[0]
+	return PENTATONIC_PITCHES[clamp(upgrade_pitch_step, 0, PENTATONIC_PITCHES.size() - 1)]
+
+func reset_upgrade_pitch() -> void:
+	upgrade_pitch_step = 0
+	last_upgrade_time = -100.0
+
+func play_milestone_fanfare(milestone_level: int = 10) -> void:
+	# Rich multi-layered major triad/7th chord fanfare
+	# Level 10: C Major triad (Root, 3rd, 5th)
+	# Level 25: Bright High Major (Root 1.12x, 3rd, 5th, Octave)
+	# Level 50: Grand Full Fanfare with Diamond Chime harmonics
+	var root_pitch: float = 1.0
+	if milestone_level >= 50:
+		root_pitch = 1.25
+	elif milestone_level >= 25:
+		root_pitch = 1.12
+
+	# Layer 1: Root note
+	play_sfx("upgrade", 0.0, 2.5, root_pitch)
+
+	# Layer 2: Major Third (+25% frequency = 1.25 ratio)
+	var t1 = get_tree().create_timer(0.04)
+	t1.timeout.connect(func(): play_sfx("upgrade", 0.0, 2.0, root_pitch * 1.25))
+
+	# Layer 3: Perfect Fifth (+50% frequency = 1.50 ratio)
+	var t2 = get_tree().create_timer(0.08)
+	t2.timeout.connect(func(): play_sfx("diamond", 0.0, 2.5, root_pitch * 1.50))
+
+	# Layer 4: High Octave (+100% frequency = 2.0 ratio)
+	var t3 = get_tree().create_timer(0.14)
+	t3.timeout.connect(func(): play_sfx("diamond", 0.0, 3.0, root_pitch * 2.0))
 
 func play_milestone_chime(milestone_level: int = 10) -> void:
-	# Three cascading chimes at rising pitch for levels 10 / 25 / 50
-	var base_pitch: float = 1.0
-	if milestone_level >= 50:
-		base_pitch = 1.6
-	elif milestone_level >= 25:
-		base_pitch = 1.3
-	play_sfx("milestone", 0.0, 2.0, base_pitch)
-	# Schedule two more rising chimes with brief delays via a timer chain
-	var t1 = get_tree().create_timer(0.18)
-	t1.timeout.connect(func(): play_sfx("milestone", 0.0, 2.0, base_pitch + 0.15))
-	var t2 = get_tree().create_timer(0.38)
-	t2.timeout.connect(func(): play_sfx("milestone", 0.0, 3.0, base_pitch + 0.30))
+	play_milestone_fanfare(milestone_level)
 
 func play_studio_stinger() -> void:
 	if sounds.get("stinger") != null:
@@ -118,5 +158,6 @@ func play_studio_stinger() -> void:
 	elif sounds.get("diamond") != null:
 		play_sfx("diamond", 0.0, 3.5, 1.2)
 	else:
-		play_milestone_chime(50)
+		play_milestone_fanfare(50)
+
 

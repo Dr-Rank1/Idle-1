@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../logic/game_state.dart';
 import '../../models/manager.dart';
 import '../../models/enums.dart';
+import '../../models/gear.dart';
 import '../../models/sector_manager.dart';
 
 final _fmt = NumberFormat.compactCurrency(symbol: '\$', decimalDigits: 0);
@@ -19,7 +20,7 @@ class ManagersSheet extends StatelessWidget {
         final readyCount = gs.readyManagerSkillsCount;
 
         return DefaultTabController(
-          length: 2,
+          length: 3,
           child: Container(
             height: MediaQuery.of(context).size.height * 0.78,
             decoration: BoxDecoration(
@@ -115,6 +116,7 @@ class ManagersSheet extends StatelessWidget {
                     tabs: const [
                       Tab(text: '⚡ Sector Skills'),
                       Tab(text: '👥 Staff Roster'),
+                      Tab(text: '🦺 Gear Wardrobe'),
                     ],
                   ),
                 ),
@@ -141,6 +143,9 @@ class ManagersSheet extends StatelessWidget {
                           return _ManagerCard(manager: gs.managers[i], gs: gs);
                         },
                       ),
+
+                      // ── Tab 3: Gear Wardrobe ────────────────────────────────
+                      _GearWardrobeView(gs: gs),
                     ],
                   ),
                 ),
@@ -565,5 +570,405 @@ extension GameStateManagerExt on GameState {
       case ManagerRarity.legendary:
         return 25000;
     }
+  }
+}
+
+// ── Gear Wardrobe View ───────────────────────────────────────────────────────
+class _GearWardrobeView extends StatelessWidget {
+  final GameState gs;
+
+  const _GearWardrobeView({required this.gs});
+
+  @override
+  Widget build(BuildContext context) {
+    final headItem = gs.gearInventory[gs.equippedGear['head']];
+    final bodyItem = gs.gearInventory[gs.equippedGear['body']];
+    final toolItem = gs.gearInventory[gs.equippedGear['tool']];
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: [
+        // ── Character Preview & Equipped Slots ──
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E293B).withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'HEAD CHEF & WAITER UNIFORM LOADOUT',
+                style: TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _EquippedSlotBox(
+                    slotTitle: 'HEAD SLOT',
+                    item: headItem,
+                    fallbackIcon: '👨‍🍳',
+                  ),
+                  // Center Character Avatar Preview
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const RadialGradient(
+                        colors: [Color(0xFF38BDF8), Color(0xFF0284C7)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0284C7).withValues(alpha: 0.4),
+                          blurRadius: 12,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        headItem?.icon ?? '👨‍🍳',
+                        style: const TextStyle(fontSize: 36),
+                      ),
+                    ),
+                  ),
+                  _EquippedSlotBox(
+                    slotTitle: 'BODY SLOT',
+                    item: bodyItem,
+                    fallbackIcon: '🦺',
+                  ),
+                  _EquippedSlotBox(
+                    slotTitle: 'HAND TOOL',
+                    item: toolItem,
+                    fallbackIcon: '🍳',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // ── Proc Summary Card ──
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                const Color(0xFFB45309).withValues(alpha: 0.08),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Text('⚡', style: TextStyle(fontSize: 14)),
+                  SizedBox(width: 6),
+                  Text(
+                    'ACTIVE GEAR PROC STATS',
+                    style: TextStyle(
+                      color: Color(0xFFFFD54F),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _ProcStatRow(
+                icon: '⚡',
+                label: 'Instant Cook Chance',
+                value: '${gs.gearInstantCookChance.toStringAsFixed(1)}%',
+                desc: 'Stoves finish recipe in 0.1s ("INSTANT!")',
+                color: const Color(0xFFFFD54F),
+              ),
+              const SizedBox(height: 6),
+              _ProcStatRow(
+                icon: '✨',
+                label: 'Divine Dish Chance',
+                value: '${gs.gearDivineDishChance.toStringAsFixed(1)}%',
+                desc: 'Plated meals award 5x normal revenue',
+                color: const Color(0xFF38BDF8),
+              ),
+              const SizedBox(height: 6),
+              _ProcStatRow(
+                icon: '👟',
+                label: 'All Staff Walk Speed',
+                value: '+${((gs.gearStaffWalkSpeedMultiplier - 1.0) * 100.0).toStringAsFixed(1)}%',
+                desc: 'Movement speed bonus for Waiters & Chefs',
+                color: const Color(0xFF4ADE80),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Blueprint Inventory & Merging Grid ──
+        const Text(
+          'GEAR BLUEPRINTS & MERGING (3x -> NEXT TIER)',
+          style: TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 3,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 0.75,
+          children: gs.gearInventory.values.map((item) {
+            final isEquipped = gs.equippedGear.values.contains(item.id);
+            final canMerge = gs.canMergeGear(item.id);
+
+            return Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isEquipped ? const Color(0xFFFFD54F) : item.rarity.color,
+                  width: isEquipped ? 2 : 1,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: item.rarity.color.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          item.rarity.displayName.toUpperCase(),
+                          style: TextStyle(
+                            color: item.rarity.color,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'x${item.count}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(item.icon, style: const TextStyle(fontSize: 24)),
+                  Text(
+                    item.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    item.desc,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 8,
+                    ),
+                  ),
+                  // Bottom action buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (isEquipped)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFD54F).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'EQUIPPED',
+                            style: TextStyle(color: Color(0xFFFFD54F), fontSize: 8, fontWeight: FontWeight.w900),
+                          ),
+                        )
+                      else
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            gs.equipGearItem(item.id);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0284C7),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'EQUIP',
+                              style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ),
+                      if (canMerge) ...[
+                        const SizedBox(width: 4),
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.mediumImpact();
+                            final res = gs.mergeGearItem(item.id);
+                            if (res['success'] == true) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: const Color(0xFFFFB300),
+                                  content: Text(
+                                    '🎉 Merged into ${res['new_rarity']} ${item.name}!',
+                                    style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w900),
+                                  ),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF59E0B),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'MERGE',
+                              style: TextStyle(color: Colors.black87, fontSize: 8, fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+class _EquippedSlotBox extends StatelessWidget {
+  final String slotTitle;
+  final GearItem? item;
+  final String fallbackIcon;
+
+  const _EquippedSlotBox({
+    required this.slotTitle,
+    required this.item,
+    required this.fallbackIcon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = item?.rarity.color ?? Colors.white24;
+
+    return Container(
+      width: 76,
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color, width: 1.5),
+      ),
+      child: Column(
+        children: [
+          Text(
+            slotTitle,
+            style: const TextStyle(color: Colors.white38, fontSize: 8, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          Text(item?.icon ?? fallbackIcon, style: const TextStyle(fontSize: 22)),
+          const SizedBox(height: 2),
+          Text(
+            item?.name ?? 'Empty',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProcStatRow extends StatelessWidget {
+  final String icon;
+  final String label;
+  final String value;
+  final String desc;
+  final Color color;
+
+  const _ProcStatRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.desc,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 13)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+              ),
+              Text(
+                desc,
+                style: const TextStyle(color: Colors.white54, fontSize: 9),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w900),
+        ),
+      ],
+    );
   }
 }

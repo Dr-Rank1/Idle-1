@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hotel_resort_tycoon/logic/game_state.dart';
 import 'package:hotel_resort_tycoon/models/enums.dart';
+import 'package:hotel_resort_tycoon/models/gear.dart';
+import 'package:hotel_resort_tycoon/models/guest_review.dart';
 import 'package:hotel_resort_tycoon/services/save_service.dart';
 import 'package:hotel_resort_tycoon/utils/iso_math.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -446,6 +448,141 @@ void main() {
       gameState.completeTutorial();
       expect(gameState.gems, equals(initGems + 25));
       expect(gameState.cash, equals(initCash + 500.0));
+    });
+
+    test('skipTutorial() bypasses onboarding, sets completed, and awards starter rewards', () {
+      final initGems = gameState.gems;
+      final initCash = gameState.cash;
+
+      gameState.skipTutorial();
+      expect(gameState.tutorialCompleted, isTrue);
+      expect(gameState.gems, equals(initGems + 25));
+      expect(gameState.cash, equals(initCash + 500.0));
+    });
+  });
+
+  group('Collectible Gear Wardrobe & Proc Math Mechanics', () {
+    late GameState gameState;
+
+    setUp(() {
+      gameState = GameState();
+    });
+
+    test('Initial equipped slots and 9 inventory items exist', () {
+      expect(gameState.equippedGear['head'], equals('toque'));
+      expect(gameState.equippedGear['body'], equals('apron'));
+      expect(gameState.equippedGear['tool'], equals('skillet'));
+
+      expect(gameState.gearInventory.length, equals(9));
+      expect(gameState.gearInventory.containsKey('toque'), isTrue);
+      expect(gameState.gearInventory.containsKey('crown'), isTrue);
+      expect(gameState.gearInventory.containsKey('visor'), isTrue);
+      expect(gameState.gearInventory.containsKey('apron'), isTrue);
+      expect(gameState.gearInventory.containsKey('vest'), isTrue);
+      expect(gameState.gearInventory.containsKey('jacket'), isTrue);
+      expect(gameState.gearInventory.containsKey('skillet'), isTrue);
+      expect(gameState.gearInventory.containsKey('spatula'), isTrue);
+      expect(gameState.gearInventory.containsKey('tray'), isTrue);
+    });
+
+    test('Default loadout proc stats calculate accurately', () {
+      // toque (common 1x): 5% inst, 0% div, 5% speed
+      // apron (common 1x): 6% inst, 3% div, 0% speed
+      // skillet (common 1x): 8% inst, 4% div, 0% speed
+      // Total: 19% instant cook, 7% divine dish, 1.05x speed
+      expect(gameState.gearInstantCookChance, closeTo(19.0, 0.01));
+      expect(gameState.gearDivineDishChance, closeTo(7.0, 0.01));
+      expect(gameState.gearStaffWalkSpeedMultiplier, closeTo(1.05, 0.01));
+    });
+
+    test('Equipping crown, jacket, and tray updates proc stats with rarity multipliers', () {
+      gameState.equipGearItem('crown'); // rare 1.5x: 0 inst, 8*1.5=12% div, 4*1.5=6% speed
+      gameState.equipGearItem('jacket'); // epic 2.2x: 0 inst, 10*2.2=22% div, 8*2.2=17.6% speed
+      gameState.equipGearItem('tray'); // common 1.0x: 0 inst, 5*1.0=5% div, 15*1.0=15% speed
+
+      expect(gameState.equippedGear['head'], equals('crown'));
+      expect(gameState.equippedGear['body'], equals('jacket'));
+      expect(gameState.equippedGear['tool'], equals('tray'));
+
+      expect(gameState.gearInstantCookChance, closeTo(0.0, 0.01));
+      // divine dish = 12 + 22 + 5 = 39%
+      expect(gameState.gearDivineDishChance, closeTo(39.0, 0.01));
+      // walk speed = 1.0 + (6 + 17.6 + 15) / 100 = 1.386
+      expect(gameState.gearStaffWalkSpeedMultiplier, closeTo(1.386, 0.01));
+    });
+
+    test('Blueprint merging 3 duplicates elevates rarity to next tier', () {
+      expect(gameState.canMergeGear('toque'), isFalse);
+      gameState.addGearCopies('toque', 2); // now 3 copies
+      expect(gameState.canMergeGear('toque'), isTrue);
+
+      final result = gameState.mergeGearItem('toque');
+      expect(result['success'], isTrue);
+      expect(result['new_rarity'], equals('rare'));
+      expect(gameState.gearInventory['toque']!.rarity, equals(GearRarity.rare));
+      expect(gameState.gearInventory['toque']!.count, equals(1));
+    });
+  });
+
+  group('Live Customer Reviews & Star Rating System', () {
+    late GameState gameState;
+
+    setUp(() {
+      gameState = GameState();
+    });
+
+    test('Initial 8 guest reviews populated and capped at 8', () {
+      expect(gameState.recentGuestReviews.length, equals(8));
+      expect(gameState.recentGuestReviews.first.customerName, equals('Henri Le Blanc'));
+
+      // Adding new review prepends to top and keeps length at 8
+      final newRev = GuestReview(
+        customerName: 'Sammy Speed',
+        avatarIcon: '⚡',
+        stars: 5,
+        comment: 'Fastest burger in town! Left a 30% speedy tip!',
+      );
+      gameState.addGuestReview(newRev);
+      expect(gameState.recentGuestReviews.length, equals(8));
+      expect(gameState.recentGuestReviews.first.customerName, equals('Sammy Speed'));
+    });
+
+    test('getStarRatingBreakdown returns 4 sub-scores and overall composite rating', () {
+      final breakdown = gameState.getStarRatingBreakdown();
+      expect(breakdown.overall, greaterThanOrEqualTo(3.5));
+      expect(breakdown.overall, lessThanOrEqualTo(5.0));
+      expect(breakdown.foodQuality, greaterThanOrEqualTo(3.0));
+      expect(breakdown.serviceSpeed, greaterThanOrEqualTo(3.0));
+      expect(breakdown.ambience, greaterThanOrEqualTo(3.0));
+      expect(breakdown.cleanliness, greaterThanOrEqualTo(2.0));
+      expect(breakdown.overallFormatted, isNotEmpty);
+    });
+  });
+
+  group('SaveService Persistence for Gear and Reviews', () {
+    test('Save and load state persistence for gear loadout and reviews', () async {
+      SharedPreferences.setMockInitialValues({});
+      final gs1 = GameState();
+
+      // Equip custom gear and add review
+      gs1.equipGearItem('crown');
+      gs1.addGearCopies('toque', 2);
+      gs1.mergeGearItem('toque');
+      gs1.addGuestReview(GuestReview(
+        customerName: 'VIP Critic',
+        avatarIcon: '👑',
+        stars: 5,
+        comment: 'Exquisite culinary delight!',
+      ));
+
+      await SaveService.save(gs1);
+
+      final gs2 = GameState();
+      await SaveService.load(gs2);
+
+      expect(gs2.equippedGear['head'], equals('crown'));
+      expect(gs2.gearInventory['toque']!.rarity, equals(GearRarity.rare));
+      expect(gs2.recentGuestReviews.first.customerName, equals('VIP Critic'));
     });
   });
 }

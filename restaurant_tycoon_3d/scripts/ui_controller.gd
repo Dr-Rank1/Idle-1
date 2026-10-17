@@ -3514,18 +3514,110 @@ func _claim_offline(mult: float) -> void:
 		tw.tween_property(welcome_modal, "scale", Vector2(0.2, 0.2), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 		tw.tween_callback(welcome_modal.queue_free)
 
-func _spawn_reward_floater(txt: String) -> void:
+func _spawn_reward_floater(txt: String, payout_type: String = "standard") -> void:
 	var lbl = Label.new()
 	lbl.text = txt
-	lbl.add_theme_font_size_override("font_size", 24)
-	lbl.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55))
-	lbl.position = Vector2(640.0 - 140.0, 360.0 - 50.0)
-	add_child(lbl)
-	
-	var tw = create_tween()
-	tw.tween_property(lbl, "position:y", lbl.position.y - 70.0, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(lbl, "modulate:a", 0.0, 0.9).set_delay(0.2)
-	tw.tween_callback(lbl.queue_free)
+	var is_critical = (payout_type in ["critical", "speedy_tip", "divine", "divine_dish", "critic", "michelin_critic"])
+	if is_critical:
+		lbl.add_theme_font_size_override("font_size", 30)
+		lbl.add_theme_color_override("font_color", Color(1.0, 0.94, 0.45, 1.0))
+		lbl.add_theme_color_override("font_outline_color", Color(0.88, 0.55, 0.08, 1.0))
+		lbl.add_theme_constant_override("outline_size", 7)
+		lbl.pivot_offset = Vector2(160, 20)
+		lbl.position = Vector2(640.0 - 160.0, 360.0 - 55.0)
+		add_child(lbl)
+
+		var tw = create_tween()
+		lbl.scale = Vector2(0.4, 0.4)
+		tw.tween_property(lbl, "scale", Vector2(1.35, 1.35), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(lbl, "scale", Vector2.ONE, 0.10)
+		tw.parallel().tween_property(lbl, "position:y", lbl.position.y - 85.0, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(lbl, "modulate:a", 0.0, 0.9).set_delay(0.35)
+		tw.tween_callback(lbl.queue_free)
+
+		# Rising sparkle trail
+		for i in range(4):
+			var spk = Label.new()
+			spk.text = "✨"
+			spk.add_theme_font_size_override("font_size", 18)
+			var offset_x = randf_range(-60.0, 60.0)
+			spk.position = lbl.position + Vector2(160.0 + offset_x, 10.0)
+			add_child(spk)
+			var spk_tw = create_tween()
+			spk_tw.tween_property(spk, "position:y", spk.position.y - randf_range(70.0, 110.0), randf_range(0.8, 1.2)).set_ease(Tween.EASE_OUT)
+			spk_tw.parallel().tween_property(spk, "position:x", spk.position.x + randf_range(-20.0, 20.0), 1.0)
+			spk_tw.parallel().tween_property(spk, "modulate:a", 0.0, 0.7).set_delay(randf_range(0.2, 0.4))
+			spk_tw.tween_callback(spk.queue_free)
+	else:
+		lbl.add_theme_font_size_override("font_size", 24)
+		lbl.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55))
+		lbl.position = Vector2(640.0 - 140.0, 360.0 - 50.0)
+		add_child(lbl)
+		var tw = create_tween()
+		tw.tween_property(lbl, "position:y", lbl.position.y - 70.0, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(lbl, "modulate:a", 0.0, 0.9).set_delay(0.2)
+		tw.tween_callback(lbl.queue_free)
+
+func spawn_payout_popup(world_pos: Vector3, amount: float, payout_type: String = "standard", custom_label: String = "") -> void:
+	var cam = get_viewport().get_camera_3d() if get_viewport() != null else null
+	var screen_pos = Vector2(640, 360)
+	if cam != null and not cam.is_position_behind(world_pos):
+		screen_pos = cam.unproject_position(world_pos)
+
+	var is_critical = (payout_type in ["critical", "speedy_tip", "divine", "divine_dish", "critic", "michelin_critic"])
+	var display_text = custom_label
+	if display_text == "":
+		var amt_str = _format_money(amount)
+		match payout_type:
+			"speedy_tip":
+				display_text = "⚡ +$%s SPEEDY TIP! ⚡" % amt_str
+			"divine", "divine_dish":
+				display_text = "✨ 5x DIVINE DISH! +$%s ✨" % amt_str
+			"critic", "michelin_critic":
+				display_text = "👑 3x MICHELIN CRITIC! +$%s ⭐" % amt_str
+			_:
+				display_text = "+$%s" % amt_str
+
+	var lbl = Label.new()
+	lbl.text = display_text
+	if is_critical:
+		lbl.add_theme_font_size_override("font_size", 30)
+		lbl.add_theme_color_override("font_color", Color(1.0, 0.94, 0.45, 1.0))
+		lbl.add_theme_color_override("font_outline_color", Color(0.88, 0.55, 0.08, 1.0))
+		lbl.add_theme_constant_override("outline_size", 7)
+		lbl.pivot_offset = Vector2(120, 18)
+		lbl.position = screen_pos - Vector2(120, 30)
+		add_child(lbl)
+
+		var tw = create_tween()
+		lbl.scale = Vector2(0.4, 0.4)
+		tw.tween_property(lbl, "scale", Vector2(1.35, 1.35), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(lbl, "scale", Vector2.ONE, 0.10)
+		tw.parallel().tween_property(lbl, "position:y", lbl.position.y - 85.0, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(lbl, "modulate:a", 0.0, 0.85).set_delay(0.35)
+		tw.tween_callback(lbl.queue_free)
+
+		# Sparkle trail
+		for i in range(4):
+			var spk = Label.new()
+			spk.text = "✨"
+			spk.add_theme_font_size_override("font_size", 16)
+			spk.position = lbl.position + Vector2(randf_range(10.0, 230.0), randf_range(0.0, 20.0))
+			add_child(spk)
+			var spk_tw = create_tween()
+			spk_tw.tween_property(spk, "position:y", spk.position.y - randf_range(60.0, 95.0), randf_range(0.7, 1.1)).set_ease(Tween.EASE_OUT)
+			spk_tw.parallel().tween_property(spk, "position:x", spk.position.x + randf_range(-18.0, 18.0), 0.9)
+			spk_tw.parallel().tween_property(spk, "modulate:a", 0.0, 0.6).set_delay(randf_range(0.15, 0.35))
+			spk_tw.tween_callback(spk.queue_free)
+	else:
+		lbl.add_theme_font_size_override("font_size", 22)
+		lbl.add_theme_color_override("font_color", Color(0.45, 0.95, 0.55, 1.0))
+		lbl.position = screen_pos - Vector2(60, 20)
+		add_child(lbl)
+		var tw = create_tween()
+		tw.tween_property(lbl, "position:y", lbl.position.y - 60.0, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(lbl, "modulate:a", 0.0, 0.8).set_delay(0.2)
+		tw.tween_callback(lbl.queue_free)
 
 func _on_critic_review_awarded(stars: float, is_positive: bool) -> void:
 	var gm = get_node_or_null("/root/GameManager")
@@ -6621,16 +6713,45 @@ func _create_card_roster_tile(card: Dictionary, gm: Node) -> PanelContainer:
 	return pc
 
 # ─── Station Level Milestone Rewards ─────────────────────────────────────────
+func _shake_upgrade_card(duration: float = 0.18) -> void:
+	var targets: Array[Control] = []
+	var card = get_node_or_null("UpgradePanel/VBox/StationCard") as Control
+	if card != null and card.is_visible_in_tree():
+		targets.append(card)
+	var callout = get_node_or_null("StationCalloutCard") as Control
+	if callout != null and callout.is_visible_in_tree():
+		targets.append(callout)
+	var pill = get_node_or_null("HUD/QuickUpgradePill") as Control
+	if pill != null and pill.is_visible_in_tree():
+		targets.append(pill)
+	if targets.is_empty() and card != null:
+		targets.append(card)
+
+	for target in targets:
+		var orig_pos = target.position
+		var tw = create_tween()
+		var step_dur = duration / 6.0
+		tw.tween_property(target, "position", orig_pos + Vector2(6.0, -4.0), step_dur)
+		tw.tween_property(target, "position", orig_pos + Vector2(-5.0, 5.0), step_dur)
+		tw.tween_property(target, "position", orig_pos + Vector2(4.0, -3.0), step_dur)
+		tw.tween_property(target, "position", orig_pos + Vector2(-3.0, 3.0), step_dur)
+		tw.tween_property(target, "position", orig_pos + Vector2(2.0, -1.0), step_dur)
+		tw.tween_property(target, "position", orig_pos, step_dur)
+
 func _on_station_milestone_reached(station_id: String, milestone_lvl: int, bonus_diamonds: int, bonus_golden_coins: int) -> void:
 	var sname = station_id.replace("_", " ").capitalize()
-	_spawn_reward_floater("🎉 %s LEVEL %d MILESTONE! +%d 💎 +%d 🪙" % [sname, milestone_lvl, bonus_diamonds, bonus_golden_coins])
+	_spawn_reward_floater("🎉 %s LEVEL %d MILESTONE! +%d 💎 +%d 🪙" % [sname, milestone_lvl, bonus_diamonds, bonus_golden_coins], "critical")
 	if bonus_diamonds > 0:
 		spawn_flying_currency_trail(Vector3.ZERO, bonus_diamonds, "diamonds")
 	if bonus_golden_coins > 0:
 		spawn_flying_currency_trail(Vector3.ZERO, bonus_golden_coins, "golden_coins")
 	var am = get_node_or_null("/root/AudioManager")
-	if am != null and am.has_method("play_sfx"):
-		am.play_sfx("upgrade", 0.0, 1.8)
+	if am != null:
+		if am.has_method("play_milestone_fanfare"):
+			am.play_milestone_fanfare(milestone_lvl)
+		elif am.has_method("play_sfx"):
+			am.play_sfx("upgrade", 0.0, 1.8)
+	_shake_upgrade_card(0.18)
 	_refresh_quest_banner()
 
 # ─── Lucky Spin Wheel & 7-Day Login Methods ──────────────────────────────────

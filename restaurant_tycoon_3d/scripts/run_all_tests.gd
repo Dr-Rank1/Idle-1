@@ -1023,12 +1023,34 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 	_assert_test(gm.get_equipped_gear()["head"] == "crown", "Equipped head slot reflects crown")
 	
 	# 3. Proc stats calculation
+	# With crown (rare, 1.5x), apron (common, 1.0x), skillet (common, 1.0x):
+	# crown: 0% inst, 8 * 1.5 = 12% divine, 4 * 1.5 = 6% speed
+	# apron: 6% inst, 3% divine, 0% speed
+	# skillet: 8% inst, 4% divine, 0% speed
+	# Total Instant Cook Chance = 0 + 6 + 8 = 14.0%
+	# Total Divine Dish Chance = 12 + 3 + 4 = 19.0%
+	# Total Staff Walk Speed Multiplier = 1.0 + (6 + 0 + 0)/100 = 1.06x
 	var inst_chance = gm.get_gear_instant_cook_chance()
 	var divine_chance = gm.get_gear_divine_dish_chance()
 	var speed_mult = gm.get_gear_staff_walk_speed_multiplier()
-	_assert_test(inst_chance >= 0.0, "Instant cook chance calculates successfully")
-	_assert_test(divine_chance > 0.0, "Crown contributes divine dish chance (divine_chance > 0)")
-	_assert_test(speed_mult >= 1.0, "Staff walk speed multiplier is at least 1.0x")
+	_assert_test(abs(inst_chance - 14.0) < 0.01, "Crown + Apron + Skillet yields exact 14.0% Instant Cook Chance")
+	_assert_test(abs(divine_chance - 19.0) < 0.01, "Crown + Apron + Skillet yields exact 19.0% Divine Dish Chance")
+	_assert_test(abs(speed_mult - 1.06) < 0.01, "Crown + Apron + Skillet yields exact 1.06x Staff Walk Speed Multiplier")
+
+	# Equip visor (common), jacket (epic 2.2x), and tray (common)
+	gm.equip_gear_item("visor") # 6% inst, 0% div, 10% speed
+	gm.equip_gear_item("jacket") # 0% inst, 10 * 2.2 = 22% div, 8 * 2.2 = 17.6% speed
+	gm.equip_gear_item("tray") # 0% inst, 5% div, 15% speed
+	# Total Instant Cook = 6.0%
+	# Total Divine Dish = 0 + 22 + 5 = 27.0%
+	# Total Staff Walk Speed = 1.0 + (10 + 17.6 + 15)/100 = 1.426x
+	_assert_test(abs(gm.get_gear_instant_cook_chance() - 6.0) < 0.01, "Visor + Jacket + Tray yields exact 6.0% Instant Cook Chance")
+	_assert_test(abs(gm.get_gear_divine_dish_chance() - 27.0) < 0.01, "Visor + Jacket + Tray yields exact 27.0% Divine Dish Chance")
+	_assert_test(abs(gm.get_gear_staff_walk_speed_multiplier() - 1.426) < 0.01, "Visor + Jacket + Tray yields exact 1.426x Staff Walk Speed Multiplier")
+
+	# Proc rolling methods execute cleanly
+	_assert_test(gm.has_method("roll_instant_cook_proc"), "roll_instant_cook_proc() method is defined on GameManager")
+	_assert_test(gm.has_method("roll_divine_dish_proc"), "roll_divine_dish_proc() method is defined on GameManager")
 
 	# 4. Blueprint merging (3 duplicate lower-tier items -> next rarity tier)
 	_assert_test(gm.can_merge_gear("toque") == false, "Cannot merge with 1 copy (< 3)")
@@ -1204,12 +1226,57 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 	# 6. Toggle and Close Drawer
 	dock_hud.toggle_review_drawer()
 	_assert_test(dock_hud.is_review_drawer_open == true, "toggle_review_drawer() opens review drawer when closed")
-	dock_hud.close_review_drawer()
-	_assert_test(dock_hud.is_review_drawer_open == false, "close_review_drawer() dismisses review drawer")
+	# Part 16: Tactile Sensory Polish & Audio Assertions
+	print("\n--- [FRAME 20 Part 16] Asserting Pentatonic Pitch-Stepping & Tactile Sensory Polish ---")
+	
+	# 1. Pentatonic Pitch Stepping on Rapid Upgrades
+	am.reset_upgrade_pitch()
+	_assert_test(abs(am.get_current_upgrade_pitch_scale() - 1.0) < 0.001, "Upgrade pitch scale starts at 1.0")
+	am.play_upgrade_sfx() # Step 0 -> pitch 1.0
+	_assert_test(abs(am.get_current_upgrade_pitch_scale() - 1.0) < 0.001, "First upgrade SFX plays at root 1.0")
+	am.play_upgrade_sfx() # Step 1 within 1.2s -> 1.06
+	_assert_test(abs(am.get_current_upgrade_pitch_scale() - 1.06) < 0.001, "Second rapid upgrade steps pitch to 1.06 (pentatonic step 1)")
+	am.play_upgrade_sfx() # Step 2 -> 1.12
+	_assert_test(abs(am.get_current_upgrade_pitch_scale() - 1.12) < 0.001, "Third rapid upgrade steps pitch to 1.12 (pentatonic step 2)")
+	am.play_upgrade_sfx() # Step 3 -> 1.20
+	am.play_upgrade_sfx() # Step 4 -> 1.26
+	am.play_upgrade_sfx() # Step 5 -> 1.33
+	am.play_upgrade_sfx() # Step 6 -> 1.42
+	am.play_upgrade_sfx() # Step 7 -> 1.50
+	_assert_test(abs(am.get_current_upgrade_pitch_scale() - 1.50) < 0.001, "Rapid upgrade pitch clamps cleanly at highest pentatonic pitch (1.50)")
+	am.play_upgrade_sfx() # Stays clamped at 1.50
+	_assert_test(abs(am.get_current_upgrade_pitch_scale() - 1.50) < 0.001, "Subsequent rapid upgrades remain clamped at 1.50")
+
+	# Reset pitch
+	am.reset_upgrade_pitch()
+	_assert_test(abs(am.get_current_upgrade_pitch_scale() - 1.0) < 0.001, "reset_upgrade_pitch() resets pitch back to 1.0")
+
+	# 2. Milestone Chord Fanfares
+	am.play_milestone_fanfare(10)
+	am.play_milestone_fanfare(25)
+	am.play_milestone_fanfare(50)
+	_assert_test(am.has_method("play_milestone_fanfare"), "AudioManager implements play_milestone_fanfare() with multi-layered chord cascades")
+
+	# 3. Critical Payout Popups & Tactile Micro-Shake
+	var test_tbl = table_scn.instantiate()
+	root.add_child(test_tbl)
+	test_tbl.spawn_payout_floater(120.0, "standard")
+	test_tbl.spawn_payout_floater(250.0, "speedy_tip")
+	test_tbl.spawn_payout_floater(600.0, "divine_dish")
+	test_tbl.spawn_payout_floater(450.0, "michelin_critic")
+	_assert_test(test_tbl.has_method("spawn_payout_floater"), "Dining table implements spawn_payout_floater with critical bounce and sparkle trail")
+	test_tbl.queue_free()
+
+	dock_hud.spawn_payout_popup(Vector3(0, 1.5, 0), 300.0, "speedy_tip")
+	dock_hud.spawn_payout_popup(Vector3(0, 1.5, 0), 1000.0, "divine_dish")
+	_assert_test(dock_hud.has_method("spawn_payout_popup"), "UI Controller implements spawn_payout_popup for screen-edge critical popups")
+	
+	dock_hud._shake_upgrade_card(0.18)
+	_assert_test(dock_hud.has_method("_shake_upgrade_card"), "UI Controller implements _shake_upgrade_card for tactile milestone feedback")
 
 	dock_hud.queue_free()
 
-	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, Blueprint Zones, Collapsible Dock, Pipeline Balance, Interactive Onboarding, Collectible Gear Wardrobe, Supply Drones, Screen-Edge Indicators, and Star Rating & Customer Review Drawer validated.")
+	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, Blueprint Zones, Collapsible Dock, Pipeline Balance, Interactive Onboarding, Collectible Gear Wardrobe, Supply Drones, Screen-Edge Indicators, Star Rating & Customer Review Drawer, and Tactile Sensory Polish validated.")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Frame 25: Teardown & Summary

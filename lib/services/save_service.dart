@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../logic/game_state.dart';
+import '../models/gear.dart';
+import '../models/guest_review.dart';
 
 /// Persists game state to local SharedPreferences and synchronizes with
 /// the Godot Restaurant Tycoon 3D save file (user://restaurant_save.json).
@@ -85,6 +87,9 @@ class SaveService {
       'piggy_bank_diamonds': gs.piggyBankDiamonds,
       'tutorial_completed': gs.tutorialCompleted,
       'tutorial_step': gs.tutorialStep,
+      'equipped_gear': gs.equippedGear,
+      'gear_inventory': gs.gearInventory.map((k, v) => MapEntry(k, v.toJson())),
+      'recent_guest_reviews': gs.recentGuestReviews.map((r) => r.toJson()).toList(),
     };
 
     final jsonStr = jsonEncode(data);
@@ -270,6 +275,49 @@ class SaveService {
       }
       if (data.containsKey('tutorial_step')) {
         gs.tutorialStep = (data['tutorial_step'] as num?)?.toInt() ?? gs.tutorialStep;
+      }
+
+      // Restore gear loadout & inventory
+      final eqGear = data['equipped_gear'] as Map<String, dynamic>?;
+      if (eqGear != null) {
+        for (final entry in eqGear.entries) {
+          if (entry.value is String) {
+            gs.equippedGear[entry.key] = entry.value as String;
+          }
+        }
+      }
+
+      final gearInv = data['gear_inventory'] as Map<String, dynamic>?;
+      if (gearInv != null) {
+        for (final entry in gearInv.entries) {
+          final gid = entry.key;
+          final gdata = entry.value as Map<String, dynamic>;
+          if (gs.gearInventory.containsKey(gid)) {
+            final item = gs.gearInventory[gid]!;
+            if (gdata.containsKey('rarity')) {
+              item.rarity = GearRarityExt.fromString(gdata['rarity'] as String);
+            }
+            if (gdata.containsKey('count')) {
+              item.count = (gdata['count'] as num).toInt();
+            }
+            if (gdata.containsKey('unlocked')) {
+              item.unlocked = gdata['unlocked'] as bool;
+            }
+          } else {
+            gs.gearInventory[gid] = GearItem.fromJson(gdata);
+          }
+        }
+      }
+
+      // Restore recent guest reviews
+      final reviewsData = data['recent_guest_reviews'] as List<dynamic>?;
+      if (reviewsData != null && reviewsData.isNotEmpty) {
+        gs.recentGuestReviews.clear();
+        for (final r in reviewsData) {
+          if (r is Map<String, dynamic>) {
+            gs.recentGuestReviews.add(GuestReview.fromJson(r));
+          }
+        }
       }
 
       // Calculate offline earnings: min(ElapsedSeconds, 28800) * CashPerSecond * 0.85
