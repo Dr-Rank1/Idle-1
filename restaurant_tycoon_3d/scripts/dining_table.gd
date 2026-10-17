@@ -64,6 +64,7 @@ var current_cash_bricks: int = 0
 var locked_zone_root: Node3D = null
 var locked_price_badge: Node3D = null
 var locked_price_label: Label3D = null
+var hologram_booth: Node3D = null
 var current_unlock_cost: float = 0.0
 
 var highlight_ring: MeshInstance3D = null
@@ -141,16 +142,19 @@ func _process(delta: float) -> void:
 	if booth_bubble_root != null and booth_bubble_root.visible:
 		booth_bubble_root.position.y = 1.70 + 0.05 * sin(2.8 * time_passed + float(t_idx) * 0.8)
 
-	# Dynamic animation for locked unlock price button
-	if not is_unlocked and locked_price_badge != null and locked_price_badge.visible:
-		locked_price_badge.position.y = 1.45 + 0.08 * sin(time_passed * 4.5)
-		var gm = get_node_or_null("/root/GameManager")
-		var can_afford = (gm != null and gm.cash >= current_unlock_cost)
-		if can_afford:
-			var pulse = 1.0 + sin(time_passed * 6.0) * 0.06
-			locked_price_badge.scale = Vector3(pulse, pulse, pulse)
-		else:
-			locked_price_badge.scale = Vector3.ONE
+	# Dynamic animation for locked blueprint hologram & build price button
+	if not is_unlocked:
+		if hologram_booth != null and is_instance_valid(hologram_booth):
+			hologram_booth.rotation.y += delta * 0.85
+		if locked_price_badge != null and locked_price_badge.visible:
+			locked_price_badge.position.y = 1.45 + 0.08 * sin(time_passed * 4.5)
+			var gm = get_node_or_null("/root/GameManager")
+			var can_afford = (gm != null and gm.cash >= current_unlock_cost)
+			if can_afford:
+				var pulse = 1.0 + sin(time_passed * 6.0) * 0.06
+				locked_price_badge.scale = Vector3(pulse, pulse, pulse)
+			else:
+				locked_price_badge.scale = Vector3.ONE
 
 	# Dynamic animation for floor level pad & green upgrade arrow
 	if is_unlocked and floor_level_pad != null and floor_level_pad.visible:
@@ -228,10 +232,10 @@ func _on_cash_changed(_cash_val: float) -> void:
 				if bev is MeshInstance3D and bev.material_override is StandardMaterial3D:
 					bev.material_override.albedo_color = Color(0.10, 0.52, 0.18) if can_afford else Color(0.55, 0.16, 0.12)
 			if locked_price_label != null:
-				locked_price_label.text = "🔓 UNLOCK  $%d" % round(cost)
+				locked_price_label.text = "BUILD  $%d" % round(cost)
 				locked_price_label.outline_modulate = Color(0.06, 0.20, 0.08, 0.95) if can_afford else Color(0.20, 0.06, 0.06, 0.95)
 			if action_badge != null:
-				action_badge.text = "TAP TO UNLOCK ($%d)" % round(cost)
+				action_badge.text = "BUILD ($%d)" % round(cost)
 				action_badge.modulate = Color(0.35, 1.0, 0.55) if can_afford else Color(1.0, 0.45, 0.45)
 
 func _set_locked_visual(cost: float) -> void:
@@ -772,159 +776,135 @@ func _setup_locked_zone(cost: float) -> void:
 	locked_zone_root.name = "LockedZoneRoot"
 	add_child(locked_zone_root)
 	
-	# 1. Hazard-Bordered Floor Pad
-	var hazard_pad = MeshInstance3D.new()
+	# 1. Glowing Cyan Architectural Blueprint Floor Pad
+	var blueprint_pad = MeshInstance3D.new()
+	blueprint_pad.name = "BlueprintPad"
 	var pad_box = BoxMesh.new()
-	pad_box.size = Vector3(2.5, 0.025, 2.1)
-	hazard_pad.mesh = pad_box
+	pad_box.size = Vector3(2.5, 0.02, 2.1)
+	blueprint_pad.mesh = pad_box
 	
-	var h_mat = ShaderMaterial.new()
-	var h_shader = Shader.new()
-	h_shader.code = """
+	var bp_mat = ShaderMaterial.new()
+	var bp_shader = Shader.new()
+	bp_shader.code = """
 	shader_type spatial;
 	render_mode unshaded;
 	void fragment() {
-		float stripe = fract((UV.x * 2.5 + UV.y * 2.1) * 8.0);
-		ALBEDO = stripe < 0.5 ? vec3(1.0, 0.82, 0.0) : vec3(0.08, 0.08, 0.10);
+		vec2 uv = UV * vec2(10.0, 8.4);
+		vec2 g = abs(fract(uv - 0.5) - 0.5) / fwidth(uv);
+		float line = min(g.x, g.y);
+		float grid_line = 1.0 - min(line, 1.0);
+		
+		float b_dist = min(min(UV.x, 1.0 - UV.x), min(UV.y, 1.0 - UV.y));
+		float border = step(b_dist, 0.035);
+		
+		vec3 deep_blue = vec3(0.04, 0.16, 0.32);
+		vec3 cyan_glow = vec3(0.0, 0.85, 1.0);
+		vec3 white_line = vec3(0.92, 0.98, 1.0);
+		
+		vec3 col = mix(deep_blue, cyan_glow, grid_line * 0.45);
+		col = mix(col, white_line, border * 0.85);
+		ALBEDO = col;
 	}
 	"""
-	h_mat.shader = h_shader
-	hazard_pad.material_override = h_mat
-	hazard_pad.position = Vector3(0.0, 0.012, 0.0)
-	locked_zone_root.add_child(hazard_pad)
+	bp_mat.shader = bp_shader
+	blueprint_pad.material_override = bp_mat
+	blueprint_pad.position = Vector3(0.0, 0.012, 0.0)
+	locked_zone_root.add_child(blueprint_pad)
 	
-	var inner_pad = MeshInstance3D.new()
-	var in_box = BoxMesh.new()
-	in_box.size = Vector3(2.2, 0.028, 1.8)
-	inner_pad.mesh = in_box
-	var in_mat = StandardMaterial3D.new()
-	in_mat.albedo_color = Color(0.18, 0.18, 0.20)
-	in_mat.roughness = 0.75
-	inner_pad.material_override = in_mat
-	inner_pad.position = Vector3(0.0, 0.014, 0.0)
-	locked_zone_root.add_child(inner_pad)
+	# 2. Dashed White Measurement Lines & Technical Labels
+	var dim_label_front = Label3D.new()
+	dim_label_front.name = "DimLabelFront"
+	dim_label_front.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	dim_label_front.double_sided = false
+	dim_label_front.font_size = 18
+	dim_label_front.outline_size = 4
+	dim_label_front.text = "📐 2.40m × 2.10m  [BOOTH SPEC]"
+	dim_label_front.modulate = Color(0.2, 0.9, 1.0, 0.9)
+	dim_label_front.outline_modulate = Color(0.02, 0.08, 0.16, 0.95)
+	dim_label_front.position = Vector3(0.0, 0.14, 1.02)
+	locked_zone_root.add_child(dim_label_front)
 	
-	# 2. Safety Pylons & Caution Ribbon at 4 Corners
-	var corners = [
-		Vector3(-1.12, 0.0, -0.92),
-		Vector3(1.12, 0.0, -0.92),
-		Vector3(1.12, 0.0, 0.92),
-		Vector3(-1.12, 0.0, 0.92)
-	]
-	for cp in corners:
-		var pylon = Node3D.new()
-		pylon.position = cp
-		
-		var base_m = MeshInstance3D.new()
-		var b_cyl = CylinderMesh.new()
-		b_cyl.top_radius = 0.08
-		b_cyl.bottom_radius = 0.11
-		b_cyl.height = 0.04
-		base_m.mesh = b_cyl
-		var o_mat = StandardMaterial3D.new()
-		o_mat.albedo_color = Color(1.0, 0.38, 0.06)
-		base_m.material_override = o_mat
-		base_m.position.y = 0.02
-		pylon.add_child(base_m)
-		
-		var post_m = MeshInstance3D.new()
-		var p_cyl = CylinderMesh.new()
-		p_cyl.top_radius = 0.035
-		p_cyl.bottom_radius = 0.045
-		p_cyl.height = 0.55
-		post_m.mesh = p_cyl
-		var y_mat = StandardMaterial3D.new()
-		y_mat.albedo_color = Color(1.0, 0.85, 0.05)
-		post_m.material_override = y_mat
-		post_m.position.y = 0.28
-		pylon.add_child(post_m)
-		
-		var ref_m = MeshInstance3D.new()
-		var r_cyl = CylinderMesh.new()
-		r_cyl.top_radius = 0.037
-		r_cyl.bottom_radius = 0.041
-		r_cyl.height = 0.10
-		ref_m.mesh = r_cyl
-		var w_mat = StandardMaterial3D.new()
-		w_mat.albedo_color = Color(0.96, 0.96, 0.96)
-		ref_m.material_override = w_mat
-		ref_m.position.y = 0.30
-		pylon.add_child(ref_m)
-		
-		locked_zone_root.add_child(pylon)
-		
-	for i in range(4):
-		var p1 = corners[i]
-		var p2 = corners[(i + 1) % 4]
-		var mid = (p1 + p2) * 0.5
-		var dist = p1.distance_to(p2)
-		var ribbon = MeshInstance3D.new()
-		var r_box = BoxMesh.new()
-		r_box.size = Vector3(dist, 0.04, 0.012)
-		ribbon.mesh = r_box
-		var rib_mat = StandardMaterial3D.new()
-		rib_mat.albedo_color = Color(1.0, 0.88, 0.10)
-		rib_mat.roughness = 0.5
-		ribbon.material_override = rib_mat
-		ribbon.position = Vector3(mid.x, 0.42, mid.z)
-		ribbon.look_at(Vector3(p2.x, 0.42, p2.z), Vector3.UP)
-		locked_zone_root.add_child(ribbon)
-		
-	# 3. Wooden Construction Crates
-	var crate_main = Node3D.new()
-	crate_main.position = Vector3(0.0, 0.36, 0.0)
-	var c_box = BoxMesh.new()
-	c_box.size = Vector3(0.85, 0.72, 0.85)
-	var c_mesh = MeshInstance3D.new()
-	c_mesh.mesh = c_box
-	var wood_mat = StandardMaterial3D.new()
-	wood_mat.albedo_color = Color(0.68, 0.48, 0.28)
-	wood_mat.roughness = 0.85
-	c_mesh.material_override = wood_mat
-	crate_main.add_child(c_mesh)
+	for c_pos in [Vector3(-1.18, 0.02, -0.98), Vector3(1.18, 0.02, -0.98), Vector3(-1.18, 0.02, 0.98), Vector3(1.18, 0.02, 0.98)]:
+		var corner_mark = MeshInstance3D.new()
+		var c_box = BoxMesh.new()
+		c_box.size = Vector3(0.14, 0.01, 0.14)
+		corner_mark.mesh = c_box
+		var cm_mat = StandardMaterial3D.new()
+		cm_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		cm_mat.albedo_color = Color(0.0, 0.9, 1.0, 0.95)
+		corner_mark.material_override = cm_mat
+		corner_mark.position = c_pos
+		locked_zone_root.add_child(corner_mark)
+
+	# 3. Rotating 3D Translucent Hologram Preview of the Booth
+	hologram_booth = Node3D.new()
+	hologram_booth.name = "HologramBooth"
 	
-	var steel_mat = StandardMaterial3D.new()
-	steel_mat.albedo_color = Color(0.35, 0.38, 0.42)
-	steel_mat.metallic = 0.7
-	steel_mat.roughness = 0.3
+	var holo_mat = StandardMaterial3D.new()
+	holo_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	holo_mat.albedo_color = Color(0.0, 0.85, 1.0, 0.40)
+	holo_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	holo_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	holo_mat.emission_enabled = true
+	holo_mat.emission = Color(0.0, 0.65, 0.95)
+	holo_mat.emission_energy_multiplier = 0.5
 	
-	for cx in [-0.425, 0.425]:
-		for cz in [-0.425, 0.425]:
-			var bracket = MeshInstance3D.new()
-			var b_box = BoxMesh.new()
-			b_box.size = Vector3(0.04, 0.73, 0.04)
-			bracket.mesh = b_box
-			bracket.material_override = steel_mat
-			bracket.position = Vector3(cx, 0.0, cz)
-			crate_main.add_child(bracket)
-			
-	var brace1 = MeshInstance3D.new()
-	var br_box = BoxMesh.new()
-	br_box.size = Vector3(0.98, 0.06, 0.02)
-	brace1.mesh = br_box
-	brace1.material_override = wood_mat
-	brace1.position = Vector3(0.0, 0.0, 0.43)
-	brace1.rotation_degrees = Vector3(0, 0, 40)
-	crate_main.add_child(brace1)
+	# Hologram Tabletop
+	var h_top = MeshInstance3D.new()
+	var top_box = BoxMesh.new()
+	top_box.size = Vector3(1.2, 0.05, 0.8)
+	h_top.mesh = top_box
+	h_top.material_override = holo_mat
+	h_top.position = Vector3(0.0, 0.72, 0.0)
+	hologram_booth.add_child(h_top)
 	
-	var brace2 = MeshInstance3D.new()
-	brace2.mesh = br_box
-	brace2.material_override = wood_mat
-	brace2.position = Vector3(0.0, 0.0, 0.43)
-	brace2.rotation_degrees = Vector3(0, 0, -40)
-	crate_main.add_child(brace2)
+	# Hologram Table Pedestal
+	var h_ped = MeshInstance3D.new()
+	var ped_cyl = CylinderMesh.new()
+	ped_cyl.top_radius = 0.06
+	ped_cyl.bottom_radius = 0.06
+	ped_cyl.height = 0.72
+	h_ped.mesh = ped_cyl
+	h_ped.material_override = holo_mat
+	h_ped.position = Vector3(0.0, 0.36, 0.0)
+	hologram_booth.add_child(h_ped)
 	
-	locked_zone_root.add_child(crate_main)
+	# Hologram North Bench Seat & Back
+	var h_n_seat = MeshInstance3D.new()
+	var ns_box = BoxMesh.new()
+	ns_box.size = Vector3(1.4, 0.42, 0.4)
+	h_n_seat.mesh = ns_box
+	h_n_seat.material_override = holo_mat
+	h_n_seat.position = Vector3(0.0, 0.21, -0.68)
+	hologram_booth.add_child(h_n_seat)
 	
-	var crate_small = MeshInstance3D.new()
-	var cs_box = BoxMesh.new()
-	cs_box.size = Vector3(0.48, 0.42, 0.48)
-	crate_small.mesh = cs_box
-	crate_small.material_override = wood_mat
-	crate_small.position = Vector3(0.28, 0.85, 0.08)
-	crate_small.rotation_degrees = Vector3(0, 16, 0)
-	locked_zone_root.add_child(crate_small)
+	var h_n_back = MeshInstance3D.new()
+	var nb_box = BoxMesh.new()
+	nb_box.size = Vector3(1.4, 0.75, 0.14)
+	h_n_back.mesh = nb_box
+	h_n_back.material_override = holo_mat
+	h_n_back.position = Vector3(0.0, 0.58, -0.85)
+	hologram_booth.add_child(h_n_back)
 	
+	# Hologram South Bench Seat & Back
+	var h_s_seat = MeshInstance3D.new()
+	var ss_box = BoxMesh.new()
+	ss_box.size = Vector3(1.4, 0.42, 0.4)
+	h_s_seat.mesh = ss_box
+	h_s_seat.material_override = holo_mat
+	h_s_seat.position = Vector3(0.0, 0.21, 0.68)
+	hologram_booth.add_child(h_s_seat)
+	
+	var h_s_back = MeshInstance3D.new()
+	var sb_box = BoxMesh.new()
+	sb_box.size = Vector3(1.4, 0.75, 0.14)
+	h_s_back.mesh = sb_box
+	h_s_back.material_override = holo_mat
+	h_s_back.position = Vector3(0.0, 0.58, 0.85)
+	hologram_booth.add_child(h_s_back)
+	
+	locked_zone_root.add_child(hologram_booth)
+
 	# 4. Floating 3D Beveled Green Price Button
 	locked_price_badge = Node3D.new()
 	locked_price_badge.name = "LockedPriceBadge"
@@ -962,7 +942,7 @@ func _setup_locked_zone(cost: float) -> void:
 	locked_price_label.double_sided = false
 	locked_price_label.font_size = 32
 	locked_price_label.outline_size = 8
-	locked_price_label.text = "🔓 UNLOCK  $%d" % round(cost)
+	locked_price_label.text = "BUILD  $%d" % round(cost)
 	locked_price_label.modulate = Color.WHITE
 	locked_price_label.outline_modulate = Color(0.06, 0.20, 0.08, 0.95) if can_afford else Color(0.20, 0.06, 0.06, 0.95)
 	locked_price_label.position = Vector3(0.0, 0.02, 0.05)
@@ -1093,21 +1073,30 @@ func _on_table_unlocked(id: String) -> void:
 		# 1. Spawn smoke & star burst particle explosion
 		_spawn_unlock_particles()
 		
-		# 2. Pop-shrink locked zone root
+		# 2. Hologram dissolve upward wipe
+		if hologram_booth != null and is_instance_valid(hologram_booth):
+			var holo = hologram_booth
+			hologram_booth = null
+			var tw_holo = create_tween()
+			tw_holo.tween_property(holo, "position:y", 0.65, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw_holo.parallel().tween_property(holo, "scale", Vector3(1.1, 0.1, 1.1), 0.22)
+			tw_holo.tween_callback(holo.queue_free)
+		
+		# 3. Pop-shrink locked zone root
 		if locked_zone_root != null and is_instance_valid(locked_zone_root):
 			var lz = locked_zone_root
 			locked_zone_root = null
 			var tw_lz = create_tween()
-			tw_lz.tween_property(lz, "scale", Vector3(1.2, 1.2, 1.2), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-			tw_lz.tween_property(lz, "scale", Vector3.ZERO, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+			tw_lz.tween_property(lz, "scale", Vector3(1.15, 1.15, 1.15), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tw_lz.tween_property(lz, "scale", Vector3(1.0, 0.0, 1.0), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 			tw_lz.tween_callback(lz.queue_free)
 			
 		_set_unlocked_visual(lvl)
 		
-		# 3. Scale-pop bounce animation as the booth spawns in
-		scale = Vector3(0.2, 0.2, 0.2)
+		# 4. Bottom-to-top materialization wipe animation as the solid booth spawns in
+		scale = Vector3(1.0, 0.02, 1.0)
 		var tween: Tween = create_tween()
-		tween.tween_property(self, "scale", Vector3(1.18, 1.18, 1.18), 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(self, "scale", Vector3(1.14, 1.25, 1.14), 0.26).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tween.tween_property(self, "scale", Vector3.ONE, 0.16)
 		
 		_spawn_floating_text("★ TABLE UNLOCKED! ★", Color(0.25, 1.0, 0.5, 1.0))

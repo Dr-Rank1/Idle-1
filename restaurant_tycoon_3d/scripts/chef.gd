@@ -22,6 +22,8 @@ var catering_home: Vector3 = Vector3.ZERO
 var catering_home_yaw: float = 0.0
 var catering_walk_speed: float = 3.4
 
+const CHEF_NAMES: Array[String] = ["Chef Pierre", "Chef Gordon", "Chef Julia", "Chef Marco", "Chef Antoine", "Chef Gaston"]
+
 func _ready() -> void:
 	anim_player = find_child("AnimationPlayer", true, false)
 	
@@ -40,7 +42,74 @@ func _ready() -> void:
 		elif cooking_ring.mesh != null and cooking_ring.mesh.material != null:
 			cooking_ring.material_override = cooking_ring.mesh.material.duplicate()
 	
+	var click_area = Area3D.new()
+	click_area.name = "ClickArea"
+	var shape = CollisionShape3D.new()
+	var cap = CapsuleShape3D.new()
+	cap.radius = 0.45
+	cap.height = 1.8
+	shape.shape = cap
+	shape.position = Vector3(0, 0.9, 0)
+	click_area.add_child(shape)
+	add_child(click_area)
+	click_area.input_ray_pickable = true
+	click_area.input_event.connect(_on_click_area_input_event)
+	
 	_play_chef_animation()
+
+func _on_click_area_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		var ui = get_tree().root.find_child("UIController", true, false) if get_tree() != null else null
+		if ui != null and ui.has_method("show_character_inspector"):
+			ui.show_character_inspector(self)
+
+func get_inspector_info() -> Dictionary:
+	var c_name = CHEF_NAMES[chef_index % CHEF_NAMES.size()]
+	var role_str = "Prep Chef" if is_prep_chef else "Line Chef"
+	var status = "Sizzling at Range 🍳"
+	if catering_busy:
+		status = "Plating Catering Order 📦"
+	elif is_prep_chef:
+		status = "Prepping Fresh Ingredients 🥗"
+
+	var gm = get_node_or_null("/root/GameManager")
+	var cook_mult: float = 1.0
+	var staff_key: String = "chef_prep" if is_prep_chef else ("chef_sous" if chef_index == 1 else "chef_stove")
+	if gm != null:
+		if gm.has_method("get_staff_cooking_multiplier"):
+			cook_mult = gm.get_staff_cooking_multiplier(staff_key)
+		if gm.has_method("get_fever_speed_multiplier"):
+			cook_mult *= gm.get_fever_speed_multiplier()
+	var speed = (0.28 + (chef_index % 3) * 0.05) * cook_mult
+	var offset = float(chef_index) * 0.27 + (0.15 if is_prep_chef else 0.0)
+	var cycle_prog = fmod(time_passed * speed + offset, 1.0)
+
+	return {
+		"name": c_name,
+		"role": role_str,
+		"role_icon": "👨‍🍳",
+		"role_color": Color(1.0, 0.55, 0.15),
+		"status_text": status,
+		"progress_ratio": cycle_prog,
+		"progress_label": "Cook Cycle: %d%%" % round(cycle_prog * 100.0),
+		"progress_color": Color(1.0, 0.6, 0.15),
+		"can_boost": true,
+		"boost_label": "Rush Sizzle 🔥"
+	}
+
+func apply_inspector_boost() -> Dictionary:
+	time_passed += 2.5
+	if flame_light != null:
+		flame_light.light_energy = 2.4
+	if steam_particles != null:
+		steam_particles.restart()
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("sizzle", 0.0, 0.0)
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_method("increment_fever_combo"):
+		gm.increment_fever_combo(3.0)
+	return {"success": true, "message": "Cook Cycle Rushed!"}
 
 func _play_chef_animation() -> void:
 	if anim_player != null:

@@ -767,7 +767,122 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 
 	fever_hud.queue_free()
 
-	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, and Diner Fever validated.")
+	# Part 9: Live Character Inspection & Architectural Blueprint Unlock Zones
+	print("\n--- [FRAME 20 Part 9] Asserting Live Character Inspection & Blueprint Zones ---")
+	
+	# 1. Customer Inspector Protocol
+	var cust_inst = cust_scn.instantiate()
+	root.add_child(cust_inst)
+	_assert_test(cust_inst.has_method("get_inspector_info"), "Customer implements get_inspector_info protocol")
+	_assert_test(cust_inst.has_method("apply_inspector_boost"), "Customer implements apply_inspector_boost protocol")
+	_assert_test(cust_inst.customer_name != "", "Customer receives stylized mobile character name")
+	var c_info = cust_inst.get_inspector_info()
+	_assert_test(c_info.has("name") and c_info.has("role") and c_info.has("status_text"), "Customer inspector info contains name, role, and live status")
+	_assert_test(c_info.role == "Diner Guest", "Standard guest displays Diner Guest role")
+	_assert_test(c_info.has("progress_ratio") and c_info.progress_ratio >= 0.0, "Customer inspector includes live patience ratio")
+	
+	# Test Guest Instant Tip Boost
+	var pre_tip_cash = gm.cash
+	var boost_res = cust_inst.apply_inspector_boost()
+	_assert_test(boost_res.get("success") == true, "apply_inspector_boost on guest succeeds")
+	_assert_test(gm.cash > pre_tip_cash, "Guest instant tip awards bonus cash")
+
+	# Test Michelin Critic Inspector
+	cust_inst.set_as_critic(true)
+	var critic_info = cust_inst.get_inspector_info()
+	_assert_test(critic_info.role == "Michelin Critic", "VIP Critic displays Michelin Critic role")
+	_assert_test(cust_inst.customer_name == "Henri Le Blanc", "Michelin Critic assigned signature name Henri Le Blanc")
+
+	# Test VIP Investor Inspector
+	cust_inst.set_as_vip_investor(true)
+	var investor_info = cust_inst.get_inspector_info()
+	_assert_test(investor_info.role == "VIP Investor", "VIP Investor displays VIP Investor role")
+	_assert_test(cust_inst.customer_name == "Warren Sterling", "VIP Investor assigned signature name Warren Sterling")
+	cust_inst.queue_free()
+
+	# 2. Waiter Inspector Protocol
+	var waiter_inst = waiter_scn.instantiate()
+	root.add_child(waiter_inst)
+	_assert_test(waiter_inst.has_method("get_inspector_info"), "Waiter implements get_inspector_info protocol")
+	_assert_test(waiter_inst.has_method("apply_inspector_boost"), "Waiter implements apply_inspector_boost protocol")
+	var w_info = waiter_inst.get_inspector_info()
+	_assert_test(w_info.role == "Floor Waiter" and w_info.name == "Marco", "Waiter inspector returns Floor Waiter role and name")
+	_assert_test(w_info.has("progress_ratio") and w_info.has("progress_label"), "Waiter inspector includes stamina/boost progress")
+	
+	# Test Waiter Speed Surge Boost
+	var w_boost = waiter_inst.apply_inspector_boost()
+	_assert_test(w_boost.get("success") == true, "apply_inspector_boost on waiter succeeds")
+	_assert_test(waiter_inst.speed_buff_timer >= 20.0, "Waiter speed buff timer activated")
+	waiter_inst.queue_free()
+
+	# 3. Chef Inspector Protocol
+	var chef_scn = load("res://scenes/chef.tscn")
+	_assert_test(chef_scn != null, "Chef scene loaded")
+	var chef_inst = chef_scn.instantiate()
+	root.add_child(chef_inst)
+	_assert_test(chef_inst.has_method("get_inspector_info"), "Chef implements get_inspector_info protocol")
+	_assert_test(chef_inst.has_method("apply_inspector_boost"), "Chef implements apply_inspector_boost protocol")
+	_assert_test(chef_inst.find_child("ClickArea", true, false) != null, "Chef includes ClickArea collision shape for mouse picking")
+	var ch_info = chef_inst.get_inspector_info()
+	_assert_test(ch_info.role in ["Line Chef", "Prep Chef"], "Chef displays Line Chef or Prep Chef role")
+	_assert_test(ch_info.has("progress_ratio") and ch_info.progress_label.find("Cook Cycle") != -1, "Chef inspector displays live cook cycle progress")
+	
+	# Test Chef Rush Sizzle Boost
+	var ch_boost = chef_inst.apply_inspector_boost()
+	_assert_test(ch_boost.get("success") == true, "apply_inspector_boost on chef succeeds")
+	chef_inst.queue_free()
+
+	# 4. UI Controller Live Inspector Card
+	var inspector_hud = hud_scn.instantiate()
+	root.add_child(inspector_hud)
+	_assert_test(inspector_hud.has_method("show_character_inspector"), "UIController provides show_character_inspector method")
+	_assert_test(inspector_hud.has_method("dismiss_character_inspector"), "UIController provides dismiss_character_inspector method")
+	
+	var test_guest = cust_scn.instantiate()
+	root.add_child(test_guest)
+	inspector_hud.show_character_inspector(test_guest)
+	_assert_test(inspector_hud.character_inspector_card != null and inspector_hud.character_inspector_card.visible == true, "CharacterInspectorCard created and visible")
+	_assert_test(inspector_hud.inspector_name_label != null and inspector_hud.inspector_name_label.text != "", "Inspector card displays character name")
+	_assert_test(inspector_hud.inspector_role_badge != null, "Inspector card displays role badge")
+	_assert_test(inspector_hud.inspector_status_label != null, "Inspector card displays live FSM status")
+	_assert_test(inspector_hud.inspector_prog_bar != null, "Inspector card displays progress bar")
+	_assert_test(inspector_hud.inspector_boost_btn != null and inspector_hud.inspector_boost_btn.visible == true, "Inspector card includes active boost button")
+	
+	# Test dismissal
+	inspector_hud.dismiss_character_inspector(true)
+	_assert_test(inspector_hud.character_inspector_card.visible == false, "CharacterInspectorCard cleanly dismissed")
+	test_guest.queue_free()
+	inspector_hud.queue_free()
+
+	# 5. Architectural Blueprint Unlock Zones in Dining Table
+	var test_table = table_scn.instantiate()
+	test_table.table_id = "table_4"
+	root.add_child(test_table)
+	test_table._set_locked_visual(320.0)
+	_assert_test(test_table.is_unlocked == false, "Table 4 starts in locked blueprint state")
+	_assert_test(test_table.locked_zone_root != null, "LockedZoneRoot created for locked station")
+	
+	var bp_pad = test_table.locked_zone_root.find_child("BlueprintPad", true, false)
+	_assert_test(bp_pad != null, "Glowing cyan architectural blueprint pad exists on floor")
+	var dim_lbl = test_table.locked_zone_root.find_child("DimLabelFront", true, false)
+	_assert_test(dim_lbl != null and "2.40m" in dim_lbl.text, "Technical specification measurement line label exists on blueprint pad")
+	var holo = test_table.locked_zone_root.find_child("HologramBooth", true, false)
+	_assert_test(holo != null and test_table.hologram_booth == holo, "Rotating 3D translucent hologram booth preview exists")
+	var price_lbl = test_table.locked_zone_root.find_child("LockedPriceLabel", true, false)
+	_assert_test(price_lbl != null and "BUILD" in price_lbl.text and "320" in price_lbl.text, "Floating 3D-beveled green price button displays BUILD $320")
+	
+	# Process delta to verify hologram rotation
+	var prev_holo_rot = holo.rotation.y
+	test_table._process(0.1)
+	_assert_test(holo.rotation.y != prev_holo_rot, "Hologram booth preview rotates continuously in _process")
+	
+	# Test Unlock Materialization Wipe
+	test_table._on_table_unlocked("table_4")
+	_assert_test(test_table.is_unlocked == true, "Table 4 unlocks successfully on _on_table_unlocked")
+	_assert_test(test_table.scale.y <= 1.25, "Materialization wipe starts bottom-to-top scale expansion")
+	test_table.queue_free()
+
+	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, and Blueprint Zones validated.")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Frame 25: Teardown & Summary

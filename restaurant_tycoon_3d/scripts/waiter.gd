@@ -50,6 +50,9 @@ func _ready() -> void:
 	anim_player = _find_anim_player(self)
 	_play_anim("idle")
 	
+	input_ray_pickable = true
+	input_event.connect(_on_input_event)
+	
 	_update_speed()
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
@@ -62,6 +65,80 @@ func _ready() -> void:
 			gm.manager_skill_ended.connect(func(_sec): _update_speed())
 		if gm.has_signal("fever_mode_changed"):
 			gm.fever_mode_changed.connect(func(_active, _time): _update_speed())
+
+func _on_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		var ui = get_tree().root.find_child("UIController", true, false) if get_tree() != null else null
+		if ui != null and ui.has_method("show_character_inspector"):
+			ui.show_character_inspector(self)
+
+func get_inspector_info() -> Dictionary:
+	var status = "On Standby at Station"
+	match current_state:
+		State.IDLE:
+			status = "On Standby at Station"
+		State.WALKING_TO_KITCHEN:
+			status = "Heading to Kitchen Pass Counter"
+		State.WALKING_TO_TABLE:
+			var tname = target_table.table_name if (is_instance_valid(target_table) and "table_name" in target_table) else "Table"
+			if is_cleaning_job:
+				status = "Going to " + tname + " to Clean"
+			else:
+				status = "Delivering Order to " + tname
+		State.SERVING:
+			if is_cleaning_job:
+				status = "Wiping Dirty Table 🧽"
+			else:
+				status = "Plating Hot Order at Table 🍽️"
+		State.RETURNING:
+			status = "Returning to Standby"
+		State.ON_BREAK:
+			status = "Relaxing in Staff Breakroom ☕"
+		State.CATERING_PICKUP:
+			status = "Picking Up Catering Order 📦"
+		State.CATERING_DELIVER:
+			status = "Delivering to Catering Van 🚚"
+
+	var ratio = 1.0
+	var label_prog = "Stamina: 100%"
+	var p_col = Color(0.28, 0.85, 0.45)
+	if speed_buff_timer > 0.0:
+		ratio = clamp(speed_buff_timer / 40.0, 0.0, 1.0)
+		label_prog = "Speed Boost: %ds" % round(speed_buff_timer)
+		p_col = Color(1.0, 0.75, 0.18)
+
+	return {
+		"name": staff_name,
+		"role": "Floor Waiter",
+		"role_icon": "🤵",
+		"role_color": Color(0.85, 0.28, 0.45),
+		"status_text": status,
+		"progress_ratio": ratio,
+		"progress_label": label_prog,
+		"progress_color": p_col,
+		"can_boost": true,
+		"boost_label": "Speed Surge (+40%) ⚡"
+	}
+
+func apply_inspector_boost() -> Dictionary:
+	speed_buff_timer = 25.0
+	_update_speed()
+	if status_bubble != null:
+		status_bubble.text = "⚡ RUSH SURGE!"
+		status_bubble.visible = true
+		var tw = create_tween()
+		tw.tween_interval(1.8)
+		tw.tween_callback(func():
+			if is_instance_valid(status_bubble) and current_state != State.ON_BREAK:
+				status_bubble.visible = false
+		)
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.0, 2.0)
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_method("increment_fever_combo"):
+		gm.increment_fever_combo(3.0)
+	return {"success": true, "message": "+40% Waiter Speed!"}
 
 func _find_anim_player(node: Node) -> AnimationPlayer:
 	if node is AnimationPlayer:

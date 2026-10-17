@@ -113,6 +113,13 @@ const ARCH_POS: Vector3 = Vector3(-1.5, 0.0, 4.5)
 const AISLE_POS: Vector3 = Vector3(3.5, 0.0, 4.5)
 const EXIT_POS: Vector3 = Vector3(-1.5, 0.0, 14.5)
 
+const CUSTOMER_NAMES: Array[String] = [
+	"Liam", "Emma", "Noah", "Olivia", "James", "Sophia", "Lucas", "Mia",
+	"Oliver", "Isabella", "Ethan", "Charlotte", "Aiden", "Amelia", "Mason", "Harper",
+	"Leo", "Evelyn", "Alex", "Chloe"
+]
+var customer_name: String = ""
+
 const CHARACTER_MODELS: Array[String] = [
 	"res://assets/models/characters/character-male-a.glb",
 	"res://assets/models/characters/character-male-b.glb",
@@ -129,6 +136,8 @@ const CHARACTER_MODELS: Array[String] = [
 ]
 
 func _ready() -> void:
+	if customer_name == "":
+		customer_name = CUSTOMER_NAMES[abs(get_instance_id()) % CUSTOMER_NAMES.size()]
 	initial_bubble_y = status_bubble.position.y
 	_setup_bubble_bg()
 	if status_bubble != null:
@@ -153,6 +162,7 @@ func _ready() -> void:
 	
 	if radial_ring != null and radial_ring.mesh != null and radial_ring.mesh.material != null:
 		radial_ring.material_override = radial_ring.mesh.material.duplicate()
+	input_ray_pickable = true
 	input_event.connect(_on_input_event)
 
 func _setup_bubble_bg() -> void:
@@ -180,10 +190,100 @@ func _on_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vect
 				gm.investor_offer_requested.emit(self, cash_offer, diamond_offer)
 			else:
 				claim_vip_investor_choice("cash")
+		else:
+			var ui = get_tree().root.find_child("UIController", true, false) if get_tree() != null else null
+			if ui != null and ui.has_method("show_character_inspector"):
+				ui.show_character_inspector(self)
+
+func get_inspector_info() -> Dictionary:
+	var role_str = "Diner Guest"
+	var icon_str = "👤"
+	var r_col = Color(0.28, 0.72, 1.0)
+	var boost_lbl = "Instant Tip (+$25) 💵"
+	
+	if is_vip_critic:
+		role_str = "Michelin Critic"
+		icon_str = "⭐"
+		r_col = Color(1.0, 0.85, 0.2)
+		boost_lbl = "VIP Hospitality (+Patience) ⭐"
+	elif is_vip_investor:
+		role_str = "VIP Investor"
+		icon_str = "💼"
+		r_col = Color(0.2, 0.88, 0.45)
+		boost_lbl = "Investor Deal 💼"
+		
+	var status = "Visiting Diner"
+	match current_state:
+		State.SPAWNING, State.WALKING_TO_HOST:
+			status = "Arriving at Entrance"
+		State.AT_HOST:
+			status = "Waiting for Hostess"
+		State.WAITING_IN_LOBBY:
+			status = "Browsing Menu in Waiting Lobby"
+		State.WALKING_TO_TABLE:
+			var tbl_name = assigned_table_id.capitalize() if assigned_table_id != "" else "Table"
+			status = "Heading to " + tbl_name
+		State.SEATED_ORDERING:
+			if is_waiting_for_food:
+				var dname = ordered_dish.get("name", "Entree") if ordered_dish.size() > 0 else "Entree"
+				status = "Waiting for " + dname
+			else:
+				status = "Deciding Order with Menu"
+		State.EATING:
+			var dname = ordered_dish.get("name", "Delicious Meal") if ordered_dish.size() > 0 else "Delicious Meal"
+			status = "Savoring " + dname
+		State.CHEERING:
+			status = "Delighted with Meal! 🎉"
+		State.WALKING_TO_EXIT:
+			status = "Leaving Satisfied"
+		State.WALKING_TO_RESTROOM, State.WAITING_FOR_RESTROOM_STALL, State.USING_RESTROOM_STALL, State.WASHING_HANDS:
+			status = "Visiting Restroom"
+			
+	var p_ratio = clamp(current_patience / max(max_patience, 1.0), 0.0, 1.0)
+	var p_col = Color(0.25, 0.88, 0.4) if p_ratio > 0.5 else (Color(1.0, 0.8, 0.2) if p_ratio > 0.25 else Color(1.0, 0.35, 0.35))
+	
+	return {
+		"name": customer_name,
+		"role": role_str,
+		"role_icon": icon_str,
+		"role_color": r_col,
+		"status_text": status,
+		"progress_ratio": p_ratio,
+		"progress_label": "Patience: %d%%" % round(p_ratio * 100.0),
+		"progress_color": p_col,
+		"can_boost": true,
+		"boost_label": boost_lbl
+	}
+
+func apply_inspector_boost() -> Dictionary:
+	if is_vip_investor:
+		if not vip_reward_claimed:
+			claim_vip_investor_choice("cash")
+			return {"success": true, "message": "Investor Deal Accepted!"}
+		return {"success": false, "message": "Deal Already Claimed"}
+	elif is_vip_critic:
+		current_patience = min(max_patience, current_patience + 12.0)
+		_spawn_floating_text("⭐ Critic Pleased! +Patience", Color(1.0, 0.85, 0.2))
+		return {"success": true, "message": "Critic Impressed!"}
+	else:
+		current_patience = min(max_patience, current_patience + 10.0)
+		var gm = get_node_or_null("/root/GameManager")
+		var tip = 25.0
+		if gm != null and gm.has_method("add_cash"):
+			gm.add_cash(tip)
+			if gm.has_method("increment_fever_combo"):
+				gm.increment_fever_combo(4.0)
+		_spawn_floating_text("+$25 Speedy Tip! 💵", Color(0.2, 1.0, 0.4))
+		var am = get_node_or_null("/root/AudioManager")
+		if am != null and am.has_method("play_sfx"):
+			am.play_sfx("cash_collect", 0.0, 2.0)
+		return {"success": true, "message": "+$25 Speedy Tip!"}
 
 func set_as_critic(is_critic: bool = true) -> void:
 	is_vip_critic = is_critic
 	if is_vip_critic:
+		is_vip_investor = false
+		customer_name = "Henri Le Blanc"
 		max_patience = 26.0
 		current_patience = 26.0
 		move_speed = 3.6
@@ -205,6 +305,8 @@ func set_as_critic(is_critic: bool = true) -> void:
 func set_as_vip_investor(is_investor: bool = true) -> void:
 	is_vip_investor = is_investor
 	if is_vip_investor:
+		is_vip_critic = false
+		customer_name = "Warren Sterling"
 		max_patience = 45.0
 		current_patience = 45.0
 		move_speed = 3.4

@@ -225,6 +225,17 @@ var callout_station_id: String = ""
 var callout_station_name_str: String = ""
 var callout_station_level: int = 1
 
+# ─── Live Tracking Character Inspector Card ─────────────────────────────────
+var character_inspector_card: Control = null
+var inspector_name_label: Label = null
+var inspector_role_badge: Label = null
+var inspector_status_label: Label = null
+var inspector_prog_bar: ProgressBar = null
+var inspector_prog_label: Label = null
+var inspector_boost_btn: Button = null
+var inspector_close_btn: Button = null
+var inspected_character: Node = null
+
 # ─── Smart Quick-Upgrade HUD Pill ───────────────────────────────────────────
 @onready var quick_upgrade_pill: PanelContainer = get_node_or_null("HUD/QuickUpgradePill")
 @onready var quick_thumb_btn: Button = get_node_or_null("HUD/QuickUpgradePill/HBox/ThumbBtn")
@@ -1429,6 +1440,7 @@ func _process(delta: float) -> void:
 			_refresh_staff_panel()
 
 	_update_station_callout_position()
+	_update_character_inspector_position(delta)
 	quick_upgrade_refresh_timer += delta
 	if quick_upgrade_refresh_timer >= 0.5:
 		quick_upgrade_refresh_timer = 0.0
@@ -6767,6 +6779,7 @@ func _format_time_hms(seconds: float) -> String:
 
 # ─── Contextual 3D Station Callout Card & Smart Quick-Upgrade Pill ─────────
 func show_station_callout(target_node: Node3D, station_id: String, station_name: String, level: int) -> void:
+	dismiss_character_inspector(true)
 	callout_target_node = target_node
 	callout_station_id = station_id
 	callout_station_name_str = station_name
@@ -6963,6 +6976,292 @@ func _unhandled_input(event: InputEvent) -> void:
 		or (event is InputEventScreenTouch and event.pressed):
 		if station_callout_card != null and station_callout_card.visible:
 			dismiss_station_callout()
+		if character_inspector_card != null and character_inspector_card.visible:
+			dismiss_character_inspector()
+
+# ─── Live Tracking Character Inspector ──────────────────────────────────────
+func show_character_inspector(character_node: Node) -> void:
+	if character_node == null or not is_instance_valid(character_node):
+		return
+	dismiss_station_callout(true)
+	inspected_character = character_node
+	if character_inspector_card == null:
+		_setup_character_inspector_ui()
+	_refresh_character_inspector()
+	if character_inspector_card != null:
+		character_inspector_card.visible = true
+		character_inspector_card.pivot_offset = Vector2(125, 145)
+		character_inspector_card.scale = Vector2(0.2, 0.2)
+		_update_character_inspector_position(0.0)
+		var tw = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(character_inspector_card, "scale", Vector2.ONE, 0.15)
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("click", 0.0, 1.0)
+
+func dismiss_character_inspector(immediate: bool = false) -> void:
+	if character_inspector_card != null and character_inspector_card.visible:
+		if immediate or DisplayServer.get_name() == "headless":
+			character_inspector_card.visible = false
+			inspected_character = null
+			return
+		var tw = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(character_inspector_card, "scale", Vector2(0.2, 0.2), 0.1)
+		tw.tween_callback(func():
+			if character_inspector_card != null:
+				character_inspector_card.visible = false
+				inspected_character = null
+		)
+
+func _update_character_inspector_position(_delta: float) -> void:
+	if character_inspector_card == null or not character_inspector_card.visible:
+		return
+	if inspected_character == null or not is_instance_valid(inspected_character):
+		dismiss_character_inspector(true)
+		return
+	var cam: Camera3D = get_viewport().get_camera_3d() if get_viewport() != null else null
+	if cam == null:
+		var root = get_tree().current_scene if get_tree() != null else null
+		if root != null:
+			cam = root.find_child("Camera3D", true, false)
+	if cam == null:
+		return
+	var world_pos = inspected_character.global_position + Vector3(0, 2.1, 0)
+	if cam.is_position_behind(world_pos):
+		character_inspector_card.visible = false
+		return
+	character_inspector_card.visible = true
+	var screen_pos = cam.unproject_position(world_pos)
+	character_inspector_card.global_position = screen_pos - Vector2(125, 145)
+	_refresh_character_inspector()
+
+func _refresh_character_inspector() -> void:
+	if inspected_character == null or not is_instance_valid(inspected_character):
+		return
+	var info: Dictionary = {}
+	if inspected_character.has_method("get_inspector_info"):
+		info = inspected_character.get_inspector_info()
+	else:
+		info = {
+			"name": inspected_character.name,
+			"role": "Staff Member",
+			"role_icon": "👤",
+			"role_color": Color(0.3, 0.7, 1.0),
+			"status_text": "On Duty",
+			"progress_ratio": 1.0,
+			"progress_label": "Active: 100%",
+			"progress_color": Color(0.3, 0.85, 0.45),
+			"can_boost": true,
+			"boost_label": "Speed Up ⚡"
+		}
+	
+	if inspector_name_label != null:
+		inspector_name_label.text = info.get("name", "Diner Guest")
+	if inspector_role_badge != null:
+		inspector_role_badge.text = "%s %s" % [info.get("role_icon", "👤"), info.get("role", "Guest")]
+		var r_col = info.get("role_color", Color(0.28, 0.72, 1.0))
+		inspector_role_badge.add_theme_color_override("font_color", r_col)
+	if inspector_status_label != null:
+		inspector_status_label.text = info.get("status_text", "Visiting Diner")
+	if inspector_prog_bar != null:
+		inspector_prog_bar.value = info.get("progress_ratio", 1.0)
+	if inspector_prog_label != null:
+		inspector_prog_label.text = info.get("progress_label", "100%")
+	if inspector_boost_btn != null:
+		inspector_boost_btn.text = info.get("boost_label", "Instant Tip 💵")
+		inspector_boost_btn.visible = info.get("can_boost", true)
+
+func _setup_character_inspector_ui() -> void:
+	var hud_root = get_node_or_null("HUD")
+	var parent_node = hud_root if hud_root != null else self
+	
+	character_inspector_card = Control.new()
+	character_inspector_card.name = "CharacterInspectorCard"
+	character_inspector_card.custom_minimum_size = Vector2(250, 136)
+	character_inspector_card.size = Vector2(250, 136)
+	character_inspector_card.mouse_filter = Control.MOUSE_FILTER_PASS
+	character_inspector_card.z_index = 25
+	character_inspector_card.visible = false
+	parent_node.add_child(character_inspector_card)
+	
+	var card_panel = PanelContainer.new()
+	card_panel.name = "CardPanel"
+	card_panel.custom_minimum_size = Vector2(250, 126)
+	card_panel.size = Vector2(250, 126)
+	
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.12, 0.16, 0.96)
+	sb.set_border_width_all(2)
+	sb.border_color = Color(0.85, 0.65, 0.20, 0.90)
+	sb.set_corner_radius_all(12)
+	sb.shadow_size = 8
+	sb.shadow_color = Color(0.0, 0.0, 0.45)
+	sb.content_margin_left = 10.0
+	sb.content_margin_top = 8.0
+	sb.content_margin_right = 10.0
+	sb.content_margin_bottom = 8.0
+	card_panel.add_theme_stylebox_override("panel", sb)
+	character_inspector_card.add_child(card_panel)
+	
+	var vbox = VBoxContainer.new()
+	vbox.name = "VBox"
+	vbox.add_theme_constant_override("separation", 5)
+	card_panel.add_child(vbox)
+	
+	# Top Row: Role badge, Name, Close Button
+	var top_row = HBoxContainer.new()
+	top_row.name = "TopRow"
+	vbox.add_child(top_row)
+	
+	inspector_role_badge = Label.new()
+	inspector_role_badge.name = "RoleBadge"
+	inspector_role_badge.text = "👤 Diner Guest"
+	inspector_role_badge.add_theme_font_size_override("font_size", 12)
+	top_row.add_child(inspector_role_badge)
+	
+	var dot_lbl = Label.new()
+	dot_lbl.text = " • "
+	dot_lbl.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75))
+	top_row.add_child(dot_lbl)
+	
+	inspector_name_label = Label.new()
+	inspector_name_label.name = "NameLabel"
+	inspector_name_label.text = "Guest"
+	inspector_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inspector_name_label.add_theme_font_size_override("font_size", 13)
+	inspector_name_label.add_theme_color_override("font_color", Color.WHITE)
+	top_row.add_child(inspector_name_label)
+	
+	inspector_close_btn = Button.new()
+	inspector_close_btn.name = "CloseBtn"
+	inspector_close_btn.text = "✕"
+	inspector_close_btn.flat = true
+	inspector_close_btn.custom_minimum_size = Vector2(22, 22)
+	inspector_close_btn.add_theme_font_size_override("font_size", 12)
+	inspector_close_btn.pressed.connect(func(): dismiss_character_inspector())
+	top_row.add_child(inspector_close_btn)
+	
+	# Live Status Row
+	inspector_status_label = Label.new()
+	inspector_status_label.name = "StatusLabel"
+	inspector_status_label.text = "Visiting Diner"
+	inspector_status_label.add_theme_font_size_override("font_size", 12)
+	inspector_status_label.add_theme_color_override("font_color", Color(0.85, 0.90, 0.96))
+	vbox.add_child(inspector_status_label)
+	
+	# Progress Bar Row
+	var prog_vbox = VBoxContainer.new()
+	prog_vbox.add_theme_constant_override("separation", 2)
+	vbox.add_child(prog_vbox)
+	
+	inspector_prog_bar = ProgressBar.new()
+	inspector_prog_bar.name = "ProgressBar"
+	inspector_prog_bar.min_value = 0.0
+	inspector_prog_bar.max_value = 1.0
+	inspector_prog_bar.value = 1.0
+	inspector_prog_bar.show_percentage = false
+	inspector_prog_bar.custom_minimum_size = Vector2(0, 8)
+	
+	var bar_bg = StyleBoxFlat.new()
+	bar_bg.bg_color = Color(0.18, 0.20, 0.26)
+	bar_bg.set_corner_radius_all(4)
+	inspector_prog_bar.add_theme_stylebox_override("background", bar_bg)
+	
+	var bar_fill = StyleBoxFlat.new()
+	bar_fill.bg_color = Color(0.24, 0.85, 0.40)
+	bar_fill.set_corner_radius_all(4)
+	inspector_prog_bar.add_theme_stylebox_override("fill", bar_fill)
+	prog_vbox.add_child(inspector_prog_bar)
+	
+	inspector_prog_label = Label.new()
+	inspector_prog_label.name = "ProgressLabel"
+	inspector_prog_label.text = "Patience: 100%"
+	inspector_prog_label.add_theme_font_size_override("font_size", 10)
+	inspector_prog_label.add_theme_color_override("font_color", Color(0.75, 0.80, 0.88))
+	prog_vbox.add_child(inspector_prog_label)
+	
+	# Action/Boost Button Row
+	inspector_boost_btn = Button.new()
+	inspector_boost_btn.name = "BoostBtn"
+	inspector_boost_btn.text = "Instant Tip (+$25) 💵"
+	inspector_boost_btn.custom_minimum_size = Vector2(0, 28)
+	inspector_boost_btn.add_theme_font_size_override("font_size", 12)
+	
+	var btn_sb = StyleBoxFlat.new()
+	btn_sb.bg_color = Color(0.15, 0.65, 0.32)
+	btn_sb.set_corner_radius_all(8)
+	btn_sb.border_width_bottom = 2
+	btn_sb.border_color = Color(0.08, 0.42, 0.18)
+	inspector_boost_btn.add_theme_stylebox_override("normal", btn_sb)
+	
+	var btn_hover = StyleBoxFlat.new()
+	btn_hover.bg_color = Color(0.20, 0.78, 0.38)
+	btn_hover.set_corner_radius_all(8)
+	btn_hover.border_width_bottom = 2
+	btn_hover.border_color = Color(0.10, 0.48, 0.22)
+	inspector_boost_btn.add_theme_stylebox_override("hover", btn_hover)
+	
+	inspector_boost_btn.pressed.connect(_on_inspector_boost_pressed)
+	vbox.add_child(inspector_boost_btn)
+	_wire_button_bounce(inspector_boost_btn)
+
+func _on_inspector_boost_pressed() -> void:
+	if inspected_character == null or not is_instance_valid(inspected_character):
+		dismiss_character_inspector()
+		return
+	if inspected_character.has_method("apply_inspector_boost"):
+		var res = inspected_character.apply_inspector_boost()
+		_refresh_character_inspector()
+		var msg = res.get("message", "Boost Activated!")
+		_show_inspector_toast(msg)
+
+func _show_inspector_toast(msg: String) -> void:
+	var hud_node = get_node_or_null("HUD")
+	if hud_node == null:
+		hud_node = self
+	var toast = PanelContainer.new()
+	toast.name = "InspectorToast"
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.custom_minimum_size = Vector2(280, 42)
+	toast.anchors_preset = Control.PRESET_CENTER_TOP
+	toast.anchor_left = 0.5
+	toast.anchor_top = 0.0
+	toast.anchor_right = 0.5
+	toast.anchor_bottom = 0.0
+	toast.offset_left = -140.0
+	toast.offset_right = 140.0
+	toast.offset_top = 34.0
+	toast.offset_bottom = 76.0
+	toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	toast.pivot_offset = Vector2(140, 21)
+	
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.14, 0.20, 0.95)
+	sb.border_width_left = 2
+	sb.border_width_top = 2
+	sb.border_width_right = 2
+	sb.border_width_bottom = 2
+	sb.border_color = Color(0.25, 0.85, 0.45, 0.95)
+	sb.set_corner_radius_all(10)
+	sb.set_content_margin_all(6)
+	toast.add_theme_stylebox_override("panel", sb)
+	
+	var lbl = Label.new()
+	lbl.text = msg
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.92, 1.0, 0.95, 1.0))
+	lbl.add_theme_font_size_override("font_size", 13)
+	toast.add_child(lbl)
+	
+	toast.scale = Vector2.ZERO
+	hud_node.add_child(toast)
+	
+	var tw = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(toast, "scale", Vector2.ONE, 0.16)
+	tw.tween_interval(1.8)
+	tw.tween_property(toast, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(toast.queue_free)
 
 # ─── Diner Fever Combo Bar & Golden Frenzy UI ──────────────────────────────
 func _setup_fever_ui_fallback() -> void:
