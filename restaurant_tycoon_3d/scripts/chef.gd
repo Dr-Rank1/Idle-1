@@ -56,6 +56,11 @@ func _ready() -> void:
 	click_area.input_event.connect(_on_click_area_input_event)
 	
 	_play_chef_animation()
+	
+	update_equipped_gear_visuals()
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_signal("gear_updated"):
+		gm.gear_updated.connect(update_equipped_gear_visuals)
 
 func _on_click_area_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -194,8 +199,11 @@ func _process_catering_walk(delta: float) -> void:
 	var gm_ref = get_node_or_null("/root/GameManager")
 	if gm_ref != null and gm_ref.has_method("get_fever_speed_multiplier"):
 		fever_mult = gm_ref.get_fever_speed_multiplier()
+	var gear_mult: float = 1.0
+	if gm_ref != null and gm_ref.has_method("get_gear_staff_walk_speed_multiplier"):
+		gear_mult = gm_ref.get_gear_staff_walk_speed_multiplier()
 	if to_dest.length() > 0.18:
-		var step = min(catering_walk_speed * fever_mult * delta, to_dest.length())
+		var step = min(catering_walk_speed * fever_mult * gear_mult * delta, to_dest.length())
 		global_position = pos + to_dest.normalized() * step
 		rotation.y = lerp_angle(rotation.y, atan2(to_dest.x, to_dest.z), 10.0 * delta)
 		return
@@ -217,3 +225,120 @@ func _process_catering_walk(delta: float) -> void:
 			if steam_particles != null:
 				steam_particles.visible = true
 		_play_chef_animation()
+
+func update_equipped_gear_visuals() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	var equipped: Dictionary = gm.get_equipped_gear() if gm != null and gm.has_method("get_equipped_gear") else {"head": "toque", "body": "apron", "tool": "skillet"}
+	
+	# Clean existing dynamic gear nodes
+	var existing_gear = get_node_or_null("GearDynamicRoot")
+	if existing_gear != null:
+		existing_gear.queue_free()
+	
+	var gear_root = Node3D.new()
+	gear_root.name = "GearDynamicRoot"
+	add_child(gear_root)
+	
+	# Head Slot
+	var head_item = equipped.get("head", "toque")
+	var default_hat = get_node_or_null("ChefHat")
+	if head_item == "toque":
+		if default_hat != null:
+			default_hat.visible = true
+	else:
+		if default_hat != null:
+			default_hat.visible = false
+		if head_item == "crown":
+			var crown = MeshInstance3D.new()
+			crown.name = "RoyalCrown"
+			var cyl = CylinderMesh.new()
+			cyl.top_radius = 0.25
+			cyl.bottom_radius = 0.22
+			cyl.height = 0.14
+			var mat = StandardMaterial3D.new()
+			mat.albedo_color = Color(1.0, 0.82, 0.15)
+			mat.metallic = 0.95
+			mat.roughness = 0.15
+			mat.emission_enabled = true
+			mat.emission = Color(0.9, 0.7, 0.1)
+			mat.emission_energy_multiplier = 0.4
+			crown.mesh = cyl
+			crown.material_override = mat
+			crown.position = Vector3(0, 0.95, 0)
+			gear_root.add_child(crown)
+		elif head_item == "visor":
+			var visor = MeshInstance3D.new()
+			visor.name = "NeonVisor"
+			var box = BoxMesh.new()
+			box.size = Vector3(0.38, 0.08, 0.12)
+			var mat = StandardMaterial3D.new()
+			mat.albedo_color = Color(0.1, 0.85, 1.0)
+			mat.emission_enabled = true
+			mat.emission = Color(0.15, 0.9, 1.0)
+			mat.emission_energy_multiplier = 1.2
+			mat.roughness = 0.2
+			visor.mesh = box
+			visor.material_override = mat
+			visor.position = Vector3(0, 0.86, 0.14)
+			gear_root.add_child(visor)
+			
+	# Body Slot
+	var body_item = equipped.get("body", "apron")
+	var body_mesh = MeshInstance3D.new()
+	body_mesh.name = "BodyGearOverlay"
+	var b_box = BoxMesh.new()
+	b_box.size = Vector3(0.46, 0.52, 0.28)
+	body_mesh.mesh = b_box
+	var b_mat = StandardMaterial3D.new()
+	match body_item:
+		"apron":
+			b_mat.albedo_color = Color(0.78, 0.22, 0.22) # Butcher crimson apron
+			b_mat.roughness = 0.6
+		"vest":
+			b_mat.albedo_color = Color(0.12, 0.14, 0.24) # Silk navy vest
+			b_mat.metallic = 0.4
+			b_mat.roughness = 0.35
+		"jacket":
+			b_mat.albedo_color = Color(0.98, 0.84, 0.25) # Michelin Gold jacket
+			b_mat.metallic = 0.85
+			b_mat.roughness = 0.25
+			b_mat.emission_enabled = true
+			b_mat.emission = Color(0.85, 0.7, 0.1)
+			b_mat.emission_energy_multiplier = 0.3
+	body_mesh.material_override = b_mat
+	body_mesh.position = Vector3(0, 0.48, 0.02)
+	gear_root.add_child(body_mesh)
+	
+	# Hand Tool Slot
+	var tool_item = equipped.get("tool", "skillet")
+	if pan != null:
+		if tool_item == "skillet":
+			pan.visible = (not is_prep_chef) and has_pan
+		else:
+			pan.visible = false
+	if tool_item != "skillet" and not is_prep_chef:
+		var tool_mesh = MeshInstance3D.new()
+		tool_mesh.name = "HandToolOverlay"
+		if tool_item == "spatula":
+			var spat = BoxMesh.new()
+			spat.size = Vector3(0.08, 0.02, 0.36)
+			var s_mat = StandardMaterial3D.new()
+			s_mat.albedo_color = Color(1.0, 0.85, 0.18)
+			s_mat.metallic = 0.95
+			s_mat.roughness = 0.15
+			tool_mesh.mesh = spat
+			tool_mesh.material_override = s_mat
+		elif tool_item == "tray":
+			var cyl = CylinderMesh.new()
+			cyl.top_radius = 0.26
+			cyl.bottom_radius = 0.26
+			cyl.height = 0.03
+			var t_mat = StandardMaterial3D.new()
+			t_mat.albedo_color = Color(0.85, 0.9, 0.98)
+			t_mat.metallic = 0.8
+			t_mat.roughness = 0.2
+			tool_mesh.mesh = cyl
+			tool_mesh.material_override = t_mat
+		tool_mesh.position = Vector3(0.12, 0.56, 0.48)
+		gear_root.add_child(tool_mesh)
+

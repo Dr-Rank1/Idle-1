@@ -236,6 +236,28 @@ var inspector_boost_btn: Button = null
 var inspector_close_btn: Button = null
 var inspected_character: Node = null
 
+# ─── Collectible Gear & Uniform Wardrobe ────────────────────────────────────
+var wardrobe_tab_btn: Button = null
+var cards_tab_btn: Button = null
+var wardrobe_scroll: ScrollContainer = null
+var wardrobe_view: VBoxContainer = null
+var wardrobe_selected_char: String = "chef"
+var wardrobe_sub_viewport: SubViewport = null
+var wardrobe_pedestal: Node3D = null
+var wardrobe_char_container: Node3D = null
+
+var wardrobe_head_slot_card: PanelContainer = null
+var wardrobe_body_slot_card: PanelContainer = null
+var wardrobe_tool_slot_card: PanelContainer = null
+
+var wardrobe_proc_instant_label: Label = null
+var wardrobe_proc_divine_label: Label = null
+var wardrobe_proc_speed_label: Label = null
+
+var wardrobe_inventory_grid: GridContainer = null
+var wardrobe_char_chef_btn: Button = null
+var wardrobe_char_waiter_btn: Button = null
+
 # ─── Smart Quick-Upgrade HUD Pill ───────────────────────────────────────────
 @onready var quick_upgrade_pill: PanelContainer = get_node_or_null("HUD/QuickUpgradePill")
 @onready var quick_thumb_btn: Button = get_node_or_null("HUD/QuickUpgradePill/HBox/ThumbBtn")
@@ -747,6 +769,8 @@ func _ready() -> void:
 			gm.chest_opened.connect(_on_chest_opened)
 		if gm.has_signal("cards_updated"):
 			gm.cards_updated.connect(_on_cards_updated)
+		if gm.has_signal("gear_updated"):
+			gm.gear_updated.connect(_on_gear_updated)
 		gm.cash_changed.connect(_on_cash_changed)
 		gm.gems_changed.connect(_on_gems_changed)
 		if gm.has_signal("golden_coins_changed"):
@@ -927,6 +951,7 @@ func _ready() -> void:
 	_setup_pipeline_ui_fallback()
 	_setup_tutorial_ui()
 	_check_start_onboarding()
+	_setup_wardrobe_ui()
 
 # ─── Tactile Squash-and-Stretch & Affordability Feedback ────────────────────
 func apply_button_squash_and_stretch(btn: Button) -> void:
@@ -1279,7 +1304,15 @@ func open_analytics_modal() -> void:
 
 func open_cards_panel() -> void:
 	if cards_panel != null:
-		_refresh_cards_panel()
+		if wardrobe_scroll != null and wardrobe_scroll.visible:
+			_refresh_gear_wardrobe()
+		else:
+			_refresh_cards_panel()
+		_open_modal(cards_panel)
+
+func open_gear_wardrobe() -> void:
+	if cards_panel != null:
+		_switch_cards_panel_tab("wardrobe")
 		_open_modal(cards_panel)
 
 func _play_click_sfx() -> void:
@@ -1439,6 +1472,10 @@ func _process(delta: float) -> void:
 		display_hour = 12
 	if clock_label != null:
 		clock_label.text = "%02d:%02d %s" % [display_hour, mins, am_pm]
+
+	if wardrobe_pedestal != null and is_instance_valid(wardrobe_pedestal):
+		if cards_panel != null and cards_panel.visible and wardrobe_scroll != null and wardrobe_scroll.visible:
+			wardrobe_pedestal.rotation.y += delta * 0.95
 
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
@@ -6192,8 +6229,15 @@ func _on_chest_opened(chest_type: String, rewards: Dictionary) -> void:
 
 func _on_cards_updated() -> void:
 	if cards_panel != null and cards_panel.visible:
-		_refresh_cards_panel()
+		if wardrobe_scroll != null and wardrobe_scroll.visible:
+			_refresh_gear_wardrobe()
+		else:
+			_refresh_cards_panel()
 	_update_affordability_badges()
+
+func _on_gear_updated() -> void:
+	if cards_panel != null and cards_panel.visible and wardrobe_scroll != null and wardrobe_scroll.visible:
+		_refresh_gear_wardrobe()
 
 func show_chest_reward_popup(chest_type: String, rewards: Dictionary) -> void:
 	if chest_reward_modal == null:
@@ -8356,6 +8400,680 @@ func _show_tutorial_completion_celebration() -> void:
 		if is_instance_valid(toast):
 			toast.queue_free()
 	)
+
+# ─── Collectible Gear & Uniform Loadout Wardrobe UI ─────────────────────────
+func _get_gear_rarity_color(rarity: String) -> Color:
+	match rarity.to_lower():
+		"rare":
+			return Color(0.2, 0.65, 1.0, 1.0)
+		"epic":
+			return Color(0.75, 0.3, 0.95, 1.0)
+		"legendary":
+			return Color(1.0, 0.8, 0.15, 1.0)
+		_:
+			return Color(0.75, 0.78, 0.85, 1.0)
+
+func _setup_wardrobe_ui() -> void:
+	if cards_panel == null:
+		return
+	var vbox = cards_panel.get_node_or_null("VBox")
+	if vbox == null:
+		return
+		
+	# 1. Top Tabs Bar (Cards & Managers | Gear Wardrobe)
+	var tabs_bar = vbox.get_node_or_null("TopTabsHBox")
+	if tabs_bar == null:
+		tabs_bar = HBoxContainer.new()
+		tabs_bar.name = "TopTabsHBox"
+		tabs_bar.alignment = BoxContainer.ALIGNMENT_CENTER
+		tabs_bar.add_theme_constant_override("separation", 14)
+		vbox.add_child(tabs_bar)
+		vbox.move_child(tabs_bar, 1)
+		
+		cards_tab_btn = Button.new()
+		cards_tab_btn.name = "TabCardsBtn"
+		cards_tab_btn.text = "🃏 CARDS & MANAGERS"
+		cards_tab_btn.custom_minimum_size = Vector2(180, 36)
+		cards_tab_btn.pressed.connect(func(): _switch_cards_panel_tab("cards"))
+		tabs_bar.add_child(cards_tab_btn)
+		
+		wardrobe_tab_btn = Button.new()
+		wardrobe_tab_btn.name = "TabWardrobeBtn"
+		wardrobe_tab_btn.text = "🥋 GEAR WARDROBE"
+		wardrobe_tab_btn.custom_minimum_size = Vector2(180, 36)
+		wardrobe_tab_btn.pressed.connect(func(): _switch_cards_panel_tab("wardrobe"))
+		tabs_bar.add_child(wardrobe_tab_btn)
+
+	# 2. StaffPanel cross-link button
+	if staff_panel != null:
+		var staff_vbox = staff_panel.get_node_or_null("VBox")
+		if staff_vbox != null:
+			var staff_tabs = staff_vbox.get_node_or_null("TopTabsHBox")
+			if staff_tabs != null and staff_tabs.get_node_or_null("TabStaffWardrobeBtn") == null:
+				var w_btn = Button.new()
+				w_btn.name = "TabStaffWardrobeBtn"
+				w_btn.text = "🥋 Wardrobe"
+				w_btn.custom_minimum_size = Vector2(110, 34)
+				var w_sb = StyleBoxFlat.new()
+				w_sb.bg_color = Color(0.18, 0.45, 0.85, 0.9)
+				w_sb.border_width_bottom = 2
+				w_sb.border_color = Color(0.4, 0.75, 1.0)
+				w_sb.set_corner_radius_all(10)
+				w_btn.add_theme_stylebox_override("normal", w_sb)
+				w_btn.pressed.connect(func():
+					_close_modal(staff_panel)
+					open_gear_wardrobe()
+				)
+				staff_tabs.add_child(w_btn)
+				if close_staff_btn != null:
+					staff_tabs.move_child(close_staff_btn, staff_tabs.get_child_count() - 1)
+
+	var cards_scroll = vbox.get_node_or_null("Scroll")
+	if wardrobe_scroll == null:
+		wardrobe_scroll = ScrollContainer.new()
+		wardrobe_scroll.name = "WardrobeScroll"
+		wardrobe_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		wardrobe_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		wardrobe_scroll.visible = false
+		vbox.add_child(wardrobe_scroll)
+		if cards_scroll != null:
+			vbox.move_child(wardrobe_scroll, cards_scroll.get_index() + 1)
+			
+		wardrobe_view = VBoxContainer.new()
+		wardrobe_view.name = "WardrobeView"
+		wardrobe_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		wardrobe_view.add_theme_constant_override("separation", 10)
+		wardrobe_scroll.add_child(wardrobe_view)
+		
+		# Character Switcher Row (Head Chef | Head Waiter)
+		var char_switcher_row = HBoxContainer.new()
+		char_switcher_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		char_switcher_row.add_theme_constant_override("separation", 16)
+		wardrobe_view.add_child(char_switcher_row)
+		
+		wardrobe_char_chef_btn = Button.new()
+		wardrobe_char_chef_btn.text = "👨‍🍳 Head Chef"
+		wardrobe_char_chef_btn.custom_minimum_size = Vector2(145, 34)
+		wardrobe_char_chef_btn.pressed.connect(func():
+			wardrobe_selected_char = "chef"
+			_update_char_switcher_styles()
+			_update_wardrobe_character_model()
+		)
+		char_switcher_row.add_child(wardrobe_char_chef_btn)
+		
+		wardrobe_char_waiter_btn = Button.new()
+		wardrobe_char_waiter_btn.text = "🤵 Head Waiter"
+		wardrobe_char_waiter_btn.custom_minimum_size = Vector2(145, 34)
+		wardrobe_char_waiter_btn.pressed.connect(func():
+			wardrobe_selected_char = "waiter"
+			_update_char_switcher_styles()
+			_update_wardrobe_character_model()
+		)
+		char_switcher_row.add_child(wardrobe_char_waiter_btn)
+		
+		# Center Preview Row flanked by 3 equipment slots
+		var preview_row = HBoxContainer.new()
+		preview_row.name = "FlankedPreviewRow"
+		preview_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		preview_row.add_theme_constant_override("separation", 14)
+		wardrobe_view.add_child(preview_row)
+		
+		# Left Column: Head & Body Slots
+		var left_col = VBoxContainer.new()
+		left_col.custom_minimum_size = Vector2(190, 0)
+		left_col.add_theme_constant_override("separation", 8)
+		preview_row.add_child(left_col)
+		
+		wardrobe_head_slot_card = PanelContainer.new()
+		wardrobe_head_slot_card.custom_minimum_size = Vector2(190, 95)
+		left_col.add_child(wardrobe_head_slot_card)
+		
+		wardrobe_body_slot_card = PanelContainer.new()
+		wardrobe_body_slot_card.custom_minimum_size = Vector2(190, 95)
+		left_col.add_child(wardrobe_body_slot_card)
+		
+		# Center Column: SubViewportContainer with 3D Preview
+		var vp_box = PanelContainer.new()
+		vp_box.custom_minimum_size = Vector2(240, 205)
+		var vp_sb = StyleBoxFlat.new()
+		vp_sb.bg_color = Color(0.04, 0.06, 0.10, 0.95)
+		vp_sb.border_width_left = 2
+		vp_sb.border_width_top = 2
+		vp_sb.border_width_right = 2
+		vp_sb.border_width_bottom = 2
+		vp_sb.border_color = Color(0.2, 0.65, 1.0, 0.7)
+		vp_sb.set_corner_radius_all(14)
+		vp_box.add_theme_stylebox_override("panel", vp_sb)
+		preview_row.add_child(vp_box)
+		
+		var vp_container = SubViewportContainer.new()
+		vp_container.stretch = true
+		vp_container.custom_minimum_size = Vector2(236, 201)
+		vp_box.add_child(vp_container)
+		
+		wardrobe_sub_viewport = SubViewport.new()
+		wardrobe_sub_viewport.size = Vector2i(236, 201)
+		wardrobe_sub_viewport.transparent_bg = true
+		wardrobe_sub_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		wardrobe_sub_viewport.own_world_3d = true
+		vp_container.add_child(wardrobe_sub_viewport)
+		
+		var cam = Camera3D.new()
+		wardrobe_sub_viewport.add_child(cam)
+		cam.position = Vector3(0, 0.90, 2.3)
+		cam.look_at(Vector3(0, 0.60, 0), Vector3.UP)
+		cam.current = true
+		
+		var dlight = DirectionalLight3D.new()
+		dlight.rotation_degrees = Vector3(-35, 45, 0)
+		dlight.light_color = Color(1.0, 0.96, 0.88)
+		dlight.light_energy = 1.3
+		wardrobe_sub_viewport.add_child(dlight)
+		
+		var olight = OmniLight3D.new()
+		olight.position = Vector3(0, 1.4, 1.5)
+		olight.light_color = Color(0.7, 0.85, 1.0)
+		olight.light_energy = 0.8
+		olight.omni_range = 3.5
+		wardrobe_sub_viewport.add_child(olight)
+		
+		wardrobe_pedestal = Node3D.new()
+		wardrobe_sub_viewport.add_child(wardrobe_pedestal)
+		
+		var pedestal_mesh = MeshInstance3D.new()
+		var p_cyl = CylinderMesh.new()
+		p_cyl.top_radius = 0.68
+		p_cyl.bottom_radius = 0.72
+		p_cyl.height = 0.08
+		var p_mat = StandardMaterial3D.new()
+		p_mat.albedo_color = Color(0.12, 0.15, 0.22)
+		p_mat.metallic = 0.85
+		p_mat.roughness = 0.2
+		p_mat.emission_enabled = true
+		p_mat.emission = Color(0.2, 0.65, 1.0)
+		p_mat.emission_energy_multiplier = 0.35
+		pedestal_mesh.mesh = p_cyl
+		pedestal_mesh.material_override = p_mat
+		pedestal_mesh.position = Vector3(0, 0.04, 0)
+		wardrobe_pedestal.add_child(pedestal_mesh)
+		
+		wardrobe_char_container = Node3D.new()
+		wardrobe_char_container.position = Vector3(0, 0.08, 0)
+		wardrobe_pedestal.add_child(wardrobe_char_container)
+		
+		# Right Column: Tool Slot & Blueprint Guide
+		var right_col = VBoxContainer.new()
+		right_col.custom_minimum_size = Vector2(190, 0)
+		right_col.add_theme_constant_override("separation", 8)
+		preview_row.add_child(right_col)
+		
+		wardrobe_tool_slot_card = PanelContainer.new()
+		wardrobe_tool_slot_card.custom_minimum_size = Vector2(190, 95)
+		right_col.add_child(wardrobe_tool_slot_card)
+		
+		var tip_card = PanelContainer.new()
+		tip_card.custom_minimum_size = Vector2(190, 95)
+		var tip_sb = StyleBoxFlat.new()
+		tip_sb.bg_color = Color(0.06, 0.09, 0.14, 0.85)
+		tip_sb.border_width_left = 1
+		tip_sb.border_width_top = 1
+		tip_sb.border_width_right = 1
+		tip_sb.border_width_bottom = 2
+		tip_sb.border_color = Color(0.25, 0.35, 0.5, 0.6)
+		tip_sb.set_corner_radius_all(10)
+		tip_sb.content_margin_left = 8.0
+		tip_sb.content_margin_right = 8.0
+		tip_sb.content_margin_top = 6.0
+		tip_sb.content_margin_bottom = 6.0
+		tip_card.add_theme_stylebox_override("panel", tip_sb)
+		var tip_vb = VBoxContainer.new()
+		var t_hdr = Label.new()
+		t_hdr.text = "⚗️ BLUEPRINT FORGE"
+		t_hdr.add_theme_font_size_override("font_size", 11)
+		t_hdr.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+		tip_vb.add_child(t_hdr)
+		var t_body = Label.new()
+		t_body.text = "Merge 3 duplicate blueprints into the next rarity tier (Common ➔ Rare ➔ Epic ➔ Legendary)!"
+		t_body.add_theme_font_size_override("font_size", 10)
+		t_body.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 0.85))
+		t_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tip_vb.add_child(t_body)
+		tip_card.add_child(tip_vb)
+		right_col.add_child(tip_card)
+		
+		# Proc Stats Summary Card
+		var proc_summary_panel = PanelContainer.new()
+		proc_summary_panel.name = "ProcStatsSummary"
+		var proc_sb = StyleBoxFlat.new()
+		proc_sb.bg_color = Color(0.06, 0.09, 0.16, 0.95)
+		proc_sb.border_width_left = 2
+		proc_sb.border_width_top = 2
+		proc_sb.border_width_right = 2
+		proc_sb.border_width_bottom = 3
+		proc_sb.border_color = Color(1.0, 0.8, 0.2, 0.8)
+		proc_sb.set_corner_radius_all(12)
+		proc_sb.content_margin_left = 12.0
+		proc_sb.content_margin_right = 12.0
+		proc_sb.content_margin_top = 8.0
+		proc_sb.content_margin_bottom = 8.0
+		proc_summary_panel.add_theme_stylebox_override("panel", proc_sb)
+		wardrobe_view.add_child(proc_summary_panel)
+		
+		var proc_hbox = HBoxContainer.new()
+		proc_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		proc_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		proc_summary_panel.add_child(proc_hbox)
+		
+		wardrobe_proc_instant_label = Label.new()
+		wardrobe_proc_instant_label.text = "⚡ Instant Cook: +0.0%"
+		wardrobe_proc_instant_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		wardrobe_proc_instant_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		wardrobe_proc_instant_label.add_theme_font_size_override("font_size", 12)
+		wardrobe_proc_instant_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
+		proc_hbox.add_child(wardrobe_proc_instant_label)
+		
+		wardrobe_proc_divine_label = Label.new()
+		wardrobe_proc_divine_label.text = "✨ Divine Dish (5x): +0.0%"
+		wardrobe_proc_divine_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		wardrobe_proc_divine_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		wardrobe_proc_divine_label.add_theme_font_size_override("font_size", 12)
+		wardrobe_proc_divine_label.add_theme_color_override("font_color", Color(0.4, 0.9, 1.0))
+		proc_hbox.add_child(wardrobe_proc_divine_label)
+		
+		wardrobe_proc_speed_label = Label.new()
+		wardrobe_proc_speed_label.text = "👟 Staff Walk Speed: +0.0%"
+		wardrobe_proc_speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		wardrobe_proc_speed_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		wardrobe_proc_speed_label.add_theme_font_size_override("font_size", 12)
+		wardrobe_proc_speed_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6))
+		proc_hbox.add_child(wardrobe_proc_speed_label)
+		
+		# Inventory Grid Header
+		var inv_header = Label.new()
+		inv_header.text = "🥋 WARDROBE INVENTORY & BLUEPRINT MERGING"
+		inv_header.add_theme_font_size_override("font_size", 13)
+		inv_header.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
+		wardrobe_view.add_child(inv_header)
+		
+		wardrobe_inventory_grid = GridContainer.new()
+		wardrobe_inventory_grid.name = "WardrobeInventoryGrid"
+		wardrobe_inventory_grid.columns = 3
+		wardrobe_inventory_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		wardrobe_inventory_grid.add_theme_constant_override("h_separation", 10)
+		wardrobe_inventory_grid.add_theme_constant_override("v_separation", 10)
+		wardrobe_view.add_child(wardrobe_inventory_grid)
+		
+		_update_char_switcher_styles()
+		_update_wardrobe_character_model()
+
+	_switch_cards_panel_tab("cards")
+
+func _switch_cards_panel_tab(tab_name: String) -> void:
+	if cards_panel == null:
+		return
+	var vbox = cards_panel.get_node_or_null("VBox")
+	if vbox == null:
+		return
+	var cards_scroll = vbox.get_node_or_null("Scroll")
+	
+	var active_sb = StyleBoxFlat.new()
+	active_sb.bg_color = Color(0.18, 0.45, 0.85, 0.95)
+	active_sb.border_width_left = 1
+	active_sb.border_width_top = 1
+	active_sb.border_width_right = 1
+	active_sb.border_width_bottom = 3
+	active_sb.border_color = Color(0.4, 0.75, 1.0, 1.0)
+	active_sb.set_corner_radius_all(10)
+	
+	var inactive_sb = StyleBoxFlat.new()
+	inactive_sb.bg_color = Color(0.1, 0.14, 0.22, 0.8)
+	inactive_sb.border_width_bottom = 2
+	inactive_sb.border_color = Color(0.2, 0.25, 0.35, 0.7)
+	inactive_sb.set_corner_radius_all(10)
+
+	if tab_name == "wardrobe":
+		if cards_scroll != null: cards_scroll.visible = false
+		if wardrobe_scroll != null: wardrobe_scroll.visible = true
+		if wardrobe_tab_btn != null:
+			wardrobe_tab_btn.add_theme_stylebox_override("normal", active_sb)
+			wardrobe_tab_btn.add_theme_color_override("font_color", Color(1.0, 0.95, 0.5))
+		if cards_tab_btn != null:
+			cards_tab_btn.add_theme_stylebox_override("normal", inactive_sb)
+			cards_tab_btn.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+		_refresh_gear_wardrobe()
+	else:
+		if cards_scroll != null: cards_scroll.visible = true
+		if wardrobe_scroll != null: wardrobe_scroll.visible = false
+		if cards_tab_btn != null:
+			cards_tab_btn.add_theme_stylebox_override("normal", active_sb)
+			cards_tab_btn.add_theme_color_override("font_color", Color(1.0, 0.95, 0.5))
+		if wardrobe_tab_btn != null:
+			wardrobe_tab_btn.add_theme_stylebox_override("normal", inactive_sb)
+			wardrobe_tab_btn.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+		_refresh_cards_panel()
+
+func _update_char_switcher_styles() -> void:
+	var active_sb = StyleBoxFlat.new()
+	active_sb.bg_color = Color(0.2, 0.55, 0.9, 0.95)
+	active_sb.border_width_bottom = 3
+	active_sb.border_color = Color(0.5, 0.85, 1.0)
+	active_sb.set_corner_radius_all(8)
+	
+	var inactive_sb = StyleBoxFlat.new()
+	inactive_sb.bg_color = Color(0.12, 0.16, 0.24, 0.85)
+	inactive_sb.border_width_bottom = 2
+	inactive_sb.border_color = Color(0.25, 0.3, 0.4)
+	inactive_sb.set_corner_radius_all(8)
+	
+	if wardrobe_char_chef_btn != null:
+		if wardrobe_selected_char == "chef":
+			wardrobe_char_chef_btn.add_theme_stylebox_override("normal", active_sb)
+			wardrobe_char_chef_btn.add_theme_color_override("font_color", Color.WHITE)
+		else:
+			wardrobe_char_chef_btn.add_theme_stylebox_override("normal", inactive_sb)
+			wardrobe_char_chef_btn.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+			
+	if wardrobe_char_waiter_btn != null:
+		if wardrobe_selected_char == "waiter":
+			wardrobe_char_waiter_btn.add_theme_stylebox_override("normal", active_sb)
+			wardrobe_char_waiter_btn.add_theme_color_override("font_color", Color.WHITE)
+		else:
+			wardrobe_char_waiter_btn.add_theme_stylebox_override("normal", inactive_sb)
+			wardrobe_char_waiter_btn.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+
+func _update_wardrobe_character_model() -> void:
+	if wardrobe_char_container == null:
+		return
+	for c in wardrobe_char_container.get_children():
+		c.queue_free()
+		
+	var scene_path = "res://scenes/chef.tscn" if wardrobe_selected_char == "chef" else "res://scenes/waiter.tscn"
+	if ResourceLoader.exists(scene_path):
+		var scn = load(scene_path)
+		if scn is PackedScene:
+			var inst = scn.instantiate()
+			if inst is Node3D:
+				inst.position = Vector3.ZERO
+				inst.rotation = Vector3.ZERO
+				if wardrobe_selected_char == "chef":
+					var flame = inst.get_node_or_null("StoveFlameGlow")
+					if flame != null: flame.visible = false
+					var steam = inst.get_node_or_null("SteamParticles")
+					if steam != null: steam.visible = false
+					var ring = inst.get_node_or_null("CookingTimerRing")
+					if ring != null: ring.visible = false
+				elif wardrobe_selected_char == "waiter":
+					var tray = inst.get_node_or_null("ServingTray")
+					if tray != null: tray.visible = true
+				if inst.has_method("update_equipped_gear_visuals"):
+					inst.update_equipped_gear_visuals()
+				wardrobe_char_container.add_child(inst)
+
+func _refresh_gear_wardrobe() -> void:
+	var gm = _get_game_manager()
+	if gm == null:
+		return
+		
+	var equipped: Dictionary = gm.get_equipped_gear() if gm.has_method("get_equipped_gear") else {}
+	
+	# Update 3 Flanking Slot Cards
+	if wardrobe_head_slot_card != null:
+		_create_slot_card_content(wardrobe_head_slot_card, "👑 HEAD SLOT", "head", equipped.get("head", "toque"), gm)
+	if wardrobe_body_slot_card != null:
+		_create_slot_card_content(wardrobe_body_slot_card, "🦺 BODY SLOT", "body", equipped.get("body", "apron"), gm)
+	if wardrobe_tool_slot_card != null:
+		_create_slot_card_content(wardrobe_tool_slot_card, "🍳 HAND TOOL", "tool", equipped.get("tool", "skillet"), gm)
+		
+	# Update Proc Stats Summary Card
+	if wardrobe_proc_instant_label != null and gm.has_method("get_gear_instant_cook_chance"):
+		wardrobe_proc_instant_label.text = "⚡ Instant Cook: +%.1f%%" % gm.get_gear_instant_cook_chance()
+	if wardrobe_proc_divine_label != null and gm.has_method("get_gear_divine_dish_chance"):
+		wardrobe_proc_divine_label.text = "✨ Divine Dish (5x): +%.1f%%" % gm.get_gear_divine_dish_chance()
+	if wardrobe_proc_speed_label != null and gm.has_method("get_gear_staff_walk_speed_multiplier"):
+		var spd_pct = round((gm.get_gear_staff_walk_speed_multiplier() - 1.0) * 100.0)
+		wardrobe_proc_speed_label.text = "👟 Staff Walk Speed: +%.0f%%" % spd_pct
+		
+	# Refresh 3D Character Model
+	_update_wardrobe_character_model()
+	
+	# Refresh Inventory Grid
+	if wardrobe_inventory_grid != null:
+		for c in wardrobe_inventory_grid.get_children():
+			c.queue_free()
+		var inv: Dictionary = gm.get_gear_inventory() if gm.has_method("get_gear_inventory") else {}
+		for gid in inv.keys():
+			var item = inv[gid]
+			var card = _create_gear_inventory_card(item, gm)
+			wardrobe_inventory_grid.add_child(card)
+
+func _create_slot_card_content(card: PanelContainer, slot_name: String, _slot_key: String, item_id: String, gm: Node) -> void:
+	if card == null or gm == null:
+		return
+	for c in card.get_children():
+		c.queue_free()
+		
+	var item: Dictionary = gm.get_gear_item(item_id) if gm.has_method("get_gear_item") else {}
+	var rarity = str(item.get("rarity", "common")).to_lower()
+	var rcol = _get_gear_rarity_color(rarity)
+	
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.11, 0.18, 0.95)
+	sb.border_width_left = 2
+	sb.border_width_top = 2
+	sb.border_width_right = 2
+	sb.border_width_bottom = 3
+	sb.border_color = rcol
+	sb.set_corner_radius_all(12)
+	sb.content_margin_left = 10.0
+	sb.content_margin_right = 10.0
+	sb.content_margin_top = 8.0
+	sb.content_margin_bottom = 8.0
+	card.add_theme_stylebox_override("panel", sb)
+	
+	var vb = VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 3)
+	card.add_child(vb)
+	
+	var top_row = HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 6)
+	vb.add_child(top_row)
+	
+	var slot_lbl = Label.new()
+	slot_lbl.text = slot_name
+	slot_lbl.add_theme_font_size_override("font_size", 10)
+	slot_lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+	slot_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_row.add_child(slot_lbl)
+	
+	var r_pill = Label.new()
+	r_pill.text = rarity.to_upper()
+	r_pill.add_theme_font_size_override("font_size", 9)
+	r_pill.add_theme_color_override("font_color", rcol)
+	top_row.add_child(r_pill)
+	
+	var name_lbl = Label.new()
+	name_lbl.text = "%s %s" % [item.get("icon", "⚔️"), item.get("name", "Equipped Item")]
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_color_override("font_color", Color.WHITE)
+	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	vb.add_child(name_lbl)
+	
+	var desc_lbl = Label.new()
+	desc_lbl.text = item.get("desc", "")
+	desc_lbl.add_theme_font_size_override("font_size", 9)
+	desc_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95, 0.85))
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(desc_lbl)
+
+func _create_gear_inventory_card(item: Dictionary, gm: Node) -> PanelContainer:
+	var item_id = item.get("id", "")
+	var rarity = str(item.get("rarity", "common")).to_lower()
+	var rcol = _get_gear_rarity_color(rarity)
+	var slot = str(item.get("slot", "")).to_lower()
+	var is_equipped = (gm.get_equipped_gear().get(slot) == item_id) if gm.has_method("get_equipped_gear") else false
+	var count = int(item.get("count", 1))
+	var can_merge = gm.can_merge_gear(item_id) if gm.has_method("can_merge_gear") else false
+	
+	var pc = PanelContainer.new()
+	pc.custom_minimum_size = Vector2(210, 155)
+	
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.11, 0.18, 0.95)
+	sb.border_width_left = 2
+	sb.border_width_top = 2
+	sb.border_width_right = 2
+	sb.border_width_bottom = 3
+	sb.border_color = rcol if not is_equipped else Color(0.3, 1.0, 0.5)
+	sb.set_corner_radius_all(12)
+	sb.content_margin_left = 8.0
+	sb.content_margin_right = 8.0
+	sb.content_margin_top = 6.0
+	sb.content_margin_bottom = 6.0
+	pc.add_theme_stylebox_override("panel", sb)
+	
+	var vb = VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 3)
+	pc.add_child(vb)
+	
+	var top_row = HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 4)
+	vb.add_child(top_row)
+	
+	var slot_lbl = Label.new()
+	slot_lbl.text = slot.to_upper()
+	slot_lbl.add_theme_font_size_override("font_size", 9)
+	slot_lbl.add_theme_color_override("font_color", Color(0.75, 0.8, 0.9))
+	top_row.add_child(slot_lbl)
+	
+	var r_lbl = Label.new()
+	r_lbl.text = "• " + rarity.to_upper()
+	r_lbl.add_theme_font_size_override("font_size", 9)
+	r_lbl.add_theme_color_override("font_color", rcol)
+	r_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_row.add_child(r_lbl)
+	
+	var count_lbl = Label.new()
+	count_lbl.text = "x%d" % count
+	count_lbl.add_theme_font_size_override("font_size", 10)
+	count_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	top_row.add_child(count_lbl)
+	
+	var name_lbl = Label.new()
+	name_lbl.text = "%s %s" % [item.get("icon", "⚔️"), item.get("name", "Gear")]
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_color_override("font_color", Color.WHITE)
+	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	vb.add_child(name_lbl)
+	
+	var desc_lbl = Label.new()
+	desc_lbl.text = item.get("desc", "")
+	desc_lbl.add_theme_font_size_override("font_size", 9)
+	desc_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95, 0.85))
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vb.add_child(desc_lbl)
+	
+	var btn_row = HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 6)
+	vb.add_child(btn_row)
+	
+	var equip_btn = Button.new()
+	equip_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	equip_btn.custom_minimum_size = Vector2(0, 26)
+	if is_equipped:
+		equip_btn.text = "EQUIPPED"
+		var eq_sb = StyleBoxFlat.new()
+		eq_sb.bg_color = Color(0.15, 0.45, 0.25, 0.9)
+		eq_sb.set_corner_radius_all(6)
+		equip_btn.add_theme_stylebox_override("normal", eq_sb)
+		equip_btn.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6))
+		equip_btn.disabled = true
+	else:
+		equip_btn.text = "EQUIP"
+		var eq_sb = StyleBoxFlat.new()
+		eq_sb.bg_color = Color(0.18, 0.38, 0.72, 0.95)
+		eq_sb.set_corner_radius_all(6)
+		equip_btn.add_theme_stylebox_override("normal", eq_sb)
+		equip_btn.add_theme_color_override("font_color", Color.WHITE)
+		equip_btn.pressed.connect(func():
+			gm.equip_gear_item(item_id)
+			_refresh_gear_wardrobe()
+		)
+	equip_btn.add_theme_font_size_override("font_size", 10)
+	btn_row.add_child(equip_btn)
+	
+	var merge_btn = Button.new()
+	merge_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	merge_btn.custom_minimum_size = Vector2(0, 26)
+	merge_btn.add_theme_font_size_override("font_size", 9)
+	if can_merge:
+		var r_idx = gm.GEAR_RARITIES.find(rarity)
+		var next_r = gm.GEAR_RARITIES[r_idx + 1].to_upper()
+		merge_btn.text = "FORGE ➔ %s" % next_r
+		var m_sb = StyleBoxFlat.new()
+		m_sb.bg_color = Color(0.85, 0.65, 0.12, 0.95)
+		m_sb.set_corner_radius_all(6)
+		merge_btn.add_theme_stylebox_override("normal", m_sb)
+		merge_btn.add_theme_color_override("font_color", Color.WHITE)
+		merge_btn.pressed.connect(func():
+			var res = gm.merge_gear_item(item_id)
+			if res.get("success", false):
+				_show_wardrobe_toast("⚗️ FORGED! %s is now %s!" % [item.get("name"), next_r])
+			_refresh_gear_wardrobe()
+		)
+	else:
+		if rarity == "legendary":
+			merge_btn.text = "MAX TIER ★"
+		else:
+			merge_btn.text = "MERGE (%d/3)" % count
+		var m_sb = StyleBoxFlat.new()
+		m_sb.bg_color = Color(0.14, 0.17, 0.24, 0.6)
+		m_sb.set_corner_radius_all(6)
+		merge_btn.add_theme_stylebox_override("normal", m_sb)
+		merge_btn.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.6))
+		merge_btn.disabled = true
+	btn_row.add_child(merge_btn)
+	
+	return pc
+
+func _show_wardrobe_toast(text: String) -> void:
+	var hud_root = get_node_or_null("HUD")
+	var parent_node = hud_root if hud_root != null else self
+	var toast = PanelContainer.new()
+	toast.custom_minimum_size = Vector2(340, 50)
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.12, 0.18, 0.32, 0.96)
+	sb.border_width_left = 2
+	sb.border_width_top = 2
+	sb.border_width_right = 2
+	sb.border_width_bottom = 3
+	sb.border_color = Color(1.0, 0.85, 0.25, 1.0)
+	sb.set_corner_radius_all(14)
+	sb.content_margin_left = 14
+	sb.content_margin_right = 14
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	toast.add_theme_stylebox_override("panel", sb)
+	
+	var label = Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", Color(1, 0.95, 0.7))
+	toast.add_child(label)
+	
+	parent_node.add_child(toast)
+	var vp = get_viewport()
+	var vp_size = vp.get_visible_rect().size if vp != null else Vector2(1280, 720)
+	toast.global_position = Vector2((vp_size.x - 340) * 0.5, 120)
+	toast.modulate.a = 0.0
+	
+	var tw = create_tween()
+	tw.tween_property(toast, "modulate:a", 1.0, 0.2)
+	tw.tween_interval(2.0)
+	tw.tween_property(toast, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(toast.queue_free)
+
 
 
 

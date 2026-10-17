@@ -739,11 +739,37 @@ func _process_catering_cook(delta: float) -> void:
 		speed *= gm.get_staff_cooking_multiplier("chef_stove")
 	catering_cook_accum += delta * max(0.35, speed)
 	var meal_time := 1.6
+	if gm != null and gm.has_method("roll_instant_cook_proc") and gm.roll_instant_cook_proc():
+		catering_cook_accum = meal_time
+		trigger_instant_cook_proc_effect()
 	while catering_cook_accum >= meal_time and catering_meals_cooked < catering_meals_needed:
 		catering_cook_accum -= meal_time
 		catering_meals_cooked += 1
 		catering_meal_cooked.emit()
 	_refresh_catering_label()
+
+func trigger_instant_cook_proc_effect() -> void:
+	var label = Label3D.new()
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.double_sided = false
+	label.font_size = 28
+	label.outline_size = 8
+	label.text = "⚡ INSTANT!"
+	label.modulate = Color(1.0, 0.88, 0.15, 1.0)
+	label.outline_modulate = Color(0.2, 0.1, 0.0, 0.95)
+	label.position = Vector3(0, 3.2, 0)
+	add_child(label)
+	
+	var tw = create_tween()
+	if tw != null:
+		tw.tween_property(label, "position:y", 4.3, 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(label, "scale", Vector3(1.3, 1.3, 1.3), 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(label, "modulate:a", 0.0, 0.7).set_delay(0.3)
+		tw.tween_callback(label.queue_free)
+	
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("sizzle", 0.0, 0.0, 1.3)
 
 func _refresh_catering_label() -> void:
 	if catering_order_label == null:
@@ -914,6 +940,59 @@ static func plate_dish_on_pass(dish_id: String, parent_node: Node3D = null) -> N
 	dish.position = slot_pos
 	dish.scale = Vector3(0.35, 0.35, 0.35)
 	
+	# Check divine dish proc (5x revenue + golden platter & sparkles)
+	var gm: Node = null
+	if Engine.get_main_loop() is SceneTree and Engine.get_main_loop().root != null:
+		gm = Engine.get_main_loop().root.get_node_or_null("GameManager")
+	if gm != null and gm.has_method("roll_divine_dish_proc") and gm.roll_divine_dish_proc():
+		dish.set_meta("is_divine", true)
+		var gold_plate = MeshInstance3D.new()
+		gold_plate.name = "DivinePlatter"
+		var cyl = CylinderMesh.new()
+		cyl.top_radius = 0.58
+		cyl.bottom_radius = 0.62
+		cyl.height = 0.05
+		var mat = StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 0.85, 0.15, 1.0)
+		mat.metallic = 0.95
+		mat.roughness = 0.15
+		mat.emission_enabled = true
+		mat.emission = Color(0.95, 0.75, 0.1, 1.0)
+		mat.emission_energy_multiplier = 0.5
+		gold_plate.mesh = cyl
+		gold_plate.material_override = mat
+		gold_plate.position = Vector3(0, -0.02, 0)
+		dish.add_child(gold_plate)
+		
+		var sparkles = CPUParticles3D.new()
+		sparkles.name = "DivineSparkles"
+		sparkles.amount = 12
+		sparkles.lifetime = 0.85
+		sparkles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+		sparkles.emission_sphere_radius = 0.22
+		sparkles.gravity = Vector3(0, 0.75, 0)
+		sparkles.color = Color(1.0, 0.9, 0.25, 0.9)
+		sparkles.scale_amount_min = 0.04
+		sparkles.scale_amount_max = 0.09
+		dish.add_child(sparkles)
+		
+		var popup = Label3D.new()
+		popup.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		popup.double_sided = false
+		popup.font_size = 24
+		popup.outline_size = 7
+		popup.text = "✨ DIVINE DISH! (5x)"
+		popup.modulate = Color(1.0, 0.85, 0.2, 1.0)
+		popup.outline_modulate = Color(0.2, 0.1, 0.0, 0.95)
+		popup.position = Vector3(0, 1.2, 0)
+		dish.add_child(popup)
+		
+		var tw = dish.create_tween()
+		if tw != null:
+			tw.tween_property(popup, "position:y", 2.0, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw.parallel().tween_property(popup, "modulate:a", 0.0, 0.8).set_delay(0.4)
+			tw.tween_callback(popup.queue_free)
+	
 	if parent_node != null and is_instance_valid(parent_node):
 		parent_node.add_child(dish)
 	elif Engine.get_main_loop() is SceneTree and Engine.get_main_loop().root != null:
@@ -926,6 +1005,8 @@ static func plate_dish_on_pass(dish_id: String, parent_node: Node3D = null) -> N
 			
 	pass_dishes.append(dish)
 	return dish
+
+static var last_taken_dish_is_divine: bool = false
 
 static func take_dish_from_pass(dish_id: String = "") -> Node3D:
 	var valid_dishes: Array[Node3D] = []
@@ -949,6 +1030,7 @@ static func take_dish_from_pass(dish_id: String = "") -> Node3D:
 		pass_dishes.erase(target_dish)
 		
 	if is_instance_valid(target_dish):
+		last_taken_dish_is_divine = bool(target_dish.get_meta("is_divine", false))
 		target_dish.queue_free()
 	return target_dish
 

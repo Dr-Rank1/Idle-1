@@ -1003,8 +1003,14 @@ func _on_timer_complete() -> void:
 			if gm != null and gm.has_method("get_dish_price_multiplier"):
 				price_mult = gm.get_dish_price_multiplier()
 			var total_revenue: float = (dish_price * dish_tier_mult * price_mult) + table_bonus
+			var is_divine: bool = bool(get_meta("is_divine", false))
+			if is_divine:
+				total_revenue *= 5.0
 			var form_rev = gm.format_money(total_revenue) if gm != null and gm.has_method("format_money") else ("$%d" % round(total_revenue))
-			set_bubble_text("💵 +" + form_rev)
+			if is_divine:
+				set_bubble_text("✨ 5x DIVINE! +" + form_rev)
+			else:
+				set_bubble_text("💵 +" + form_rev)
 			
 			if gm != null:
 				gm.add_cash(total_revenue, global_position + Vector3(0, 1.8, 0))
@@ -1013,7 +1019,10 @@ func _on_timer_complete() -> void:
 			
 			var am = get_node_or_null("/root/AudioManager")
 			if am != null and am.has_method("play_sfx"):
-				am.play_sfx("coin", 0.06, 1.05)
+				if is_divine:
+					am.play_sfx("upgrade", 0.0, 2.8)
+				else:
+					am.play_sfx("coin", 0.06, 1.05)
 			
 			if table_ref != null and table_ref.has_method("vacate"):
 				table_ref.vacate()

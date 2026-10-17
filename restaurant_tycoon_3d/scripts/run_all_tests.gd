@@ -998,9 +998,59 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 	_assert_test(gm.diamonds == pre_skip_dia + 25, "skip_tutorial() awards starter Diamonds reward")
 	_assert_test(gm.cash == pre_skip_cash + 500.0, "skip_tutorial() awards starter Cash reward")
 
+	# Part 13: Collectible Gear & Uniform Loadout System
+	print("\n--- [FRAME 20 Part 13] Asserting Collectible Gear & Uniform Loadout System ---")
+	# 1. Equipped Gear & Inventory queries
+	var eq_gear = gm.get_equipped_gear()
+	_assert_test(eq_gear.has("head") and eq_gear.has("body") and eq_gear.has("tool"), "Equipped gear tracks head, body, and tool slots")
+	_assert_test(eq_gear["head"] == "toque", "Default equipped head gear is toque")
+	_assert_test(eq_gear["body"] == "apron", "Default equipped body gear is apron")
+	_assert_test(eq_gear["tool"] == "skillet", "Default equipped tool gear is skillet")
+	
+	var inv_gear = gm.get_gear_inventory()
+	_assert_test(inv_gear.size() == 9, "Gear inventory contains all 9 required collectible items")
+	_assert_test(inv_gear.has("toque") and inv_gear.has("crown") and inv_gear.has("visor"), "Head slot items (toque, crown, visor) exist")
+	_assert_test(inv_gear.has("apron") and inv_gear.has("vest") and inv_gear.has("jacket"), "Body slot items (apron, vest, jacket) exist")
+	_assert_test(inv_gear.has("skillet") and inv_gear.has("spatula") and inv_gear.has("tray"), "Tool slot items (skillet, spatula, tray) exist")
+
+	# 2. Equip mechanics
+	var equip_ok = gm.equip_gear_item("crown")
+	_assert_test(equip_ok == true, "Equipping crown into head slot succeeds")
+	_assert_test(gm.get_equipped_gear()["head"] == "crown", "Equipped head slot reflects crown")
+	
+	# 3. Proc stats calculation
+	var inst_chance = gm.get_gear_instant_cook_chance()
+	var divine_chance = gm.get_gear_divine_dish_chance()
+	var speed_mult = gm.get_gear_staff_walk_speed_multiplier()
+	_assert_test(inst_chance >= 0.0, "Instant cook chance calculates successfully")
+	_assert_test(divine_chance > 0.0, "Crown contributes divine dish chance (divine_chance > 0)")
+	_assert_test(speed_mult >= 1.0, "Staff walk speed multiplier is at least 1.0x")
+
+	# 4. Blueprint merging (3 duplicate lower-tier items -> next rarity tier)
+	_assert_test(gm.can_merge_gear("toque") == false, "Cannot merge with 1 copy (< 3)")
+	gm.add_gear_copies("toque", 2) # Now 3 copies
+	_assert_test(gm.can_merge_gear("toque") == true, "Can merge with 3 duplicate copies")
+	var prev_rarity = gm.get_gear_item("toque")["rarity"]
+	_assert_test(prev_rarity == "common", "Toque begins at common rarity")
+	var merge_res = gm.merge_gear_item("toque")
+	_assert_test(merge_res["success"] == true, "merge_gear_item succeeds")
+	_assert_test(merge_res["new_rarity"] == "rare", "Merging 3 common blueprints produces rare item")
+	_assert_test(gm.get_gear_item("toque")["rarity"] == "rare", "Toque rarity upgraded to rare in inventory")
+
+	# 5. UI Gear Wardrobe Sub-Tab & SubViewport verification
+	dock_hud.open_gear_wardrobe()
+	_assert_test(dock_hud.cards_panel.visible == true, "open_gear_wardrobe() displays cards_panel")
+	_assert_test(dock_hud.wardrobe_scroll.visible == true, "WardrobeScroll sub-tab is active and visible")
+	_assert_test(dock_hud.wardrobe_sub_viewport != null, "Wardrobe live 3D SubViewport initialized")
+	_assert_test(dock_hud.wardrobe_head_slot_card != null, "Head slot card flanked on left")
+	_assert_test(dock_hud.wardrobe_body_slot_card != null, "Body slot card flanked on left")
+	_assert_test(dock_hud.wardrobe_tool_slot_card != null, "Tool slot card flanked on right")
+	_assert_test(dock_hud.wardrobe_inventory_grid != null, "Inventory grid populated in wardrobe view")
+	_assert_test(dock_hud.wardrobe_inventory_grid.get_child_count() == 9, "Inventory grid renders 9 collectible gear cards")
+
 	dock_hud.queue_free()
 
-	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, Blueprint Zones, Collapsible Dock, Pipeline Balance, and Interactive Onboarding validated.")
+	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, Blueprint Zones, Collapsible Dock, Pipeline Balance, Interactive Onboarding, and Collectible Gear Wardrobe validated.")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Frame 25: Teardown & Summary

@@ -40,6 +40,7 @@ var home_pos: Vector3 = Vector3(3.5, 0.0, 0.5)
 var catering_van: Node3D = null
 var catering_meals: int = 0
 var catering_lot: Node = null
+var carrying_divine_dish: bool = false
 
 func _ready() -> void:
 	home_pos = position
@@ -54,9 +55,13 @@ func _ready() -> void:
 	input_event.connect(_on_input_event)
 	
 	_update_speed()
+	update_equipped_gear_visuals()
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
 		gm.staff_updated.connect(_on_staff_updated)
+		if gm.has_signal("gear_updated"):
+			gm.gear_updated.connect(_update_speed)
+			gm.gear_updated.connect(update_equipped_gear_visuals)
 		if gm.has_signal("cards_updated"):
 			gm.cards_updated.connect(_update_speed)
 		if gm.has_signal("manager_skill_activated"):
@@ -158,6 +163,8 @@ func _update_speed() -> void:
 		mult *= gm.get_card_waiter_speed_multiplier()
 	if gm != null and gm.has_method("get_fever_speed_multiplier"):
 		mult *= gm.get_fever_speed_multiplier()
+	if gm != null and gm.has_method("get_gear_staff_walk_speed_multiplier"):
+		mult *= gm.get_gear_staff_walk_speed_multiplier()
 	if speed_buff_timer > 0.0:
 		mult *= 1.30
 	move_speed = base_speed * mult
@@ -452,6 +459,7 @@ func _on_all_waypoints_reached() -> void:
 			var cook_script = load("res://scripts/cooking_station.gd")
 			if cook_script != null and cook_script.has_method("take_dish_from_pass"):
 				cook_script.take_dish_from_pass(dish_id)
+				carrying_divine_dish = bool(cook_script.get("last_taken_dish_is_divine"))
 
 			serving_tray.visible = true
 			serving_tray.scale = Vector3(0.2, 0.2, 0.2)
@@ -467,6 +475,7 @@ func _on_all_waypoints_reached() -> void:
 			if not is_instance_valid(target_table) or target_table.get("is_occupied") != true:
 				# Order cancelled or table vacated
 				serving_tray.visible = false
+				carrying_divine_dish = false
 				current_state = State.RETURNING
 				waypoints = _get_waypoints_to_home(position)
 				_play_anim("walk")
@@ -503,11 +512,13 @@ func _on_all_waypoints_reached() -> void:
 						if "ordered_dish" in cust and typeof(cust.ordered_dish) == TYPE_DICTIONARY:
 							dish_id = cust.ordered_dish.get("id", "burger")
 					if target_table.has_method("serve_food"):
-						target_table.serve_food(dish_id)
+						target_table.serve_food(dish_id, carrying_divine_dish)
+					carrying_divine_dish = false
 					await get_tree().create_timer(0.45).timeout
 					serving_tray.visible = false
 			else:
 				is_cleaning_job = false
+				carrying_divine_dish = false
 				serving_tray.visible = false
 			
 			current_state = State.RETURNING
@@ -599,4 +610,129 @@ func _update_tray_dish_model(dish_id: String) -> void:
 		if dish_node != null:
 			dish_node.scale = Vector3(0.55, 0.55, 0.55)
 			holder.add_child(dish_node)
+
+func update_equipped_gear_visuals() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	var equipped: Dictionary = gm.get_equipped_gear() if gm != null and gm.has_method("get_equipped_gear") else {"head": "toque", "body": "apron", "tool": "skillet"}
+	
+	# Clean existing dynamic gear nodes
+	var existing_gear = get_node_or_null("GearDynamicRoot")
+	if existing_gear != null:
+		existing_gear.queue_free()
+	
+	var gear_root = Node3D.new()
+	gear_root.name = "GearDynamicRoot"
+	add_child(gear_root)
+	
+	# Head Slot
+	var head_item = equipped.get("head", "toque")
+	if head_item == "toque":
+		var toque = Node3D.new()
+		toque.name = "WaiterToque"
+		var brim = MeshInstance3D.new()
+		var cyl_b = CylinderMesh.new()
+		cyl_b.top_radius = 0.20
+		cyl_b.bottom_radius = 0.19
+		cyl_b.height = 0.06
+		var w_mat = StandardMaterial3D.new()
+		w_mat.albedo_color = Color(0.98, 0.98, 0.98)
+		w_mat.roughness = 0.45
+		brim.mesh = cyl_b
+		brim.material_override = w_mat
+		brim.position = Vector3(0, 0.95, 0)
+		toque.add_child(brim)
+		var crown = MeshInstance3D.new()
+		var cyl_c = CylinderMesh.new()
+		cyl_c.top_radius = 0.24
+		cyl_c.bottom_radius = 0.20
+		cyl_c.height = 0.18
+		crown.mesh = cyl_c
+		crown.material_override = w_mat
+		crown.position = Vector3(0, 1.05, 0)
+		toque.add_child(crown)
+		gear_root.add_child(toque)
+	elif head_item == "crown":
+		var crown = MeshInstance3D.new()
+		crown.name = "RoyalCrown"
+		var cyl = CylinderMesh.new()
+		cyl.top_radius = 0.23
+		cyl.bottom_radius = 0.20
+		cyl.height = 0.13
+		var mat = StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 0.82, 0.15)
+		mat.metallic = 0.95
+		mat.roughness = 0.15
+		mat.emission_enabled = true
+		mat.emission = Color(0.9, 0.7, 0.1)
+		mat.emission_energy_multiplier = 0.4
+		crown.mesh = cyl
+		crown.material_override = mat
+		crown.position = Vector3(0, 0.98, 0)
+		gear_root.add_child(crown)
+	elif head_item == "visor":
+		var visor = MeshInstance3D.new()
+		visor.name = "NeonVisor"
+		var box = BoxMesh.new()
+		box.size = Vector3(0.34, 0.07, 0.11)
+		var mat = StandardMaterial3D.new()
+		mat.albedo_color = Color(0.1, 0.85, 1.0)
+		mat.emission_enabled = true
+		mat.emission = Color(0.15, 0.9, 1.0)
+		mat.emission_energy_multiplier = 1.2
+		mat.roughness = 0.2
+		visor.mesh = box
+		visor.material_override = mat
+		visor.position = Vector3(0, 0.91, 0.13)
+		gear_root.add_child(visor)
+		
+	# Body Slot
+	var body_item = equipped.get("body", "apron")
+	var body_mesh = MeshInstance3D.new()
+	body_mesh.name = "BodyGearOverlay"
+	var b_box = BoxMesh.new()
+	b_box.size = Vector3(0.44, 0.50, 0.26)
+	body_mesh.mesh = b_box
+	var b_mat = StandardMaterial3D.new()
+	match body_item:
+		"apron":
+			b_mat.albedo_color = Color(0.78, 0.22, 0.22)
+			b_mat.roughness = 0.6
+		"vest":
+			b_mat.albedo_color = Color(0.12, 0.14, 0.24)
+			b_mat.metallic = 0.4
+			b_mat.roughness = 0.35
+		"jacket":
+			b_mat.albedo_color = Color(0.98, 0.84, 0.25)
+			b_mat.metallic = 0.85
+			b_mat.roughness = 0.25
+			b_mat.emission_enabled = true
+			b_mat.emission = Color(0.85, 0.7, 0.1)
+			b_mat.emission_energy_multiplier = 0.3
+	body_mesh.material_override = b_mat
+	body_mesh.position = Vector3(0, 0.50, 0.02)
+	gear_root.add_child(body_mesh)
+	
+	# Hand Tool Slot (Visual enhancement on serving tray / idle accessory)
+	var tool_item = equipped.get("tool", "skillet")
+	if serving_tray != null:
+		var tray_plate = serving_tray.get_node_or_null("Plate")
+		if tray_plate != null and tray_plate.has_node("TurboGlow"):
+			tray_plate.get_node("TurboGlow").queue_free()
+		if tool_item == "tray" and tray_plate != null:
+			var turbo = MeshInstance3D.new()
+			turbo.name = "TurboGlow"
+			var t_cyl = CylinderMesh.new()
+			t_cyl.top_radius = 0.38
+			t_cyl.bottom_radius = 0.38
+			t_cyl.height = 0.02
+			var t_mat = StandardMaterial3D.new()
+			t_mat.albedo_color = Color(0.1, 0.85, 1.0)
+			t_mat.emission_enabled = true
+			t_mat.emission = Color(0.1, 0.85, 1.0)
+			t_mat.emission_energy_multiplier = 0.8
+			turbo.mesh = t_cyl
+			turbo.material_override = t_mat
+			turbo.position = Vector3(0, -0.01, 0)
+			tray_plate.add_child(turbo)
+
 

@@ -59,6 +59,8 @@ signal fever_meter_updated(current: float, max_val: float, is_active: bool)
 signal fever_mode_changed(active: bool, time_left: float)
 signal tutorial_step_changed(step_index: int)
 signal tutorial_completed_awarded(diamonds: int, cash: float)
+signal gear_updated()
+signal gear_merged(item_id: String, new_rarity: String)
 
 var restaurant_node: Node3D = null
 
@@ -1075,6 +1077,150 @@ var collectible_cards: Dictionary = {
 	}
 }
 
+# ─── Collectible Gear & Uniform Loadout System ──────────────────────────────
+const GEAR_RARITIES: Array[String] = ["common", "rare", "epic", "legendary"]
+const GEAR_RARITY_MULTIPLIERS: Dictionary = {
+	"common": 1.0,
+	"rare": 1.5,
+	"epic": 2.2,
+	"legendary": 3.2
+}
+const GEAR_RARITY_COLORS: Dictionary = {
+	"common": Color(0.75, 0.78, 0.85),
+	"rare": Color(0.2, 0.65, 1.0),
+	"epic": Color(0.75, 0.3, 0.95),
+	"legendary": Color(1.0, 0.8, 0.15)
+}
+
+var equipped_gear: Dictionary = {
+	"head": "toque",
+	"body": "apron",
+	"tool": "skillet"
+}
+
+var gear_inventory: Dictionary = {
+	# Head Slot
+	"toque": {
+		"id": "toque",
+		"name": "Classic Tall Toque",
+		"slot": "head",
+		"rarity": "common",
+		"count": 1,
+		"unlocked": true,
+		"icon": "👨‍🍳",
+		"stat_instant_cook": 5.0,
+		"stat_divine_dish": 0.0,
+		"stat_walk_speed": 5.0,
+		"desc": "+5% Instant Cook Chance, +5% Staff Walk Speed"
+	},
+	"crown": {
+		"id": "crown",
+		"name": "Royal Golden Crown",
+		"slot": "head",
+		"rarity": "rare",
+		"count": 1,
+		"unlocked": true,
+		"icon": "👑",
+		"stat_instant_cook": 0.0,
+		"stat_divine_dish": 8.0,
+		"stat_walk_speed": 4.0,
+		"desc": "+8% Divine Dish Chance, +4% Staff Walk Speed"
+	},
+	"visor": {
+		"id": "visor",
+		"name": "Neon Visor",
+		"slot": "head",
+		"rarity": "common",
+		"count": 1,
+		"unlocked": true,
+		"icon": "🥽",
+		"stat_instant_cook": 6.0,
+		"stat_divine_dish": 0.0,
+		"stat_walk_speed": 10.0,
+		"desc": "+6% Instant Cook Chance, +10% Staff Walk Speed"
+	},
+	# Body Slot
+	"apron": {
+		"id": "apron",
+		"name": "Butcher Apron",
+		"slot": "body",
+		"rarity": "common",
+		"count": 1,
+		"unlocked": true,
+		"icon": "🦺",
+		"stat_instant_cook": 6.0,
+		"stat_divine_dish": 3.0,
+		"stat_walk_speed": 0.0,
+		"desc": "+6% Instant Cook Chance, +3% Divine Dish Chance"
+	},
+	"vest": {
+		"id": "vest",
+		"name": "Executive Silk Vest",
+		"slot": "body",
+		"rarity": "rare",
+		"count": 1,
+		"unlocked": true,
+		"icon": "👔",
+		"stat_instant_cook": 0.0,
+		"stat_divine_dish": 4.0,
+		"stat_walk_speed": 12.0,
+		"desc": "+12% Staff Walk Speed, +4% Divine Dish Chance"
+	},
+	"jacket": {
+		"id": "jacket",
+		"name": "Michelin Gold Jacket",
+		"slot": "body",
+		"rarity": "epic",
+		"count": 1,
+		"unlocked": true,
+		"icon": "🧥",
+		"stat_instant_cook": 0.0,
+		"stat_divine_dish": 10.0,
+		"stat_walk_speed": 8.0,
+		"desc": "+10% Divine Dish Chance, +8% Staff Walk Speed"
+	},
+	# Hand Tool Slot
+	"skillet": {
+		"id": "skillet",
+		"name": "Cast-Iron Skillet",
+		"slot": "tool",
+		"rarity": "common",
+		"count": 1,
+		"unlocked": true,
+		"icon": "🍳",
+		"stat_instant_cook": 8.0,
+		"stat_divine_dish": 4.0,
+		"stat_walk_speed": 0.0,
+		"desc": "+8% Instant Cook Chance, +4% Divine Dish Chance"
+	},
+	"spatula": {
+		"id": "spatula",
+		"name": "Golden Spatula",
+		"slot": "tool",
+		"rarity": "rare",
+		"count": 1,
+		"unlocked": true,
+		"icon": "🥢",
+		"stat_instant_cook": 10.0,
+		"stat_divine_dish": 6.0,
+		"stat_walk_speed": 0.0,
+		"desc": "+10% Instant Cook Chance, +6% Divine Dish Chance"
+	},
+	"tray": {
+		"id": "tray",
+		"name": "Turbo Serving Tray",
+		"slot": "tool",
+		"rarity": "common",
+		"count": 1,
+		"unlocked": true,
+		"icon": "🍱",
+		"stat_instant_cook": 0.0,
+		"stat_divine_dish": 5.0,
+		"stat_walk_speed": 15.0,
+		"desc": "+15% Staff Walk Speed, +5% Divine Dish Chance"
+	}
+}
+
 # ─── Staff Roster ───────────────────────────────────────────────────────────
 var staff_roster: Dictionary = {
 	"waiter_1": {
@@ -1355,6 +1501,8 @@ func save_game() -> void:
 		"claimed_star_rewards": claimed_star_rewards,
 		"tutorial_completed": tutorial_completed,
 		"tutorial_step": tutorial_step,
+		"equipped_gear": equipped_gear,
+		"gear_inventory": gear_inventory,
 		"restaurant_valuation": get_restaurant_valuation(),
 		"saved_timestamp": Time.get_unix_time_from_system()
 	}
@@ -1381,6 +1529,16 @@ func load_game() -> void:
 	fever_charge = float(parsed.get("fever_charge", fever_charge))
 	tutorial_completed = bool(parsed.get("tutorial_completed", tutorial_completed))
 	tutorial_step = int(parsed.get("tutorial_step", tutorial_step))
+	if parsed.has("equipped_gear") and typeof(parsed["equipped_gear"]) == TYPE_DICTIONARY:
+		for slot in parsed["equipped_gear"].keys():
+			equipped_gear[slot] = str(parsed["equipped_gear"][slot])
+	if parsed.has("gear_inventory") and typeof(parsed["gear_inventory"]) == TYPE_DICTIONARY:
+		for gid in parsed["gear_inventory"].keys():
+			if gear_inventory.has(gid):
+				var saved_item = parsed["gear_inventory"][gid]
+				gear_inventory[gid]["rarity"] = str(saved_item.get("rarity", gear_inventory[gid]["rarity"]))
+				gear_inventory[gid]["count"] = int(saved_item.get("count", gear_inventory[gid]["count"]))
+				gear_inventory[gid]["unlocked"] = bool(saved_item.get("unlocked", gear_inventory[gid]["unlocked"]))
 	energy = int(parsed.get("energy", energy))
 	energy = clampi(energy, 0, max_energy)
 	energy_regen_timer = float(parsed.get("energy_regen_timer", energy_regen_timer))
@@ -3852,4 +4010,111 @@ func get_fever_speed_multiplier() -> float:
 
 func get_fever_profit_multiplier() -> float:
 	return 2.0 if is_fever_active else 1.0
+
+# ─── Collectible Gear & Uniform Loadout Methods ─────────────────────────────
+func get_equipped_gear() -> Dictionary:
+	return equipped_gear
+
+func get_gear_inventory() -> Dictionary:
+	return gear_inventory
+
+func get_gear_item(item_id: String) -> Dictionary:
+	return gear_inventory.get(item_id, {})
+
+func equip_gear_item(item_id: String) -> bool:
+	if not gear_inventory.has(item_id):
+		return false
+	var item = gear_inventory[item_id]
+	if not item.get("unlocked", false):
+		return false
+	var slot = item.get("slot", "")
+	if slot == "" or not equipped_gear.has(slot):
+		return false
+	equipped_gear[slot] = item_id
+	gear_updated.emit()
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("tap", 0.05, 1.25)
+	save_game()
+	return true
+
+func add_gear_copies(item_id: String, amount: int = 1) -> void:
+	if not gear_inventory.has(item_id):
+		return
+	var item = gear_inventory[item_id]
+	item["count"] = int(item.get("count", 0)) + amount
+	item["unlocked"] = true
+	gear_updated.emit()
+	save_game()
+
+func can_merge_gear(item_id: String) -> bool:
+	if not gear_inventory.has(item_id):
+		return false
+	var item = gear_inventory[item_id]
+	if int(item.get("count", 0)) < 3:
+		return false
+	var cur_rarity = str(item.get("rarity", "common"))
+	var r_idx = GEAR_RARITIES.find(cur_rarity)
+	return r_idx != -1 and r_idx < (GEAR_RARITIES.size() - 1)
+
+func merge_gear_item(item_id: String) -> Dictionary:
+	if not can_merge_gear(item_id):
+		return {"success": false, "reason": "Not enough copies or max rarity"}
+	var item = gear_inventory[item_id]
+	var cur_rarity = str(item.get("rarity", "common"))
+	var r_idx = GEAR_RARITIES.find(cur_rarity)
+	var next_rarity = GEAR_RARITIES[r_idx + 1]
+	item["rarity"] = next_rarity
+	# Consumes 3 duplicate copies, producing 1 copy of the new tier (net -2)
+	item["count"] = maxi(1, int(item.get("count", 3)) - 2)
+	gear_merged.emit(item_id, next_rarity)
+	gear_updated.emit()
+	save_game()
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("upgrade", 0.0, 3.0, 1.2)
+	return {"success": true, "item_id": item_id, "new_rarity": next_rarity, "count": item["count"]}
+
+func get_gear_instant_cook_chance() -> float:
+	var total: float = 0.0
+	for slot in equipped_gear.keys():
+		var gid = equipped_gear[slot]
+		if gear_inventory.has(gid):
+			var item = gear_inventory[gid]
+			var mult = float(GEAR_RARITY_MULTIPLIERS.get(item.get("rarity", "common"), 1.0))
+			total += float(item.get("stat_instant_cook", 0.0)) * mult
+	return total
+
+func get_gear_divine_dish_chance() -> float:
+	var total: float = 0.0
+	for slot in equipped_gear.keys():
+		var gid = equipped_gear[slot]
+		if gear_inventory.has(gid):
+			var item = gear_inventory[gid]
+			var mult = float(GEAR_RARITY_MULTIPLIERS.get(item.get("rarity", "common"), 1.0))
+			total += float(item.get("stat_divine_dish", 0.0)) * mult
+	return total
+
+func get_gear_staff_walk_speed_multiplier() -> float:
+	var total_pct: float = 0.0
+	for slot in equipped_gear.keys():
+		var gid = equipped_gear[slot]
+		if gear_inventory.has(gid):
+			var item = gear_inventory[gid]
+			var mult = float(GEAR_RARITY_MULTIPLIERS.get(item.get("rarity", "common"), 1.0))
+			total_pct += float(item.get("stat_walk_speed", 0.0)) * mult
+	return 1.0 + (total_pct / 100.0)
+
+func roll_instant_cook_proc() -> bool:
+	var chance = get_gear_instant_cook_chance()
+	if chance <= 0.0:
+		return false
+	return (randf() * 100.0) < chance
+
+func roll_divine_dish_proc() -> bool:
+	var chance = get_gear_divine_dish_chance()
+	if chance <= 0.0:
+		return false
+	return (randf() * 100.0) < chance
+
 

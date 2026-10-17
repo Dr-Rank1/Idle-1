@@ -1403,17 +1403,20 @@ const DISH_SCENES: Dictionary = {
 	"sushi": "res://assets/models/food/sushi-salmon.glb"
 }
 
-func serve_food(dish_id: String = "burger") -> void:
-	_setup_dish_model(dish_id)
+func serve_food(dish_id: String = "burger", is_divine: bool = false) -> void:
+	_setup_dish_model(dish_id, is_divine)
 	if food_dish != null:
 		food_dish.visible = true
 		food_dish.scale = Vector3(0.1, 0.1, 0.1)
 		var tween: Tween = create_tween()
 		tween.tween_property(food_dish, "scale", Vector3(0.42, 0.42, 0.42), 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	if occupying_customer != null and is_instance_valid(occupying_customer) and occupying_customer.has_method("on_food_delivered"):
-		occupying_customer.on_food_delivered()
+	if occupying_customer != null and is_instance_valid(occupying_customer):
+		if is_divine:
+			occupying_customer.set_meta("is_divine", true)
+		if occupying_customer.has_method("on_food_delivered"):
+			occupying_customer.on_food_delivered()
 
-func _setup_dish_model(dish_id: String) -> void:
+func _setup_dish_model(dish_id: String, is_divine: bool = false) -> void:
 	if food_dish == null:
 		return
 	for c in food_dish.get_children():
@@ -1430,6 +1433,24 @@ func _setup_dish_model(dish_id: String) -> void:
 		if scn:
 			var node = scn.instantiate()
 			food_dish.add_child(node)
+	if is_divine and food_dish != null:
+		var gold_plate = MeshInstance3D.new()
+		gold_plate.name = "TableGoldPlatter"
+		var cyl = CylinderMesh.new()
+		cyl.top_radius = 0.52
+		cyl.bottom_radius = 0.55
+		cyl.height = 0.05
+		var mat = StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 0.85, 0.15, 1.0)
+		mat.metallic = 0.95
+		mat.roughness = 0.18
+		mat.emission_enabled = true
+		mat.emission = Color(0.9, 0.7, 0.1, 1.0)
+		mat.emission_energy_multiplier = 0.4
+		gold_plate.mesh = cyl
+		gold_plate.material_override = mat
+		gold_plate.position = Vector3(0, -0.015, 0)
+		food_dish.add_child(gold_plate)
 
 func clear_food() -> void:
 	if food_dish != null:
