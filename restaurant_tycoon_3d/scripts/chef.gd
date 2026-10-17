@@ -106,6 +106,8 @@ func _process(delta: float) -> void:
 				cook_mult = gm.get_staff_cooking_multiplier(staff_key)
 			if gm.get("is_manager_inspection_active") == true:
 				cook_mult *= 1.25
+			if gm.has_method("get_fever_speed_multiplier"):
+				cook_mult *= gm.get_fever_speed_multiplier()
 		var speed = (0.28 + (chef_index % 3) * 0.05) * cook_mult
 		var offset = float(chef_index) * 0.27 + (0.15 if is_prep_chef else 0.0)
 		var cook_progress = fmod(time_passed * speed + offset, 1.0)
@@ -119,8 +121,12 @@ func _process_catering_walk(delta: float) -> void:
 	dest.y = pos.y
 	var to_dest: Vector3 = dest - pos
 	to_dest.y = 0.0
+	var fever_mult: float = 1.0
+	var gm_ref = get_node_or_null("/root/GameManager")
+	if gm_ref != null and gm_ref.has_method("get_fever_speed_multiplier"):
+		fever_mult = gm_ref.get_fever_speed_multiplier()
 	if to_dest.length() > 0.18:
-		var step = min(catering_walk_speed * delta, to_dest.length())
+		var step = min(catering_walk_speed * fever_mult * delta, to_dest.length())
 		global_position = pos + to_dest.normalized() * step
 		rotation.y = lerp_angle(rotation.y, atan2(to_dest.x, to_dest.z), 10.0 * delta)
 		return

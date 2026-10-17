@@ -60,6 +60,8 @@ func _ready() -> void:
 			gm.manager_skill_activated.connect(func(_sec): _update_speed())
 		if gm.has_signal("manager_skill_ended"):
 			gm.manager_skill_ended.connect(func(_sec): _update_speed())
+		if gm.has_signal("fever_mode_changed"):
+			gm.fever_mode_changed.connect(func(_active, _time): _update_speed())
 
 func _find_anim_player(node: Node) -> AnimationPlayer:
 	if node is AnimationPlayer:
@@ -77,6 +79,8 @@ func _update_speed() -> void:
 		mult = gm.get_staff_speed_multiplier(staff_id)
 	if gm != null and gm.has_method("get_card_waiter_speed_multiplier"):
 		mult *= gm.get_card_waiter_speed_multiplier()
+	if gm != null and gm.has_method("get_fever_speed_multiplier"):
+		mult *= gm.get_fever_speed_multiplier()
 	if speed_buff_timer > 0.0:
 		mult *= 1.30
 	move_speed = base_speed * mult
@@ -409,6 +413,8 @@ func _on_all_waypoints_reached() -> void:
 					var gm_ref = get_node_or_null("/root/GameManager")
 					if gm_ref != null and gm_ref.has_method("get_card_waiter_speed_multiplier"):
 						wipe_dur /= gm_ref.get_card_waiter_speed_multiplier()
+					if gm_ref != null and gm_ref.has_method("get_fever_speed_multiplier"):
+						wipe_dur /= gm_ref.get_fever_speed_multiplier()
 					await get_tree().create_timer(wipe_dur).timeout
 					if is_instance_valid(target_table) and target_table.has_method("clean_table"):
 						target_table.clean_table()

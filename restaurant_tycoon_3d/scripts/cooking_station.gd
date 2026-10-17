@@ -460,6 +460,8 @@ func collect_station_cash() -> float:
 	else:
 		if gm != null:
 			gm.add_cash(amount, c_pos)
+			if gm.has_method("add_fever_charge"):
+				gm.add_fever_charge(8.0)
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
 			am.play_sfx("coin", 0.04, 1.0)

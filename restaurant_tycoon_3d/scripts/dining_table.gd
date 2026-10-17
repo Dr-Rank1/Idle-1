@@ -1611,6 +1611,8 @@ func collect_booth_cash() -> float:
 			gm.add_cash(amount, c_pos)
 			if gm.has_method("record_table_cash_collected"):
 				gm.record_table_cash_collected()
+			if gm.has_method("add_fever_charge"):
+				gm.add_fever_charge(8.0)
 		var am = get_node_or_null("/root/AudioManager")
 		if am != null and am.has_method("play_sfx"):
 			am.play_sfx("coin", 0.04, 1.0)

@@ -2017,9 +2017,15 @@ func _process(delta: float) -> void:
 		elif hostess_cash_label != null:
 			hostess_cash_label.position.y = 0.42 + 0.03 * sin(Time.get_ticks_msec() * 0.003 + 2.0)
 
-	# VIP Auto-Collector: automatically sweeps up floating cash stacks without tapping
+	# VIP Auto-Collector & Golden Fever Overdrive Auto-Vacuum: automatically sweeps up floating cash stacks
 	var gm_ref = get_node_or_null("/root/GameManager")
-	if gm_ref != null and gm_ref.has_method("is_vip_auto_collector_active") and gm_ref.is_vip_auto_collector_active():
+	var is_auto_collect: bool = false
+	if gm_ref != null:
+		if gm_ref.has_method("is_vip_auto_collector_active") and gm_ref.is_vip_auto_collector_active():
+			is_auto_collect = true
+		elif ("is_fever_active" in gm_ref and gm_ref.is_fever_active) or (gm_ref.has_method("is_fever_mode_active") and gm_ref.is_fever_mode_active()):
+			is_auto_collect = true
+	if is_auto_collect:
 		if tables_container != null:
 			for t in tables_container.get_children():
 				if is_instance_valid(t) and t.has_method("has_visible_cash_stack") and t.has_visible_cash_stack():
@@ -2568,6 +2574,9 @@ func _run_bartender_service(order: Dictionary) -> void:
 		if bar_root != null:
 			lounge_bartender = bar_root.get_node_or_null("LoungeBartender")
 	
+	var gm_bartender = get_node_or_null("/root/GameManager")
+	var fever_spd: float = gm_bartender.get_fever_speed_multiplier() if gm_bartender != null and gm_bartender.has_method("get_fever_speed_multiplier") else 1.0
+	
 	var b_node = lounge_bartender
 	if b_node != null:
 		var target_x = clamp(seat["counter_pos"].x, -8.8, -5.0)
@@ -2577,7 +2586,7 @@ func _run_bartender_service(order: Dictionary) -> void:
 			ap.play("walk")
 			
 		var tw_walk = create_tween()
-		tw_walk.tween_property(b_node, "position", target_pos, 0.45)
+		tw_walk.tween_property(b_node, "position", target_pos, 0.45 / fever_spd)
 		await tw_walk.finished
 		
 		if ap != null and ap.has_animation("interact-right"):
@@ -2585,16 +2594,16 @@ func _run_bartender_service(order: Dictionary) -> void:
 			
 		if bartender_shaker_prop != null:
 			var tw_shaker = create_tween()
-			tw_shaker.tween_property(bartender_shaker_prop, "position:y", 1.15, 0.25)
-			tw_shaker.tween_property(bartender_shaker_prop, "position:y", 0.95, 0.25)
-			tw_shaker.tween_property(bartender_shaker_prop, "position:y", 1.15, 0.25)
-			tw_shaker.tween_property(bartender_shaker_prop, "position:y", 0.95, 0.25)
+			tw_shaker.tween_property(bartender_shaker_prop, "position:y", 1.15, 0.25 / fever_spd)
+			tw_shaker.tween_property(bartender_shaker_prop, "position:y", 0.95, 0.25 / fever_spd)
+			tw_shaker.tween_property(bartender_shaker_prop, "position:y", 1.15, 0.25 / fever_spd)
+			tw_shaker.tween_property(bartender_shaker_prop, "position:y", 0.95, 0.25 / fever_spd)
 	
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("play_sfx"):
 		am.play_sfx("bell", 0.03, 1.2)
 		
-	await get_tree().create_timer(1.6).timeout
+	await get_tree().create_timer(1.6 / fever_spd).timeout
 	if not is_instance_valid(cust) or cust.current_state != cust.State.SEATED_ORDERING:
 		bartender_state = StaffState.IDLE
 		if b_node != null:
@@ -2651,21 +2660,23 @@ func _run_barista_service(order: Dictionary) -> void:
 			
 	var b_node = diner_barista
 	
+	var gm = get_node_or_null("/root/GameManager")
+	var lvl = gm.get_station_level("milkshake_bar") if gm != null else 1
+	var fever_spd: float = gm.get_fever_speed_multiplier() if gm != null and gm.has_method("get_fever_speed_multiplier") else 1.0
+	
 	# Move to blenders
 	if b_node != null:
 		var ap: AnimationPlayer = _find_char_anim_player(b_node)
 		if ap != null and ap.has_animation("walk"):
 			ap.play("walk")
 		var tw_walk = create_tween()
-		tw_walk.tween_property(b_node, "position", Vector3(-2.85, 0.0, -1.6), 0.35)
+		tw_walk.tween_property(b_node, "position", Vector3(-2.85, 0.0, -1.6), 0.35 / fever_spd)
 		await tw_walk.finished
 		if ap != null and ap.has_animation("interact-right"):
 			ap.play("interact-right")
 			
 	# Radial Timer ring operation over chrome blenders
-	var gm = get_node_or_null("/root/GameManager")
-	var lvl = gm.get_station_level("milkshake_bar") if gm != null else 1
-	var prep_time = max(1.0, 2.8 - (lvl - 1) * 0.04)
+	var prep_time = max(0.5, (2.8 - (lvl - 1) * 0.04) / fever_spd)
 	
 	if barista_radial_mesh != null and barista_radial_mesh.material_override is ShaderMaterial:
 		barista_radial_mesh.visible = true
@@ -2692,7 +2703,7 @@ func _run_barista_service(order: Dictionary) -> void:
 			ap.play("walk")
 		var local_target_z = clamp(seat["seat_pos"].z - (-7.0), -2.4, 2.4)
 		var tw_serve = create_tween()
-		tw_serve.tween_property(b_node, "position", Vector3(-2.85, 0.0, local_target_z), 0.35)
+		tw_serve.tween_property(b_node, "position", Vector3(-2.85, 0.0, local_target_z), 0.35 / fever_spd)
 		await tw_serve.finished
 		if ap != null and ap.has_animation("interact-right"):
 			ap.play("interact-right")
@@ -3043,6 +3054,8 @@ func register_cash_collection(pos: Vector3, base_amount: float) -> void:
 		gm.add_cash(final_amount, pos)
 		if gm.has_method("record_table_cash_collected"):
 			gm.record_table_cash_collected()
+		if gm.has_method("add_fever_charge"):
+			gm.add_fever_charge(8.0)
 			
 	var am = get_node_or_null("/root/AudioManager")
 	if am != null and am.has_method("play_sfx"):

@@ -11,6 +11,14 @@ extends CanvasLayer
 
 @onready var cash_label: Label = $HUD/TopBar/CashPanel/HBox/VBox/CashLabel
 @onready var cash_rate_label: Label = $HUD/TopBar/CashPanel/HBox/VBox/RateLabel
+@onready var fever_cash_badge: Label = get_node_or_null("HUD/TopBar/CashPanel/HBox/VBox/FeverCashBadge")
+@onready var fever_combo_bar: Control = get_node_or_null("HUD/FeverComboBar")
+@onready var fever_fill_bar: ProgressBar = get_node_or_null("HUD/FeverComboBar/HBox/FillBar")
+@onready var fever_title_label: Label = get_node_or_null("HUD/FeverComboBar/HBox/FeverTitleLabel")
+@onready var fever_percent_label: Label = get_node_or_null("HUD/FeverComboBar/HBox/FeverPercentLabel")
+@onready var tap_to_surge_btn: Button = get_node_or_null("HUD/FeverComboBar/HBox/TapToSurgeBtn")
+@onready var golden_fever_vignette: Control = get_node_or_null("HUD/GoldenFeverVignette")
+var _fever_vignette_tween: Tween = null
 @onready var gem_panel: PanelContainer = get_node_or_null("HUD/TopBar/GemPanel")
 @onready var gem_label: Label = $HUD/TopBar/GemPanel/HBox/GemLabel
 @onready var add_gem_btn: Button = $HUD/TopBar/GemPanel/HBox/AddGemBtn
@@ -673,6 +681,8 @@ func _ready() -> void:
 		claim_daily_btn.pressed.connect(_on_claim_daily_pressed)
 	if wheel_graphic != null:
 		wheel_graphic.draw.connect(_on_wheel_graphic_draw)
+	if tap_to_surge_btn != null:
+		tap_to_surge_btn.pressed.connect(_on_tap_to_surge_pressed)
 
 	# Connect GameManager signals
 	var gm = get_node_or_null("/root/GameManager")
@@ -757,6 +767,14 @@ func _ready() -> void:
 		if gm.has_signal("investor_offer_requested"):
 			if not gm.investor_offer_requested.is_connected(_on_investor_offer_requested):
 				gm.investor_offer_requested.connect(_on_investor_offer_requested)
+		if gm.has_signal("fever_meter_updated"):
+			if not gm.fever_meter_updated.is_connected(_on_fever_meter_updated):
+				gm.fever_meter_updated.connect(_on_fever_meter_updated)
+			_on_fever_meter_updated(gm.fever_charge, gm.fever_max_charge, gm.is_fever_active)
+		if gm.has_signal("fever_mode_changed"):
+			if not gm.fever_mode_changed.is_connected(_on_fever_mode_changed):
+				gm.fever_mode_changed.connect(_on_fever_mode_changed)
+			_on_fever_mode_changed(gm.is_fever_active, gm.fever_timer)
 		if gm.has_signal("spawn_flying_currency_trail"):
 			gm.spawn_flying_currency_trail.connect(spawn_flying_currency_trail)
 		if gm.has_signal("marketing_changed"):
@@ -847,6 +865,7 @@ func _ready() -> void:
 	if quick_buy_btn != null:
 		_connect_hold_upgrade_button(quick_buy_btn, func(): return quick_upgrade_station_id, false, "1")
 	_refresh_quick_upgrade_pill()
+	_setup_fever_ui_fallback()
 
 # ─── Tactile Squash-and-Stretch & Affordability Feedback ────────────────────
 func apply_button_squash_and_stretch(btn: Button) -> void:
@@ -6944,6 +6963,206 @@ func _unhandled_input(event: InputEvent) -> void:
 		or (event is InputEventScreenTouch and event.pressed):
 		if station_callout_card != null and station_callout_card.visible:
 			dismiss_station_callout()
+
+# ─── Diner Fever Combo Bar & Golden Frenzy UI ──────────────────────────────
+func _setup_fever_ui_fallback() -> void:
+	if fever_combo_bar == null:
+		fever_combo_bar = get_node_or_null("HUD/FeverComboBar")
+	if fever_fill_bar == null:
+		fever_fill_bar = get_node_or_null("HUD/FeverComboBar/HBox/FillBar")
+	if fever_title_label == null:
+		fever_title_label = get_node_or_null("HUD/FeverComboBar/HBox/FeverTitleLabel")
+	if fever_percent_label == null:
+		fever_percent_label = get_node_or_null("HUD/FeverComboBar/HBox/FeverPercentLabel")
+	if tap_to_surge_btn == null:
+		tap_to_surge_btn = get_node_or_null("HUD/FeverComboBar/HBox/TapToSurgeBtn")
+		if tap_to_surge_btn != null and not tap_to_surge_btn.pressed.is_connected(_on_tap_to_surge_pressed):
+			tap_to_surge_btn.pressed.connect(_on_tap_to_surge_pressed)
+	if golden_fever_vignette == null:
+		golden_fever_vignette = get_node_or_null("HUD/GoldenFeverVignette")
+	if fever_cash_badge == null:
+		fever_cash_badge = get_node_or_null("HUD/TopBar/CashPanel/HBox/VBox/FeverCashBadge")
+
+	# Dynamic creation fallback if HUD node exists but bar doesn't
+	var hud_root = get_node_or_null("HUD")
+	if hud_root is Control and fever_combo_bar == null:
+		var bar = PanelContainer.new()
+		bar.name = "FeverComboBar"
+		bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+		bar.offset_left = 12.0
+		bar.offset_top = 22.0
+		bar.offset_right = -12.0
+		bar.offset_bottom = 44.0
+		
+		var track_sb = StyleBoxFlat.new()
+		track_sb.bg_color = Color(0.12, 0.08, 0.04, 0.9)
+		track_sb.set_border_width_all(2)
+		track_sb.border_color = Color(0.85, 0.55, 0.1, 0.85)
+		track_sb.set_corner_radius_all(11)
+		bar.add_theme_stylebox_override("panel", track_sb)
+		
+		var hbox = HBoxContainer.new()
+		hbox.name = "HBox"
+		hbox.add_theme_constant_override("separation", 8)
+		bar.add_child(hbox)
+		
+		var t_lbl = Label.new()
+		t_lbl.name = "FeverTitleLabel"
+		t_lbl.text = "🔥 FEVER COMBO"
+		t_lbl.add_theme_font_size_override("font_size", 11)
+		t_lbl.add_theme_color_override("font_color", Color(1.0, 0.75, 0.15, 1.0))
+		t_lbl.add_theme_color_override("font_outline_color", Color(0.2, 0.08, 0.0, 1.0))
+		t_lbl.add_theme_constant_override("outline_size", 4)
+		hbox.add_child(t_lbl)
+		fever_title_label = t_lbl
+		
+		var pb = ProgressBar.new()
+		pb.name = "FillBar"
+		pb.custom_minimum_size = Vector2(0, 10)
+		pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pb.show_percentage = false
+		
+		var bg_sb = StyleBoxFlat.new()
+		bg_sb.bg_color = Color(0.2, 0.12, 0.06, 0.95)
+		bg_sb.set_corner_radius_all(5)
+		var fill_sb = StyleBoxFlat.new()
+		fill_sb.bg_color = Color(1.0, 0.62, 0.05, 1.0)
+		fill_sb.set_corner_radius_all(5)
+		fill_sb.set_border_width_all(1)
+		fill_sb.border_color = Color(1.0, 0.9, 0.35, 1.0)
+		pb.add_theme_stylebox_override("background", bg_sb)
+		pb.add_theme_stylebox_override("fill", fill_sb)
+		hbox.add_child(pb)
+		fever_fill_bar = pb
+		
+		var p_lbl = Label.new()
+		p_lbl.name = "FeverPercentLabel"
+		p_lbl.text = "0%"
+		p_lbl.custom_minimum_size = Vector2(40, 0)
+		p_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		p_lbl.add_theme_font_size_override("font_size", 10)
+		p_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5, 1.0))
+		p_lbl.add_theme_color_override("font_outline_color", Color(0.2, 0.08, 0.0, 1.0))
+		p_lbl.add_theme_constant_override("outline_size", 3)
+		hbox.add_child(p_lbl)
+		fever_percent_label = p_lbl
+		
+		var surge_b = Button.new()
+		surge_b.name = "TapToSurgeBtn"
+		surge_b.text = "⚡ SURGE (+2%)"
+		surge_b.custom_minimum_size = Vector2(95, 20)
+		surge_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		surge_b.add_theme_font_size_override("font_size", 10)
+		surge_b.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+		surge_b.add_theme_color_override("font_outline_color", Color(0.25, 0.12, 0.0, 1.0))
+		surge_b.add_theme_constant_override("outline_size", 4)
+		var s_sb = StyleBoxFlat.new()
+		s_sb.bg_color = Color(0.88, 0.45, 0.05, 1.0)
+		s_sb.set_corner_radius_all(6)
+		s_sb.set_border_width_all(1)
+		s_sb.border_color = Color(1.0, 0.88, 0.3, 1.0)
+		surge_b.add_theme_stylebox_override("normal", s_sb)
+		surge_b.pressed.connect(_on_tap_to_surge_pressed)
+		hbox.add_child(surge_b)
+		tap_to_surge_btn = surge_b
+		
+		hud_root.add_child(bar)
+		fever_combo_bar = bar
+
+	if hud_root is Control and golden_fever_vignette == null:
+		var vig = Panel.new()
+		vig.name = "GoldenFeverVignette"
+		vig.set_anchors_preset(Control.PRESET_FULL_RECT)
+		vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vig.visible = false
+		var vig_sb = StyleBoxFlat.new()
+		vig_sb.draw_center = false
+		vig_sb.set_border_width_all(18)
+		vig_sb.border_color = Color(1.0, 0.78, 0.15, 0.85)
+		vig_sb.set_corner_radius_all(24)
+		vig_sb.shadow_color = Color(1.0, 0.6, 0.05, 0.55)
+		vig_sb.shadow_size = 45
+		vig.add_theme_stylebox_override("panel", vig_sb)
+		hud_root.add_child(vig)
+		golden_fever_vignette = vig
+
+	var cash_vbox = get_node_or_null("HUD/TopBar/CashPanel/HBox/VBox")
+	if cash_vbox is Control and fever_cash_badge == null:
+		var badge = Label.new()
+		badge.name = "FeverCashBadge"
+		badge.text = "x2 FEVER SPEED & PROFIT"
+		badge.visible = false
+		badge.add_theme_font_size_override("font_size", 9)
+		badge.add_theme_color_override("font_color", Color(1.0, 0.85, 0.1, 1.0))
+		badge.add_theme_color_override("font_outline_color", Color(0.3, 0.15, 0.0, 1.0))
+		badge.add_theme_constant_override("outline_size", 3)
+		cash_vbox.add_child(badge)
+		fever_cash_badge = badge
+
+func _on_tap_to_surge_pressed() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_method("tap_fever_surge"):
+		gm.tap_fever_surge()
+		if tap_to_surge_btn != null:
+			_punch_ui_element(tap_to_surge_btn)
+
+func _on_fever_meter_updated(current: float, max_val: float, is_active: bool) -> void:
+	if fever_fill_bar != null:
+		fever_fill_bar.max_value = max_val
+		fever_fill_bar.value = current
+	if fever_percent_label != null:
+		if is_active:
+			var sec_left = ceil((current / max(1.0, max_val)) * 20.0)
+			fever_percent_label.text = "%ds" % int(sec_left)
+		else:
+			var pct = round((current / max(1.0, max_val)) * 100.0)
+			fever_percent_label.text = "%d%%" % int(pct)
+	if fever_title_label != null:
+		if is_active:
+			fever_title_label.text = "🔥 FEVER OVERDRIVE!"
+		else:
+			fever_title_label.text = "🔥 FEVER COMBO"
+
+func _on_fever_mode_changed(active: bool, _time_left: float) -> void:
+	var cash_p = get_node_or_null("HUD/TopBar/CashPanel")
+	if active:
+		if tap_to_surge_btn != null:
+			tap_to_surge_btn.text = "🔥 2X ACTIVE!"
+			tap_to_surge_btn.disabled = true
+		if fever_cash_badge != null:
+			fever_cash_badge.visible = true
+		if cash_label != null:
+			cash_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.2, 1.0))
+		if cash_p is Control:
+			cash_p.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style(Color(0.28, 0.16, 0.04, 0.98), Color(1.0, 0.82, 0.2, 1.0)))
+		
+		# Golden vignette border pulse
+		if golden_fever_vignette != null:
+			golden_fever_vignette.visible = true
+			if _fever_vignette_tween != null and _fever_vignette_tween.is_valid():
+				_fever_vignette_tween.kill()
+			_fever_vignette_tween = create_tween().set_loops()
+			_fever_vignette_tween.tween_property(golden_fever_vignette, "modulate:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			_fever_vignette_tween.tween_property(golden_fever_vignette, "modulate:a", 0.45, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	else:
+		if tap_to_surge_btn != null:
+			tap_to_surge_btn.text = "⚡ SURGE (+2%)"
+			tap_to_surge_btn.disabled = false
+		if fever_cash_badge != null:
+			fever_cash_badge.visible = false
+		if cash_label != null:
+			cash_label.add_theme_color_override("font_color", Color(0.35, 1.0, 0.6, 1.0))
+		if cash_p is Control:
+			cash_p.add_theme_stylebox_override("panel", create_mobile_currency_capsule_style())
+			
+		if golden_fever_vignette != null:
+			if _fever_vignette_tween != null and _fever_vignette_tween.is_valid():
+				_fever_vignette_tween.kill()
+				_fever_vignette_tween = null
+			golden_fever_vignette.visible = false
+			golden_fever_vignette.modulate.a = 1.0
+
 
 
 

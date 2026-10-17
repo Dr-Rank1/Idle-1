@@ -687,7 +687,87 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 	dummy_station.queue_free()
 	callout_hud.queue_free()
 
-	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, and Quick-Upgrade Pill validated.")
+	# Part 8: Diner Fever Combo Bar & Golden Frenzy Overdrive System
+	print("\n--- [FRAME 20 Part 8] Asserting Diner Fever Combo Bar & Golden Frenzy Overdrive ---")
+	# 1. State and Charging Logic
+	gm.is_fever_active = false
+	gm.fever_charge = 0.0
+	gm.fever_timer = 0.0
+	_assert_test(gm.fever_charge == 0.0, "Fever charge initialized at 0%")
+	_assert_test(gm.is_fever_mode_active() == false, "Fever overdrive is inactive initially")
+	_assert_test(gm.get_fever_speed_multiplier() == 1.0, "Default speed multiplier is 1.0x")
+	_assert_test(gm.get_fever_profit_multiplier() == 1.0, "Default profit multiplier is 1.0x")
+
+	# Add fever charge (e.g. Speedy Tip or Cash stack swipe +8%)
+	gm.add_fever_charge(8.0)
+	_assert_test(gm.fever_charge == 8.0, "Serving speedy tip / swiping cash increments fever charge by +8%")
+
+	# Manual Tap To Surge (+2%)
+	gm.tap_fever_surge()
+	_assert_test(gm.fever_charge == 10.0, "Manual Tap to Surge button adds +2% fever charge")
+
+	# Customer walkout penalty (-25%)
+	gm.penalize_fever_charge(25.0)
+	_assert_test(gm.fever_charge == 0.0, "Customer walkout penalizes unactivated combo charge by -25% (clamped at 0)")
+
+	# Build up charge to trigger Frenzy Overdrive (100%)
+	gm.add_fever_charge(100.0)
+	_assert_test(gm.is_fever_mode_active() == true, "Reaching 100% charge activates FEVER MODE frenzy")
+	_assert_test(gm.fever_timer == 20.0, "Fever mode duration is 20 seconds")
+	_assert_test(gm.get_fever_speed_multiplier() == 2.0, "Fever mode doubles speed multiplier to 2.0x")
+	_assert_test(gm.get_fever_profit_multiplier() == 2.0, "Fever mode doubles profit multiplier to 2.0x")
+
+	# Audio pitch shift verification
+	var am_ref = root.get_node_or_null("AudioManager")
+	_assert_test(am_ref != null and am_ref.has_method("set_fever_pitch"), "AudioManager has set_fever_pitch method")
+	if am_ref != null:
+		am_ref.set_fever_pitch(true)
+		_assert_test(is_equal_approx(am_ref.get_ambience_pitch(), 1.08), "Ambience pitch scale increases by 8% (1.08x) during frenzy")
+		am_ref.set_fever_pitch(false)
+		_assert_test(is_equal_approx(am_ref.get_ambience_pitch(), 1.0), "Ambience pitch scale returns to 1.0x after frenzy")
+
+	# Unactivated penalty ignored during active fever
+	gm.penalize_fever_charge(25.0)
+	_assert_test(gm.is_fever_mode_active() == true, "Walkouts during active frenzy do not cancel fever mode")
+
+	# Overdrive profit doubled in add_cash
+	var pre_cash = gm.cash
+	gm.add_cash(100.0)
+	var cash_gain = gm.cash - pre_cash
+	_assert_test(cash_gain >= 200.0, "Revenue collected during fever mode receives 2.0x profit multiplier")
+
+	# End fever mode
+	gm.end_fever_mode()
+	_assert_test(gm.is_fever_mode_active() == false, "end_fever_mode restores normal state")
+	_assert_test(gm.get_fever_speed_multiplier() == 1.0, "Speed multiplier returns to 1.0x after fever ends")
+	_assert_test(gm.get_fever_profit_multiplier() == 1.0, "Profit multiplier returns to 1.0x after fever ends")
+
+	# 2. UI Nodes Verification
+	var fever_hud = hud_scn.instantiate()
+	root.add_child(fever_hud)
+
+	var fever_bar = fever_hud.find_child("FeverComboBar", true, false)
+	_assert_test(fever_bar != null, "FeverComboBar node exists in HUD directly beneath top star bar")
+	var fever_fill = fever_hud.find_child("FillBar", true, false)
+	_assert_test(fever_fill != null, "FeverComboBar includes segmented fill progress bar")
+	var surge_btn = fever_hud.find_child("TapToSurgeBtn", true, false)
+	_assert_test(surge_btn != null and "SURGE" in surge_btn.text, "FeverComboBar includes manual TAP TO SURGE lightning button")
+	var vignette = fever_hud.find_child("GoldenFeverVignette", true, false)
+	_assert_test(vignette != null, "GoldenFeverVignette exists in HUD for screen-space edge glow")
+	var fever_badge = fever_hud.find_child("FeverCashBadge", true, false)
+	_assert_test(fever_badge != null, "FeverCashBadge exists on CashPanel")
+
+	# Test UI response to fever activation
+	gm.start_fever_mode()
+	_assert_test(vignette.visible == true, "GoldenFeverVignette turns visible when frenzy activates")
+	_assert_test(fever_badge.visible == true, "FeverCashBadge displays x2 FEVER SPEED & PROFIT during frenzy")
+	gm.end_fever_mode()
+	_assert_test(vignette.visible == false, "GoldenFeverVignette hides when frenzy ends")
+	_assert_test(fever_badge.visible == false, "FeverCashBadge hides when frenzy ends")
+
+	fever_hud.queue_free()
+
+	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, and Diner Fever validated.")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Frame 25: Teardown & Summary

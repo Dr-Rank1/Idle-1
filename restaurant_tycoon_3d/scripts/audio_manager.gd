@@ -71,6 +71,15 @@ func start_ambience() -> void:
 	if ambience_player != null and is_instance_valid(ambience_player) and not ambience_player.playing:
 		ambience_player.play()
 
+func set_fever_pitch(active: bool) -> void:
+	if ambience_player != null and is_instance_valid(ambience_player):
+		ambience_player.pitch_scale = 1.08 if active else 1.0
+
+func get_ambience_pitch() -> float:
+	if ambience_player != null and is_instance_valid(ambience_player):
+		return ambience_player.pitch_scale
+	return 1.0
+
 func play_sfx(sound_name: String, pitch_range: float = 0.05, volume_offset: float = 0.0, custom_pitch: float = 1.0) -> void:
 	var stream = sounds.get(sound_name)
 	if stream == null:

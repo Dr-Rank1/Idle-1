@@ -55,6 +55,8 @@ signal manager_assigned(sector_id: String, tier: String)
 signal star_dish_unlocked(star_tier: int, dish_info: Dictionary)
 signal piggy_bank_updated(current: int, max_cap: int)
 signal investor_offer_requested(investor_node: Node3D, cash_amount: float, diamond_amount: int)
+signal fever_meter_updated(current: float, max_val: float, is_active: bool)
+signal fever_mode_changed(active: bool, time_left: float)
 
 var restaurant_node: Node3D = null
 
@@ -161,6 +163,13 @@ var unlocked_star_tiers: Array = [1]
 var claimed_star_rewards: Array = []
 const PIGGY_BANK_CAP: int = 250
 var piggy_bank_diamonds: int = 0
+
+# ─── Diner Fever Combo State ────────────────────────────────────────────────
+var fever_charge: float = 0.0
+var fever_max_charge: float = 100.0
+var is_fever_active: bool = false
+var fever_timer: float = 0.0
+const FEVER_DURATION: float = 20.0
 
 # ─── Play Store Star Rating Signature Dishes ────────────────────────────────
 const STAR_DISH_TIERS: Dictionary = {
@@ -1300,6 +1309,7 @@ func save_game() -> void:
 		"prestige_level": prestige_level,
 		"franchise_keys": franchise_keys,
 		"piggy_bank_diamonds": piggy_bank_diamonds,
+		"fever_charge": fever_charge,
 		"unlocked_star_tiers": unlocked_star_tiers,
 		"claimed_star_rewards": claimed_star_rewards,
 		"restaurant_valuation": get_restaurant_valuation(),
@@ -1325,6 +1335,7 @@ func load_game() -> void:
 	cash = float(parsed.get("cash", cash))
 	diamonds = int(parsed.get("diamonds", parsed.get("gems", diamonds)))
 	golden_coins = int(parsed.get("golden_coins", golden_coins))
+	fever_charge = float(parsed.get("fever_charge", fever_charge))
 	energy = int(parsed.get("energy", energy))
 	energy = clampi(energy, 0, max_energy)
 	energy_regen_timer = float(parsed.get("energy_regen_timer", energy_regen_timer))
@@ -1513,6 +1524,16 @@ func _process(delta: float) -> void:
 			rush_hour_auto_timer = RUSH_HOUR_AUTO_INTERVAL
 			_activate_rush_hour(false)
 
+	# Update Diner Fever Frenzy
+	if is_fever_active:
+		fever_timer -= delta
+		if fever_timer <= 0.0:
+			end_fever_mode()
+		else:
+			fever_charge = (fever_timer / FEVER_DURATION) * fever_max_charge
+			fever_meter_updated.emit(fever_charge, fever_max_charge, true)
+			fever_mode_changed.emit(true, fever_timer)
+
 	# Update marketing campaigns
 	for camp_id in campaigns.keys():
 		var c = campaigns[camp_id]
@@ -1551,7 +1572,8 @@ func toggle_boost() -> void:
 
 func add_cash(amount: float, world_pos: Vector3 = Vector3.ZERO) -> void:
 	var rest_mult: float = get_active_revenue_multiplier()
-	var final_amount: float = amount * rest_mult
+	var fever_mult: float = get_fever_profit_multiplier()
+	var final_amount: float = amount * rest_mult * fever_mult
 	cash += final_amount
 	total_earned += final_amount
 	
@@ -1894,6 +1916,8 @@ func get_station_income(station_id: String) -> float:
 		rev *= get_active_revenue_multiplier()
 	if has_method("get_prestige_multiplier"):
 		rev *= get_prestige_multiplier()
+	if is_fever_active:
+		rev *= get_fever_profit_multiplier()
 	
 	var sid = station_id.to_lower()
 	if (sid == "cocktail_lounge" or sid == "bar") and has_method("get_card_cocktail_revenue_multiplier"):
@@ -3728,4 +3752,59 @@ func claim_daily_login() -> Dictionary:
 		am.play_sfx("cash_register", 0.05, 1.2)
 		
 	return reward
+
+# ─── Diner Fever Combo & Frenzy Overdrive ──────────────────────────────────
+func add_fever_charge(amount: float) -> void:
+	if is_fever_active:
+		return
+	fever_charge = clampf(fever_charge + amount, 0.0, fever_max_charge)
+	fever_meter_updated.emit(fever_charge, fever_max_charge, is_fever_active)
+	if fever_charge >= fever_max_charge:
+		start_fever_mode()
+
+func penalize_fever_charge(amount: float = 25.0) -> void:
+	if is_fever_active:
+		return
+	fever_charge = clampf(fever_charge - amount, 0.0, fever_max_charge)
+	fever_meter_updated.emit(fever_charge, fever_max_charge, is_fever_active)
+
+func tap_fever_surge() -> void:
+	if is_fever_active:
+		return
+	add_fever_charge(2.0)
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("coin", 0.06, 0.0, 1.35)
+
+func start_fever_mode() -> void:
+	is_fever_active = true
+	fever_timer = FEVER_DURATION
+	fever_charge = fever_max_charge
+	fever_mode_changed.emit(true, fever_timer)
+	fever_meter_updated.emit(fever_charge, fever_max_charge, true)
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null:
+		if am.has_method("set_fever_pitch"):
+			am.set_fever_pitch(true)
+		if am.has_method("play_sfx"):
+			am.play_sfx("upgrade", 0.0, 3.0, 1.25)
+
+func end_fever_mode() -> void:
+	is_fever_active = false
+	fever_timer = 0.0
+	fever_charge = 0.0
+	fever_mode_changed.emit(false, 0.0)
+	fever_meter_updated.emit(fever_charge, fever_max_charge, false)
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("set_fever_pitch"):
+		am.set_fever_pitch(false)
+
+func is_fever_mode_active() -> bool:
+	return is_fever_active
+
+func get_fever_speed_multiplier() -> float:
+	return 2.0 if is_fever_active else 1.0
+
+func get_fever_profit_multiplier() -> float:
+	return 2.0 if is_fever_active else 1.0
 
