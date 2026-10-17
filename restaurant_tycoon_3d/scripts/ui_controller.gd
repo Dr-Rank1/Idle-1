@@ -249,6 +249,23 @@ var quick_upgrade_station_id: String = ""
 var quick_upgrade_refresh_timer: float = 0.0
 var _hold_forced_multiplier: String = ""
 
+# ─── Collapsible Side Dock & Clean View Mode ────────────────────────────────
+@onready var dock_collapse_btn: Button = get_node_or_null("HUD/RightDock/DockControlsRow/DockCollapseBtn")
+@onready var clean_view_btn: Button = get_node_or_null("HUD/RightDock/DockControlsRow/CleanViewBtn")
+var is_dock_collapsed: bool = false
+var is_clean_view_active: bool = false
+var clean_view_timer: float = 0.0
+var clean_view_indicator: PanelContainer = null
+var _dock_tween: Tween = null
+
+# ─── 3-Stage Pipeline Balance Widget (Parking -> Kitchen -> Seating) ────────
+@onready var pipeline_widget: PanelContainer = get_node_or_null("HUD/PipelineBalanceWidget")
+@onready var pipeline_parking_btn: Button = get_node_or_null("HUD/PipelineBalanceWidget/HBox/PipelineParkingBtn")
+@onready var pipeline_kitchen_btn: Button = get_node_or_null("HUD/PipelineBalanceWidget/HBox/PipelineKitchenBtn")
+@onready var pipeline_seating_btn: Button = get_node_or_null("HUD/PipelineBalanceWidget/HBox/PipelineSeatingBtn")
+var pipeline_refresh_timer: float = 0.0
+var pipeline_weakest_sector: String = "parking"
+
 var quest_banner_style_normal: StyleBoxFlat = null
 var quest_banner_style_completed: StyleBoxFlat = null
 var is_spinning_wheel: bool = false
@@ -877,6 +894,9 @@ func _ready() -> void:
 		_connect_hold_upgrade_button(quick_buy_btn, func(): return quick_upgrade_station_id, false, "1")
 	_refresh_quick_upgrade_pill()
 	_setup_fever_ui_fallback()
+	_setup_dock_controls_fallback()
+	_setup_clean_view_indicator()
+	_setup_pipeline_ui_fallback()
 
 # ─── Tactile Squash-and-Stretch & Affordability Feedback ────────────────────
 func apply_button_squash_and_stretch(btn: Button) -> void:
@@ -1445,6 +1465,16 @@ func _process(delta: float) -> void:
 	if quick_upgrade_refresh_timer >= 0.5:
 		quick_upgrade_refresh_timer = 0.0
 		_refresh_quick_upgrade_pill()
+
+	pipeline_refresh_timer += delta
+	if pipeline_refresh_timer >= 0.5:
+		pipeline_refresh_timer = 0.0
+		_refresh_pipeline_widget()
+
+	if is_clean_view_active:
+		clean_view_timer -= delta
+		if clean_view_timer <= 0.0:
+			end_clean_view()
 
 	# ─── VIP Arrival Alert Toast Countdown ─────────────────────────────────────
 	if active_vip_toast != null and is_instance_valid(active_vip_toast):
@@ -6974,6 +7004,10 @@ func _find_station_node(station_id: String) -> Node3D:
 func _unhandled_input(event: InputEvent) -> void:
 	if (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) \
 		or (event is InputEventScreenTouch and event.pressed):
+		if is_clean_view_active:
+			end_clean_view()
+			get_viewport().set_input_as_handled()
+			return
 		if station_callout_card != null and station_callout_card.visible:
 			dismiss_station_callout()
 		if character_inspector_card != null and character_inspector_card.visible:
@@ -7461,6 +7495,402 @@ func _on_fever_mode_changed(active: bool, _time_left: float) -> void:
 				_fever_vignette_tween = null
 			golden_fever_vignette.visible = false
 			golden_fever_vignette.modulate.a = 1.0
+
+# ─── Collapsible Side Dock & Clean View Controller ──────────────────────────
+func _setup_dock_controls_fallback() -> void:
+	var right_dock = get_node_or_null("HUD/RightDock")
+	if right_dock == null:
+		return
+	
+	var controls_row = right_dock.get_node_or_null("DockControlsRow")
+	if controls_row == null:
+		controls_row = HBoxContainer.new()
+		controls_row.name = "DockControlsRow"
+		controls_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		controls_row.add_theme_constant_override("separation", 8)
+		right_dock.add_child(controls_row)
+		right_dock.move_child(controls_row, 0)
+	
+	if dock_collapse_btn == null:
+		var col_btn = controls_row.get_node_or_null("DockCollapseBtn")
+		if col_btn == null:
+			col_btn = Button.new()
+			col_btn.name = "DockCollapseBtn"
+			col_btn.custom_minimum_size = Vector2(34, 34)
+			col_btn.text = "▼"
+			col_btn.add_theme_font_size_override("font_size", 13)
+			col_btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+			col_btn.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.05, 1.0))
+			col_btn.add_theme_constant_override("outline_size", 4)
+			
+			var col_sb = StyleBoxFlat.new()
+			col_sb.bg_color = Color(0.2, 0.22, 0.28, 0.95)
+			col_sb.set_corner_radius_all(17)
+			col_sb.set_border_width_all(2)
+			col_sb.border_color = Color(0.55, 0.6, 0.7, 0.9)
+			col_btn.add_theme_stylebox_override("normal", col_sb)
+			controls_row.add_child(col_btn)
+		dock_collapse_btn = col_btn
+
+	if clean_view_btn == null:
+		var cv_btn = controls_row.get_node_or_null("CleanViewBtn")
+		if cv_btn == null:
+			cv_btn = Button.new()
+			cv_btn.name = "CleanViewBtn"
+			cv_btn.custom_minimum_size = Vector2(34, 34)
+			cv_btn.text = "📸"
+			cv_btn.add_theme_font_size_override("font_size", 14)
+			cv_btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+			cv_btn.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.05, 1.0))
+			cv_btn.add_theme_constant_override("outline_size", 4)
+			
+			var cv_sb = StyleBoxFlat.new()
+			cv_sb.bg_color = Color(0.2, 0.22, 0.28, 0.95)
+			cv_sb.set_corner_radius_all(17)
+			cv_sb.set_border_width_all(2)
+			cv_sb.border_color = Color(0.55, 0.6, 0.7, 0.9)
+			cv_btn.add_theme_stylebox_override("normal", cv_sb)
+			controls_row.add_child(cv_btn)
+		clean_view_btn = cv_btn
+
+	if dock_collapse_btn != null and not dock_collapse_btn.pressed.is_connected(toggle_side_dock):
+		dock_collapse_btn.pressed.connect(toggle_side_dock)
+	if clean_view_btn != null and not clean_view_btn.pressed.is_connected(activate_clean_view):
+		clean_view_btn.pressed.connect(activate_clean_view)
+
+func _get_secondary_dock_buttons() -> Array[Control]:
+	var result: Array[Control] = []
+	var right_dock = get_node_or_null("HUD/RightDock")
+	if right_dock != null:
+		for c in right_dock.get_children():
+			if c is Control and c != dock_collapse_btn and c.name != "DockControlsRow" and c != side_piggy_bank_btn:
+				result.append(c)
+	var candidates = [side_stats_btn, side_spin_btn, side_cards_btn, side_ad_btn, side_settings_btn, side_lightbulb_btn, side_staff_btn, side_map_btn]
+	for btn in candidates:
+		if btn != null and is_instance_valid(btn) and not result.has(btn):
+			result.append(btn)
+	return result
+
+func toggle_side_dock() -> void:
+	_play_click_sfx()
+	set_side_dock_collapsed(not is_dock_collapsed)
+
+func set_side_dock_collapsed(collapsed: bool) -> void:
+	is_dock_collapsed = collapsed
+	if dock_collapse_btn != null:
+		dock_collapse_btn.text = "◀" if is_dock_collapsed else "▼"
+	
+	var sec_buttons = _get_secondary_dock_buttons()
+	if DisplayServer.get_name() == "headless":
+		for btn in sec_buttons:
+			if is_instance_valid(btn):
+				btn.visible = not collapsed
+				btn.scale = Vector2.ONE if not collapsed else Vector2(0.01, 0.01)
+				btn.modulate.a = 1.0 if not collapsed else 0.0
+		return
+		
+	if _dock_tween != null and _dock_tween.is_valid():
+		_dock_tween.kill()
+	_dock_tween = create_tween()
+	
+	if collapsed:
+		for i in range(sec_buttons.size()):
+			var btn = sec_buttons[i]
+			if not is_instance_valid(btn):
+				continue
+			btn.pivot_offset = btn.size * 0.5
+			_dock_tween.parallel().tween_property(btn, "scale", Vector2(0.01, 0.01), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN).set_delay(i * 0.03)
+			_dock_tween.parallel().tween_property(btn, "modulate:a", 0.0, 0.14).set_delay(i * 0.03)
+		_dock_tween.tween_callback(func():
+			for btn in sec_buttons:
+				if is_instance_valid(btn):
+					btn.visible = false
+		)
+	else:
+		for i in range(sec_buttons.size()):
+			var btn = sec_buttons[i]
+			if not is_instance_valid(btn):
+				continue
+			btn.visible = true
+			btn.pivot_offset = btn.size * 0.5
+			btn.scale = Vector2(0.01, 0.01)
+			btn.modulate.a = 0.0
+			_dock_tween.parallel().tween_property(btn, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(i * 0.03)
+			_dock_tween.parallel().tween_property(btn, "modulate:a", 1.0, 0.18).set_delay(i * 0.03)
+
+func _setup_clean_view_indicator() -> void:
+	if clean_view_indicator != null:
+		return
+	var card = PanelContainer.new()
+	card.name = "CleanViewIndicator"
+	card.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	card.offset_left = 60.0
+	card.offset_right = -60.0
+	card.offset_top = -64.0
+	card.offset_bottom = -24.0
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.visible = false
+	
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.1, 0.12, 0.16, 0.85)
+	sb.set_corner_radius_all(18)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(1.0, 1.0, 1.0, 0.3)
+	card.add_theme_stylebox_override("panel", sb)
+	
+	var lbl = Label.new()
+	lbl.text = "📸 Clean View • Tap anywhere to restore"
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.95))
+	lbl.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.8))
+	lbl.add_theme_constant_override("outline_size", 4)
+	card.add_child(lbl)
+	
+	add_child(card)
+	clean_view_indicator = card
+
+func activate_clean_view(duration: float = 5.0) -> void:
+	_play_click_sfx()
+	is_clean_view_active = true
+	clean_view_timer = duration
+	if clean_view_indicator != null:
+		clean_view_indicator.visible = true
+	var hud_root = get_node_or_null("HUD")
+	if hud_root != null:
+		if DisplayServer.get_name() == "headless":
+			hud_root.modulate.a = 0.0
+		else:
+			var tw = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw.tween_property(hud_root, "modulate:a", 0.0, 0.25)
+
+func end_clean_view() -> void:
+	if not is_clean_view_active:
+		return
+	is_clean_view_active = false
+	clean_view_timer = 0.0
+	if clean_view_indicator != null:
+		clean_view_indicator.visible = false
+	var hud_root = get_node_or_null("HUD")
+	if hud_root != null:
+		if DisplayServer.get_name() == "headless":
+			hud_root.modulate.a = 1.0
+		else:
+			var tw = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw.tween_property(hud_root, "modulate:a", 1.0, 0.25)
+
+# ─── 3-Stage Pipeline Balance Widget (Parking -> Kitchen -> Seating) ────────
+func _setup_pipeline_ui_fallback() -> void:
+	var hud_root = get_node_or_null("HUD")
+	if hud_root == null:
+		return
+	
+	if pipeline_widget == null:
+		var p_widget = hud_root.get_node_or_null("PipelineBalanceWidget")
+		if p_widget == null:
+			p_widget = PanelContainer.new()
+			p_widget.name = "PipelineBalanceWidget"
+			p_widget.anchor_left = 1.0
+			p_widget.anchor_right = 1.0
+			p_widget.anchor_top = 0.0
+			p_widget.anchor_bottom = 0.0
+			p_widget.offset_left = -290.0
+			p_widget.offset_top = 54.0
+			p_widget.offset_right = -14.0
+			p_widget.offset_bottom = 90.0
+			p_widget.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+			
+			var p_sb = StyleBoxFlat.new()
+			p_sb.bg_color = Color(0.12, 0.14, 0.19, 0.92)
+			p_sb.set_corner_radius_all(12)
+			p_sb.set_border_width_all(1)
+			p_sb.border_color = Color(0.28, 0.32, 0.42, 0.8)
+			p_sb.content_margin_left = 6.0
+			p_sb.content_margin_right = 6.0
+			p_sb.content_margin_top = 2.0
+			p_sb.content_margin_bottom = 2.0
+			p_widget.add_theme_stylebox_override("panel", p_sb)
+			
+			var hbox = HBoxContainer.new()
+			hbox.name = "HBox"
+			hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+			hbox.add_theme_constant_override("separation", 4)
+			p_widget.add_child(hbox)
+			
+			var btn_park = Button.new()
+			btn_park.name = "PipelineParkingBtn"
+			btn_park.text = "🚗 14/m"
+			btn_park.custom_minimum_size = Vector2(74, 28)
+			btn_park.add_theme_font_size_override("font_size", 11)
+			hbox.add_child(btn_park)
+			pipeline_parking_btn = btn_park
+			
+			var arr1 = Label.new()
+			arr1.name = "Arrow1"
+			arr1.text = "➔"
+			arr1.add_theme_font_size_override("font_size", 10)
+			arr1.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.8))
+			hbox.add_child(arr1)
+			
+			var btn_kitch = Button.new()
+			btn_kitch.name = "PipelineKitchenBtn"
+			btn_kitch.text = "🍳 16/m"
+			btn_kitch.custom_minimum_size = Vector2(74, 28)
+			btn_kitch.add_theme_font_size_override("font_size", 11)
+			hbox.add_child(btn_kitch)
+			pipeline_kitchen_btn = btn_kitch
+			
+			var arr2 = Label.new()
+			arr2.name = "Arrow2"
+			arr2.text = "➔"
+			arr2.add_theme_font_size_override("font_size", 10)
+			arr2.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.8))
+			hbox.add_child(arr2)
+			
+			var btn_seat = Button.new()
+			btn_seat.name = "PipelineSeatingBtn"
+			btn_seat.text = "🪑 20/m"
+			btn_seat.custom_minimum_size = Vector2(74, 28)
+			btn_seat.add_theme_font_size_override("font_size", 11)
+			hbox.add_child(btn_seat)
+			pipeline_seating_btn = btn_seat
+			
+			hud_root.add_child(p_widget)
+		pipeline_widget = p_widget
+	
+	if pipeline_parking_btn == null:
+		pipeline_parking_btn = pipeline_widget.get_node_or_null("HBox/PipelineParkingBtn")
+	if pipeline_kitchen_btn == null:
+		pipeline_kitchen_btn = pipeline_widget.get_node_or_null("HBox/PipelineKitchenBtn")
+	if pipeline_seating_btn == null:
+		pipeline_seating_btn = pipeline_widget.get_node_or_null("HBox/PipelineSeatingBtn")
+		
+	if pipeline_parking_btn != null and not pipeline_parking_btn.pressed.is_connected(_on_pipeline_parking_pressed):
+		pipeline_parking_btn.pressed.connect(_on_pipeline_parking_pressed)
+	if pipeline_kitchen_btn != null and not pipeline_kitchen_btn.pressed.is_connected(_on_pipeline_kitchen_pressed):
+		pipeline_kitchen_btn.pressed.connect(_on_pipeline_kitchen_pressed)
+	if pipeline_seating_btn != null and not pipeline_seating_btn.pressed.is_connected(_on_pipeline_seating_pressed):
+		pipeline_seating_btn.pressed.connect(_on_pipeline_seating_pressed)
+		
+	_refresh_pipeline_widget()
+
+func _style_pipeline_stage_button(btn: Button, is_bottleneck: bool) -> void:
+	if btn == null or not is_instance_valid(btn):
+		return
+	var sb = StyleBoxFlat.new()
+	sb.set_corner_radius_all(8)
+	if is_bottleneck:
+		sb.bg_color = Color(0.88, 0.25, 0.18, 0.95)
+		sb.set_border_width_all(2)
+		sb.border_color = Color(1.0, 0.75, 0.3, 1.0)
+		btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+		btn.add_theme_color_override("font_outline_color", Color(0.35, 0.05, 0.05, 1.0))
+		btn.add_theme_constant_override("outline_size", 3)
+	else:
+		sb.bg_color = Color(0.18, 0.22, 0.28, 0.85)
+		sb.set_border_width_all(1)
+		sb.border_color = Color(0.35, 0.4, 0.5, 0.6)
+		btn.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95, 1.0))
+		btn.add_theme_color_override("font_outline_color", Color(0.1, 0.1, 0.1, 1.0))
+		btn.add_theme_constant_override("outline_size", 2)
+	sb.content_margin_left = 4.0
+	sb.content_margin_right = 4.0
+	sb.content_margin_top = 2.0
+	sb.content_margin_bottom = 2.0
+	btn.add_theme_stylebox_override("normal", sb)
+
+func get_pipeline_throughput_rates() -> Dictionary:
+	var gm = _get_game_manager()
+	if gm == null:
+		return {
+			"parking": 14,
+			"kitchen": 16,
+			"seating": 18,
+			"bottleneck": "parking"
+		}
+	
+	var p_lvl = gm.get_station_level("parking_lot")
+	var p_card_mult = gm.get_card_parking_rate_multiplier() if gm.has_method("get_card_parking_rate_multiplier") else 1.0
+	var parking_rate = int(round((14.0 + (p_lvl - 1) * 2.2) * p_card_mult))
+	
+	var k_lvl = gm.get_station_level("kitchen_cook")
+	var c_card_mult = gm.get_card_cook_speed_multiplier() if gm.has_method("get_card_cook_speed_multiplier") else 1.0
+	var f_mult = gm.get_fever_speed_multiplier() if gm.has_method("get_fever_speed_multiplier") else 1.0
+	var k_mgr_mult = 2.0 if (gm.has_method("is_manager_skill_active") and gm.is_manager_skill_active("kitchen")) else 1.0
+	var kitchen_rate = int(round((16.0 + (k_lvl - 1) * 2.4) * c_card_mult * f_mult * k_mgr_mult))
+	
+	var unlocked_count = gm.get_unlocked_tables_count() if gm.has_method("get_unlocked_tables_count") else 1
+	var total_tbl_lvl = 0
+	for i in range(1, 13):
+		var tid = "table_%d" % i
+		if gm.is_table_unlocked(tid):
+			total_tbl_lvl += gm.get_station_level(tid)
+	var avg_tbl_lvl = float(total_tbl_lvl) / max(1, unlocked_count)
+	var w_card_mult = gm.get_card_waiter_speed_multiplier() if gm.has_method("get_card_waiter_speed_multiplier") else 1.0
+	var seating_rate = int(round((unlocked_count * 5.5 + avg_tbl_lvl * 0.8) * w_card_mult * f_mult))
+	
+	var bottleneck = "parking"
+	if parking_rate <= kitchen_rate and parking_rate <= seating_rate:
+		bottleneck = "parking"
+	elif kitchen_rate <= seating_rate:
+		bottleneck = "kitchen"
+	else:
+		bottleneck = "seating"
+		
+	return {
+		"parking": parking_rate,
+		"kitchen": kitchen_rate,
+		"seating": seating_rate,
+		"bottleneck": bottleneck
+	}
+
+func _refresh_pipeline_widget() -> void:
+	if pipeline_widget == null or not is_instance_valid(pipeline_widget):
+		return
+	var rates = get_pipeline_throughput_rates()
+	pipeline_weakest_sector = rates.bottleneck
+	
+	if pipeline_parking_btn != null and is_instance_valid(pipeline_parking_btn):
+		pipeline_parking_btn.text = "🚗 %d/m" % rates.parking
+		_style_pipeline_stage_button(pipeline_parking_btn, rates.bottleneck == "parking")
+		
+	if pipeline_kitchen_btn != null and is_instance_valid(pipeline_kitchen_btn):
+		pipeline_kitchen_btn.text = "🍳 %d/m" % rates.kitchen
+		_style_pipeline_stage_button(pipeline_kitchen_btn, rates.bottleneck == "kitchen")
+		
+	if pipeline_seating_btn != null and is_instance_valid(pipeline_seating_btn):
+		pipeline_seating_btn.text = "🪑 %d/m" % rates.seating
+		_style_pipeline_stage_button(pipeline_seating_btn, rates.bottleneck == "seating")
+
+func _on_pipeline_parking_pressed() -> void:
+	_play_click_sfx()
+	var gm = _get_game_manager()
+	var lvl = gm.get_station_level("parking_lot") if gm != null else 1
+	open_upgrade("parking_lot", "Parking Lot", lvl)
+
+func _on_pipeline_kitchen_pressed() -> void:
+	_play_click_sfx()
+	var gm = _get_game_manager()
+	var lvl = gm.get_station_level("kitchen_cook") if gm != null else 1
+	open_upgrade("kitchen_cook", "Master Stove", lvl)
+
+func _on_pipeline_seating_pressed() -> void:
+	_play_click_sfx()
+	var gm = _get_game_manager()
+	var target_tbl = "table_1"
+	var min_lvl = 9999
+	if gm != null:
+		for i in range(1, 13):
+			var tid = "table_%d" % i
+			if gm.is_table_unlocked(tid):
+				var lvl = gm.get_station_level(tid)
+				if lvl < min_lvl:
+					min_lvl = lvl
+					target_tbl = tid
+	var slvl = gm.get_station_level(target_tbl) if gm != null else 1
+	open_upgrade(target_tbl, "Booth " + target_tbl.capitalize(), slvl)
+
 
 
 

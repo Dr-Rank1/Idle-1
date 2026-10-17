@@ -17,6 +17,7 @@ class Station {
   // Level & upgrade
   int level;
   int maxLevel;
+  bool isUnlocked;
 
   // Exact exponential multipliers synchronized with Godot GameManager
   // Formula: Cost = BaseCost * CostMultiplier^(L - 1)
@@ -71,6 +72,7 @@ class Station {
     this.heightTiles = 1,
     this.level = 1,
     this.maxLevel = 50,
+    this.isUnlocked = true,
     this.baseCost = 50.0,
     this.costMultiplier = 1.15,
     this.baseRevenue = 15.0,

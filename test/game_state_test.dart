@@ -334,4 +334,67 @@ void main() {
       expect(gameState.readyManagerSkillsCount, equals(0));
     });
   });
+
+  group('Diner Fever & 3-Stage Pipeline Mechanics', () {
+    late GameState gameState;
+
+    setUp(() {
+      gameState = GameState();
+    });
+
+    test('Diner Fever meter charges, surges, and triggers 20s overdrive', () {
+      expect(gameState.isFeverActive, isFalse);
+      expect(gameState.feverCharge, equals(0.0));
+
+      gameState.addFeverCharge(40.0);
+      expect(gameState.feverCharge, equals(40.0));
+
+      gameState.tapFeverSurge();
+      expect(gameState.feverCharge, equals(42.0));
+
+      // Charge to 100% to trigger overdrive
+      final preMultiplier = gameState.totalRevenueMultiplier;
+      gameState.addFeverCharge(60.0);
+      expect(gameState.isFeverActive, isTrue);
+      expect(gameState.feverTimer, equals(20.0));
+      expect(gameState.totalRevenueMultiplier, equals(preMultiplier * 2.0));
+
+      // Advance time by 21 seconds to complete overdrive
+      gameState.tick(21.0);
+      expect(gameState.isFeverActive, isFalse);
+      expect(gameState.feverTimer, equals(0.0));
+      expect(gameState.feverCharge, equals(0.0));
+    });
+
+    test('3-Stage Pipeline Balance rates and bottleneck calculation', () {
+      final parking = gameState.parkingThroughputPerMin;
+      final kitchen = gameState.kitchenThroughputPerMin;
+      final seating = gameState.seatingThroughputPerMin;
+
+      expect(parking, greaterThan(0));
+      expect(kitchen, greaterThan(0));
+      expect(seating, greaterThan(0));
+
+      final bottleneck = gameState.pipelineBottleneckSector;
+      expect(['parking', 'kitchen', 'seating'].contains(bottleneck), isTrue);
+
+      if (parking <= kitchen && parking <= seating) {
+        expect(bottleneck, equals('parking'));
+      } else if (kitchen <= seating) {
+        expect(bottleneck, equals('kitchen'));
+      } else {
+        expect(bottleneck, equals('seating'));
+      }
+    });
+
+    test('Smart Quick-Upgrade recommendation selects candidate station', () {
+      final rec = gameState.recommendedUpgradeStation;
+      expect(rec, isNotNull);
+      expect(rec!['id'], isNotNull);
+      expect(rec['name'], isNotNull);
+      expect(rec['icon'], isNotNull);
+      expect(rec['cost'], greaterThan(0));
+      expect(rec['level'], greaterThanOrEqualTo(1));
+    });
+  });
 }

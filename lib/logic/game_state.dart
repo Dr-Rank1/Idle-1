@@ -50,11 +50,172 @@ class GameState extends ChangeNotifier {
   };
 
   double get prestigeMultiplier => 1.0 + (prestigeLevel * 0.50) + (prestigeStars * 0.25);
-  double get totalRevenueMultiplier => revenueMultiplier * prestigeMultiplier;
+  double get totalRevenueMultiplier => revenueMultiplier * prestigeMultiplier * (isFeverActive ? 2.0 : 1.0);
   double get cashPerSecond =>
       stations.fold(0.0, (sum, s) => sum + (s.actionDuration > 0 ? s.income / s.actionDuration : 0.0)) *
       totalRevenueMultiplier;
   void triggerVipEvent() => _triggerVipEvent();
+
+  // ─── Diner Fever Combo & Frenzy Overdrive (Google Play Store Parity) ───────
+  static const double feverMaxCharge = 100.0;
+  static const double feverDuration = 20.0;
+  double feverCharge = 0.0;
+  bool isFeverActive = false;
+  double feverTimer = 0.0;
+
+  double get feverRatio => (feverCharge / feverMaxCharge).clamp(0.0, 1.0);
+
+  void addFeverCharge(double amount) {
+    if (isFeverActive) return;
+    feverCharge = (feverCharge + amount).clamp(0.0, feverMaxCharge);
+    if (feverCharge >= feverMaxCharge) {
+      triggerFeverMode();
+    } else {
+      notifyListeners();
+    }
+  }
+
+  void penalizeFeverCharge([double amount = 25.0]) {
+    if (isFeverActive) return;
+    feverCharge = (feverCharge - amount).clamp(0.0, feverMaxCharge);
+    notifyListeners();
+  }
+
+  void tapFeverSurge() {
+    if (isFeverActive) return;
+    addFeverCharge(2.0);
+  }
+
+  void triggerFeverMode() {
+    isFeverActive = true;
+    feverTimer = feverDuration;
+    feverCharge = feverMaxCharge;
+    notifyListeners();
+  }
+
+  void endFeverMode() {
+    isFeverActive = false;
+    feverTimer = 0.0;
+    feverCharge = 0.0;
+    notifyListeners();
+  }
+
+  void _tickFever(double dt) {
+    if (isFeverActive) {
+      feverTimer -= dt;
+      if (feverTimer <= 0.0) {
+        endFeverMode();
+      }
+    }
+  }
+
+  // ─── 3-Stage Pipeline Throughput Balance (Play Store Parity) ───────────────
+  int get parkingThroughputPerMin {
+    final parkStation = stations.where((s) => s.id == 'parking' || s.id == 'parking_lot').firstOrNull;
+    final lvl = parkStation?.level ?? 1;
+    return (14.0 + (lvl - 1) * 2.2).round();
+  }
+
+  int get kitchenThroughputPerMin {
+    final cookStation = stations.where((s) => s.id == 'kitchen_cook' || s.id == 'stove').firstOrNull;
+    final lvl = cookStation?.level ?? 1;
+    final fMult = isFeverActive ? 2.0 : 1.0;
+    final kMgr = isManagerSkillActive('kitchen') ? 2.0 : 1.0;
+    return ((16.0 + (lvl - 1) * 2.4) * fMult * kMgr).round();
+  }
+
+  int get seatingThroughputPerMin {
+    final tables = stations.where((s) => s.id.startsWith('table_') && s.isUnlocked).toList();
+    final count = max(1, tables.length);
+    final avgLvl = tables.isEmpty ? 1.0 : tables.fold(0, (sum, t) => sum + t.level) / count;
+    final fMult = isFeverActive ? 2.0 : 1.0;
+    return ((count * 5.5 + avgLvl * 0.8) * fMult).round();
+  }
+
+  String get pipelineBottleneckSector {
+    final p = parkingThroughputPerMin;
+    final k = kitchenThroughputPerMin;
+    final s = seatingThroughputPerMin;
+    if (p <= k && p <= s) return 'parking';
+    if (k <= s) return 'kitchen';
+    return 'seating';
+  }
+
+  // ─── Smart Quick-Upgrade Recommendation System ─────────────────────────────
+  Map<String, dynamic>? get recommendedUpgradeStation {
+    final candidates = stations.where((s) => s.isUnlocked && s.level < 50).toList();
+    if (candidates.isEmpty) return null;
+
+    final milestoneThresholds = [10, 25, 50];
+
+    // Priority 1: Station within 1-2 levels of milestone that player can afford
+    for (final s in candidates) {
+      final cost = s.upgradeCost;
+      if (cash >= cost) {
+        for (final m in milestoneThresholds) {
+          if (s.level < m && (m - s.level) <= 2) {
+            return {
+              'id': s.id,
+              'name': s.name,
+              'icon': _getStationIcon(s.id),
+              'level': s.level,
+              'nextLevel': s.level + 1,
+              'cost': cost,
+              'canAfford': true,
+              'isMilestone': true,
+              'milestoneTarget': m,
+            };
+          }
+        }
+      }
+    }
+
+    // Priority 2: Lowest-cost affordable station
+    Station? lowestAffordable;
+    for (final s in candidates) {
+      if (cash >= s.upgradeCost) {
+        if (lowestAffordable == null || s.upgradeCost < lowestAffordable.upgradeCost) {
+          lowestAffordable = s;
+        }
+      }
+    }
+    if (lowestAffordable != null) {
+      return {
+        'id': lowestAffordable.id,
+        'name': lowestAffordable.name,
+        'icon': _getStationIcon(lowestAffordable.id),
+        'level': lowestAffordable.level,
+        'nextLevel': lowestAffordable.level + 1,
+        'cost': lowestAffordable.upgradeCost,
+        'canAfford': true,
+        'isMilestone': false,
+        'milestoneTarget': 0,
+      };
+    }
+
+    // Fallback: Lowest cost overall
+    candidates.sort((a, b) => a.upgradeCost.compareTo(b.upgradeCost));
+    final cheapest = candidates.first;
+    return {
+      'id': cheapest.id,
+      'name': cheapest.name,
+      'icon': _getStationIcon(cheapest.id),
+      'level': cheapest.level,
+      'nextLevel': cheapest.level + 1,
+      'cost': cheapest.upgradeCost,
+      'canAfford': cash >= cheapest.upgradeCost,
+      'isMilestone': false,
+      'milestoneTarget': 0,
+    };
+  }
+
+  String _getStationIcon(String stationId) {
+    if (stationId.startsWith('table_')) return '🪑';
+    if (stationId.contains('cook') || stationId.contains('stove')) return '🍳';
+    if (stationId.contains('milkshake') || stationId.contains('bar')) return '🥤';
+    if (stationId.contains('parking')) return '🚗';
+    return '⭐';
+  }
 
   double getRestaurantValuation() {
     final earnedPart = totalEarned * 0.75;
@@ -720,6 +881,7 @@ class GameState extends ChangeNotifier {
 
   void tick(double dt) {
     _processManagerSkills(dt);
+    _tickFever(dt);
     _tickGuestSpawn(dt);
     _tickCharacters(dt);
     _tickStations(dt);

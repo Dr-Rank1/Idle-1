@@ -33,6 +33,7 @@ class HudOverlay extends StatefulWidget {
 
 class _HudOverlayState extends State<HudOverlay> {
   bool _ribbonsExpanded = true;
+  bool _dockCollapsed = false;
   Timer? _clockTimer;
   DateTime _gameClock = DateTime(2026, 10, 14, 8, 34);
 
@@ -77,7 +78,15 @@ class _HudOverlayState extends State<HudOverlay> {
                     ),
                   ),
 
-                  const SizedBox(height: 6),
+                  // Diner Fever Combo Bar
+                  _FeverComboBanner(
+                    charge: gs.feverCharge,
+                    maxCharge: GameState.feverMaxCharge,
+                    isActive: gs.isFeverActive,
+                    onSurgeTap: () => gs.tapFeverSurge(),
+                  ),
+
+                  const SizedBox(height: 4),
 
                   // Top-left status cluster
                   Padding(
@@ -110,6 +119,28 @@ class _HudOverlayState extends State<HudOverlay> {
                           _LivePill(),
                         ],
                       ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  // 3-Stage Pipeline Balance Widget
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: _PipelineBalanceWidget(
+                      parkingRate: gs.parkingThroughputPerMin,
+                      kitchenRate: gs.kitchenThroughputPerMin,
+                      seatingRate: gs.seatingThroughputPerMin,
+                      bottleneck: gs.pipelineBottleneckSector,
+                      onSectorTap: (sector) {
+                        if (sector == 'parking') {
+                          widget.onStatsTap();
+                        } else if (sector == 'kitchen') {
+                          widget.onManagersTap();
+                        } else {
+                          widget.onRecipeBookTap?.call();
+                        }
+                      },
                     ),
                   ),
 
@@ -221,6 +252,22 @@ class _HudOverlayState extends State<HudOverlay> {
                 ),
               ),
 
+              // Bottom-right: Smart Quick-Upgrade HUD Pill
+              if (gs.recommendedUpgradeStation != null)
+                Positioned(
+                  right: 16,
+                  bottom: 76,
+                  child: _SmartQuickUpgradePill(
+                    rec: gs.recommendedUpgradeStation!,
+                    onBuyTap: () {
+                      final rec = gs.recommendedUpgradeStation;
+                      if (rec != null) {
+                        gs.upgradeStation(rec['id'] as String);
+                      }
+                    },
+                  ),
+                ),
+
               // Right edge: vertical column of circular buttons
               Positioned(
                 right: 12,
@@ -228,80 +275,92 @@ class _HudOverlayState extends State<HudOverlay> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Circular dock collapse/expand chevron button
+                    _CircleOrangeButton(
+                      emoji: _dockCollapsed ? '◀' : '▼',
+                      size: 38,
+                      onTap: () {
+                        setState(() => _dockCollapsed = !_dockCollapsed);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+
                     // Golden Piggy Bank
                     _PiggyBankButton(
                       balance: gs.piggyBankBalance,
                       cap: GameState.piggyBankCap,
                       onTap: widget.onPiggyBankTap,
                     ),
-                    const SizedBox(height: 10),
+                    if (!_dockCollapsed) ...[
+                      const SizedBox(height: 10),
 
-                    // 5-Star Recipe Book
-                    _CircleOrangeButton(
-                      emoji: '📖',
-                      onTap: widget.onRecipeBookTap ?? () {},
-                    ),
-                    const SizedBox(height: 8),
+                      // 5-Star Recipe Book
+                      _CircleOrangeButton(
+                        emoji: '📖',
+                        onTap: widget.onRecipeBookTap ?? () {},
+                      ),
+                      const SizedBox(height: 8),
 
-                    // World Map
-                    _CircleOrangeButton(
-                      emoji: '🌍',
-                      onTap: widget.onWorldMapTap ??
-                          () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('🌍 World Restaurant Empire Map'),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
-                          },
-                    ),
-                    const SizedBox(height: 8),
-                    // TV Ad
-                    _CircleOrangeButton(
-                      emoji: '📺',
-                      onTap: () {
-                        gs.triggerVipEvent();
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    // Settings Gear
-                    _CircleOrangeButton(
-                      emoji: '⚙️',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('⚙️ Diner Settings'),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    // Lightbulb (Quests / Tips)
-                    _CircleOrangeButton(
-                      emoji: '💡',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('💡 Chef Tips & Objectives'),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    // Bar Chart
-                    _CircleOrangeButton(
-                      emoji: '📊',
-                      onTap: widget.onStatsTap,
-                    ),
-                    const SizedBox(height: 8),
-                    // Staff / Build
-                    _CircleOrangeButton(
-                      emoji: '🔨',
-                      onTap: widget.onManagersTap,
-                    ),
+                      // World Map
+                      _CircleOrangeButton(
+                        emoji: '🌍',
+                        onTap: widget.onWorldMapTap ??
+                            () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('🌍 World Restaurant Empire Map'),
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                      ),
+                      const SizedBox(height: 8),
+                      // TV Ad
+                      _CircleOrangeButton(
+                        emoji: '📺',
+                        onTap: () {
+                          gs.triggerVipEvent();
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      // Settings Gear
+                      _CircleOrangeButton(
+                        emoji: '⚙️',
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('⚙️ Diner Settings'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      // Lightbulb (Quests / Tips)
+                      _CircleOrangeButton(
+                        emoji: '💡',
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('💡 Chef Tips & Objectives'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      // Bar Chart
+                      _CircleOrangeButton(
+                        emoji: '📊',
+                        onTap: widget.onStatsTap,
+                      ),
+                      const SizedBox(height: 8),
+                      // Staff / Build
+                      _CircleOrangeButton(
+                        emoji: '🔨',
+                        onTap: widget.onManagersTap,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1229,6 +1288,300 @@ class StatsPanel extends StatelessWidget {
               color: Colors.white,
               fontWeight: FontWeight.w700,
               fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Fever Combo / Overdrive Banner ──────────────────────────────────────────
+class _FeverComboBanner extends StatelessWidget {
+  final double charge;
+  final double maxCharge;
+  final bool isActive;
+  final VoidCallback onSurgeTap;
+
+  const _FeverComboBanner({
+    required this.charge,
+    required this.maxCharge,
+    required this.isActive,
+    required this.onSurgeTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (charge / maxCharge).clamp(0.0, 1.0);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isActive
+            ? const Color(0xFF6B3A05).withValues(alpha: 0.95)
+            : const Color(0xFF1B1813).withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isActive ? const Color(0xFFFFD54F) : const Color(0xFF5D4037),
+          width: isActive ? 2 : 1,
+        ),
+        boxShadow: isActive
+            ? [
+                BoxShadow(
+                  color: const Color(0xFFFF9800).withValues(alpha: 0.5),
+                  blurRadius: 8,
+                )
+              ]
+            : null,
+      ),
+      child: Row(
+        children: [
+          Text(
+            isActive ? '🔥 2X OVERDRIVE!' : '🔥 FEVER COMBO',
+            style: TextStyle(
+              color: isActive ? const Color(0xFFFFE082) : Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: pct,
+                minHeight: 8,
+                backgroundColor: Colors.black45,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isActive ? const Color(0xFFFFD54F) : const Color(0xFFFF9800),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            isActive ? '${(pct * 20).ceil()}s' : '${(pct * 100).round()}%',
+            style: TextStyle(
+              color: isActive ? const Color(0xFFFFD54F) : Colors.white70,
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onSurgeTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: isActive ? const Color(0xFFFF8F00) : const Color(0xFFE65100),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFFFD54F), width: 1),
+              ),
+              child: Text(
+                isActive ? '🔥 2X ACTIVE' : '⚡ SURGE (+2%)',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 9,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 3-Stage Pipeline Balance Widget ─────────────────────────────────────────
+class _PipelineBalanceWidget extends StatelessWidget {
+  final int parkingRate;
+  final int kitchenRate;
+  final int seatingRate;
+  final String bottleneck;
+  final ValueChanged<String> onSectorTap;
+
+  const _PipelineBalanceWidget({
+    required this.parkingRate,
+    required this.kitchenRate,
+    required this.seatingRate,
+    required this.bottleneck,
+    required this.onSectorTap,
+  });
+
+  Widget _buildStagePill(String id, String icon, int rate, bool isBottleneck) {
+    return GestureDetector(
+      onTap: () => onSectorTap(id),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: isBottleneck ? const Color(0xFFC62828) : const Color(0xFF263238),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isBottleneck ? const Color(0xFFFF8A80) : const Color(0xFF455A64),
+            width: isBottleneck ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          '$icon $rate/m',
+          style: TextStyle(
+            color: isBottleneck ? Colors.white : Colors.white70,
+            fontWeight: isBottleneck ? FontWeight.w900 : FontWeight.w600,
+            fontSize: 10,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10141C).withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF2E3846)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildStagePill('parking', '🚗', parkingRate, bottleneck == 'parking'),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: Text('➔', style: TextStyle(color: Colors.white38, fontSize: 10)),
+          ),
+          _buildStagePill('kitchen', '🍳', kitchenRate, bottleneck == 'kitchen'),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: Text('➔', style: TextStyle(color: Colors.white38, fontSize: 10)),
+          ),
+          _buildStagePill('seating', '🪑', seatingRate, bottleneck == 'seating'),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Smart Quick-Upgrade HUD Pill ────────────────────────────────────────────
+class _SmartQuickUpgradePill extends StatelessWidget {
+  final Map<String, dynamic> rec;
+  final VoidCallback onBuyTap;
+
+  const _SmartQuickUpgradePill({
+    required this.rec,
+    required this.onBuyTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final name = rec['name'] as String? ?? 'Station';
+    final icon = rec['icon'] as String? ?? '⭐';
+    final lvl = rec['level'] as int? ?? 1;
+    final nextLvl = rec['nextLevel'] as int? ?? 2;
+    final cost = rec['cost'] as num? ?? 0;
+    final isMilestone = rec['isMilestone'] as bool? ?? false;
+    final milestoneTarget = rec['milestoneTarget'] as int? ?? 0;
+    final canAfford = rec['canAfford'] as bool? ?? false;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A212D).withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isMilestone ? const Color(0xFFFFD54F) : const Color(0xFF3B485A),
+          width: isMilestone ? 2 : 1,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black54,
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF2C384A),
+            ),
+            alignment: Alignment.center,
+            child: Text(icon, style: const TextStyle(fontSize: 18)),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
+              ),
+              Row(
+                children: [
+                  Text(
+                    'Lv. $lvl ➔ $nextLvl',
+                    style: const TextStyle(
+                      color: Color(0xFF90CAF9),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                    ),
+                  ),
+                  if (isMilestone) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF8F00),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '⭐ MILESTONE ($milestoneTarget)',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: onBuyTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: canAfford ? const Color(0xFF2E7D32) : const Color(0xFF455A64),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: canAfford ? const Color(0xFF81C784) : const Color(0xFF78909C),
+                  width: 1.5,
+                ),
+              ),
+              child: Text(
+                'BUY\n\$${NumberFormat.compact().format(cost)}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 10,
+                  height: 1.1,
+                ),
+              ),
             ),
           ),
         ],

@@ -882,7 +882,75 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 	_assert_test(test_table.scale.y <= 1.25, "Materialization wipe starts bottom-to-top scale expansion")
 	test_table.queue_free()
 
-	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, and Blueprint Zones validated.")
+	# Part 10: Collapsible Side Dock, Clean View Mode, & 3-Stage Pipeline Balance
+	print("\n--- [FRAME 20 Part 10] Asserting Collapsible Side Dock, Clean View, & Pipeline Balance ---")
+	var dock_hud = hud_scn.instantiate()
+	root.add_child(dock_hud)
+
+	# 1. Collapsible Side Dock Controls Verification
+	_assert_test(dock_hud.dock_collapse_btn != null, "Circular chevron toggle button exists on RightDock")
+	_assert_test(dock_hud.clean_view_btn != null, "Clean View camera icon button exists on RightDock")
+	_assert_test(dock_hud.is_dock_collapsed == false, "Side dock defaults to unfolded/expanded state")
+
+	var sec_btns = dock_hud._get_secondary_dock_buttons()
+	_assert_test(sec_btns.size() >= 2, "Right dock identifies secondary management buttons (Stats, Spin, Cards, etc.)")
+
+	# Test Fold / Unfold
+	dock_hud.toggle_side_dock()
+	_assert_test(dock_hud.is_dock_collapsed == true, "toggle_side_dock folds secondary buttons into collapsed state")
+	_assert_test(dock_hud.dock_collapse_btn.text == "◀", "Dock collapse chevron updates to ◀ when folded")
+	for b in sec_btns:
+		_assert_test(b.visible == false, "Secondary button folded and hidden when dock is collapsed")
+	var piggy_anchor = dock_hud.find_child("SidePiggyBankBtn", true, false)
+	_assert_test(piggy_anchor != null and piggy_anchor.visible == true, "Primary anchor (Piggy Bank) remains visible when collapsed")
+
+	dock_hud.toggle_side_dock()
+	_assert_test(dock_hud.is_dock_collapsed == false, "toggle_side_dock unfolds secondary buttons back to expanded state")
+	_assert_test(dock_hud.dock_collapse_btn.text == "▼", "Dock collapse chevron updates to ▼ when expanded")
+	for b in sec_btns:
+		_assert_test(b.visible == true, "Secondary button restored to visible when dock is expanded")
+
+	# 2. Clean View Mode Verification
+	_assert_test(dock_hud.is_clean_view_active == false, "Clean View mode is inactive by default")
+	dock_hud.activate_clean_view(5.0)
+	_assert_test(dock_hud.is_clean_view_active == true, "activate_clean_view activates clean view mode")
+	_assert_test(dock_hud.clean_view_timer == 5.0, "Clean view timer initialized to 5.0 seconds")
+	_assert_test(dock_hud.clean_view_indicator != null and dock_hud.clean_view_indicator.visible == true, "Clean view watermark indicator displays on screen")
+	_assert_test(dock_hud.get_node("HUD").modulate.a == 0.0, "HUD chrome alpha hidden during clean view")
+
+	dock_hud.end_clean_view()
+	_assert_test(dock_hud.is_clean_view_active == false, "end_clean_view exits clean view mode")
+	_assert_test(dock_hud.clean_view_indicator.visible == false, "Clean view watermark indicator hidden after exit")
+	_assert_test(dock_hud.get_node("HUD").modulate.a == 1.0, "HUD chrome alpha fully restored after clean view exit")
+
+	# 3. 3-Stage Pipeline Balance Widget Verification
+	_assert_test(dock_hud.pipeline_widget != null, "3-Stage Pipeline Balance Widget exists in HUD")
+	_assert_test(dock_hud.pipeline_parking_btn != null, "Pipeline widget includes Parking Arrival button")
+	_assert_test(dock_hud.pipeline_kitchen_btn != null, "Pipeline widget includes Kitchen Output button")
+	_assert_test(dock_hud.pipeline_seating_btn != null, "Pipeline widget includes Seating Capacity button")
+
+	var pipe_rates = dock_hud.get_pipeline_throughput_rates()
+	_assert_test(pipe_rates.has("parking") and pipe_rates.has("kitchen") and pipe_rates.has("seating"), "Pipeline throughput rates calculate all 3 sectors (/min)")
+	_assert_test(pipe_rates.parking > 0 and pipe_rates.kitchen > 0 and pipe_rates.seating > 0, "All pipeline throughput rates are positive values")
+	_assert_test(pipe_rates.has("bottleneck") and pipe_rates.bottleneck in ["parking", "kitchen", "seating"], "Pipeline identifies weakest sector bottleneck")
+
+	dock_hud._refresh_pipeline_widget()
+	_assert_test("🚗" in dock_hud.pipeline_parking_btn.text and "/m" in dock_hud.pipeline_parking_btn.text, "Parking button formatted with icon and /min rate")
+	_assert_test("🍳" in dock_hud.pipeline_kitchen_btn.text and "/m" in dock_hud.pipeline_kitchen_btn.text, "Kitchen button formatted with icon and /min rate")
+	_assert_test("🪑" in dock_hud.pipeline_seating_btn.text and "/m" in dock_hud.pipeline_seating_btn.text, "Seating button formatted with icon and /min rate")
+
+	# Sector click routing
+	dock_hud._on_pipeline_parking_pressed()
+	_assert_test(dock_hud.upgrade_panel.visible == true and dock_hud.current_station_id == "parking_lot", "Tapping parking stage opens parking_lot upgrade sheet")
+	dock_hud._close_modal(dock_hud.upgrade_panel)
+
+	dock_hud._on_pipeline_kitchen_pressed()
+	_assert_test(dock_hud.upgrade_panel.visible == true and dock_hud.current_station_id == "kitchen_cook", "Tapping kitchen stage opens kitchen_cook upgrade sheet")
+	dock_hud._close_modal(dock_hud.upgrade_panel)
+
+	dock_hud.queue_free()
+
+	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, Blueprint Zones, Collapsible Dock, and Pipeline Balance validated.")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Frame 25: Teardown & Summary

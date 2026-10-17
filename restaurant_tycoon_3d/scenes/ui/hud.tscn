@@ -1374,7 +1374,51 @@ theme_override_colors/font_color = Color(0.85, 1, 0.9, 1)
 theme_override_font_sizes/font_size = 12
 text = "Live"
 
+[node name="PipelineBalanceWidget" type="PanelContainer" parent="HUD"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -290.0
+offset_top = 54.0
+offset_right = -14.0
+offset_bottom = 90.0
+grow_horizontal = 0
 
+[node name="HBox" type="HBoxContainer" parent="HUD/PipelineBalanceWidget"]
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="PipelineParkingBtn" type="Button" parent="HUD/PipelineBalanceWidget/HBox"]
+custom_minimum_size = Vector2(74, 28)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "🚗 14/m"
+
+[node name="Arrow1" type="Label" parent="HUD/PipelineBalanceWidget/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 0.8)
+theme_override_font_sizes/font_size = 10
+text = "➔"
+
+[node name="PipelineKitchenBtn" type="Button" parent="HUD/PipelineBalanceWidget/HBox"]
+custom_minimum_size = Vector2(74, 28)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "🍳 16/m"
+
+[node name="Arrow2" type="Label" parent="HUD/PipelineBalanceWidget/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 0.8)
+theme_override_font_sizes/font_size = 10
+text = "➔"
+
+[node name="PipelineSeatingBtn" type="Button" parent="HUD/PipelineBalanceWidget/HBox"]
+custom_minimum_size = Vector2(74, 28)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "🪑 20/m"
 
 [node name="StatusRibbons" type="VBoxContainer" parent="HUD"]
 layout_mode = 0
@@ -1669,6 +1713,29 @@ grow_horizontal = 0
 grow_vertical = 2
 theme_override_constants/separation = 16
 alignment = 1
+
+[node name="DockControlsRow" type="HBoxContainer" parent="HUD/RightDock"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="DockCollapseBtn" type="Button" parent="HUD/RightDock/DockControlsRow"]
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.05, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 13
+text = "▼"
+
+[node name="CleanViewBtn" type="Button" parent="HUD/RightDock/DockControlsRow"]
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.05, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+text = "📸"
 
 [node name="SidePiggyBankBtn" type="Button" parent="HUD/RightDock"]
 custom_minimum_size = Vector2(72, 72)
