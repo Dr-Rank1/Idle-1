@@ -948,9 +948,59 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 	_assert_test(dock_hud.upgrade_panel.visible == true and dock_hud.current_station_id == "kitchen_cook", "Tapping kitchen stage opens kitchen_cook upgrade sheet")
 	dock_hud._close_modal(dock_hud.upgrade_panel)
 
+	# 4. Mobile Interactive Onboarding Sequence & Dynamic Spotlight Verification
+	gm.tutorial_completed = false
+	gm.tutorial_step = 1
+	dock_hud.start_tutorial(1)
+	_assert_test(dock_hud.is_tutorial_active() == true, "start_tutorial(1) activates tutorial state")
+	_assert_test(dock_hud.tutorial_overlay != null and dock_hud.tutorial_overlay.visible == true, "TutorialOverlay is visible when tutorial is active")
+	_assert_test(dock_hud.get_tutorial_step() == 1, "Tutorial starts on Step 1")
+	_assert_test("STEP 1" in dock_hud.tutorial_step_tag.text, "StepTag shows Step 1 label")
+	_assert_test("Collect your first table earnings" in dock_hud.tutorial_instruction_label.text, "Step 1 instruction prompts table collection")
+
+	# Step 1 -> 2 advancement
+	dock_hud.advance_tutorial(1)
+	_assert_test(dock_hud.get_tutorial_step() == 2, "advance_tutorial(1) moves to Step 2")
+	_assert_test("STEP 2" in dock_hud.tutorial_step_tag.text, "StepTag updates to Step 2")
+	_assert_test("Upgrade Booth #1" in dock_hud.tutorial_instruction_label.text, "Step 2 instruction prompts Booth #1 upgrade")
+
+	# Step 2 -> 3 advancement
+	dock_hud.advance_tutorial(2)
+	_assert_test(dock_hud.get_tutorial_step() == 3, "advance_tutorial(2) moves to Step 3")
+	_assert_test("STEP 3" in dock_hud.tutorial_step_tag.text, "StepTag updates to Step 3")
+	_assert_test("Upgrade Stove #1" in dock_hud.tutorial_instruction_label.text, "Step 3 instruction prompts Stove #1 upgrade")
+
+	# Step 3 -> 4 advancement
+	dock_hud.advance_tutorial(3)
+	_assert_test(dock_hud.get_tutorial_step() == 4, "advance_tutorial(3) moves to Step 4")
+	_assert_test("STEP 4" in dock_hud.tutorial_step_tag.text, "StepTag updates to Step 4")
+	_assert_test("Hire an extra Waiter" in dock_hud.tutorial_instruction_label.text, "Step 4 instruction prompts Waiter hire")
+
+	# Step 4 -> Complete and Reward Verification
+	var tut_pre_diamonds = gm.diamonds
+	var tut_pre_cash = gm.cash
+	dock_hud.advance_tutorial(4)
+	_assert_test(dock_hud.is_tutorial_active() == false, "advance_tutorial(4) finishes onboarding sequence")
+	_assert_test(dock_hud.tutorial_overlay.visible == false, "TutorialOverlay is hidden after completion")
+	_assert_test(gm.is_tutorial_completed() == true, "gm.is_tutorial_completed() is true after completion")
+	_assert_test(gm.diamonds == tut_pre_diamonds + 25, "Completing tutorial awards +25 starter Diamonds")
+	_assert_test(gm.cash == tut_pre_cash + 500.0, "Completing tutorial awards +500 starter Cash")
+
+	# Test Skip Tutorial functionality
+	gm.tutorial_completed = false
+	dock_hud.start_tutorial(1)
+	_assert_test(dock_hud.is_tutorial_active() == true, "Tutorial can be restarted if uncompleted")
+	var pre_skip_dia = gm.diamonds
+	var pre_skip_cash = gm.cash
+	dock_hud.skip_tutorial()
+	_assert_test(dock_hud.is_tutorial_active() == false, "skip_tutorial() terminates active tutorial")
+	_assert_test(gm.is_tutorial_completed() == true, "skip_tutorial() marks tutorial as completed in GM")
+	_assert_test(gm.diamonds == pre_skip_dia + 25, "skip_tutorial() awards starter Diamonds reward")
+	_assert_test(gm.cash == pre_skip_cash + 500.0, "skip_tutorial() awards starter Cash reward")
+
 	dock_hud.queue_free()
 
-	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, Blueprint Zones, Collapsible Dock, and Pipeline Balance validated.")
+	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, Blueprint Zones, Collapsible Dock, Pipeline Balance, and Interactive Onboarding validated.")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Frame 25: Teardown & Summary

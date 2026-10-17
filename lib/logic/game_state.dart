@@ -109,6 +109,28 @@ class GameState extends ChangeNotifier {
     }
   }
 
+  // ─── Interactive Onboarding Guide (Play Store Parity) ──────────────────────
+  bool tutorialCompleted = false;
+  int tutorialStep = 1;
+
+  void advanceTutorial() {
+    if (tutorialCompleted) return;
+    if (tutorialStep < 4) {
+      tutorialStep++;
+    } else {
+      completeTutorial();
+    }
+    notifyListeners();
+  }
+
+  void completeTutorial() {
+    if (tutorialCompleted) return;
+    tutorialCompleted = true;
+    gems += 25;
+    cash += 500.0;
+    notifyListeners();
+  }
+
   // ─── 3-Stage Pipeline Throughput Balance (Play Store Parity) ───────────────
   int get parkingThroughputPerMin {
     final parkStation = stations.where((s) => s.id == 'parking' || s.id == 'parking_lot').firstOrNull;

@@ -83,6 +83,8 @@ class SaveService {
       'unlocked_star_tiers': gs.unlockedStarTiers,
       'claimed_star_rewards': gs.claimedStarRewards,
       'piggy_bank_diamonds': gs.piggyBankDiamonds,
+      'tutorial_completed': gs.tutorialCompleted,
+      'tutorial_step': gs.tutorialStep,
     };
 
     final jsonStr = jsonEncode(data);
@@ -261,6 +263,14 @@ class SaveService {
 
       // Restore piggy bank diamonds
       gs.piggyBankDiamonds = (data['piggy_bank_diamonds'] as num?)?.toInt() ?? gs.piggyBankDiamonds;
+
+      // Restore tutorial state
+      if (data.containsKey('tutorial_completed')) {
+        gs.tutorialCompleted = data['tutorial_completed'] as bool? ?? gs.tutorialCompleted;
+      }
+      if (data.containsKey('tutorial_step')) {
+        gs.tutorialStep = (data['tutorial_step'] as num?)?.toInt() ?? gs.tutorialStep;
+      }
 
       // Calculate offline earnings: min(ElapsedSeconds, 28800) * CashPerSecond * 0.85
       savedTs ??= data['saved_timestamp'] as num?;

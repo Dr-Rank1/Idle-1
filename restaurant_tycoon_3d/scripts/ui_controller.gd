@@ -266,6 +266,24 @@ var _dock_tween: Tween = null
 var pipeline_refresh_timer: float = 0.0
 var pipeline_weakest_sector: String = "parking"
 
+# ─── Mobile Interactive Onboarding Sequence ─────────────────────────────────
+@onready var tutorial_overlay: Control = get_node_or_null("TutorialOverlay")
+@onready var spotlight_vignette: ColorRect = get_node_or_null("TutorialOverlay/SpotlightVignette")
+@onready var tutorial_target_ring: Panel = get_node_or_null("TutorialOverlay/TargetRing")
+@onready var tutorial_pointer_hand: Label = get_node_or_null("TutorialOverlay/PointerHand")
+@onready var tutorial_card: PanelContainer = get_node_or_null("TutorialOverlay/TutorialCard")
+@onready var tutorial_step_tag: Label = get_node_or_null("TutorialOverlay/TutorialCard/VBox/StepTag")
+@onready var tutorial_instruction_label: Label = get_node_or_null("TutorialOverlay/TutorialCard/VBox/InstructionLabel")
+@onready var tutorial_hint_label: Label = get_node_or_null("TutorialOverlay/TutorialCard/VBox/HintLabel")
+@onready var tutorial_skip_btn: Button = get_node_or_null("TutorialOverlay/SkipBtn")
+
+var tutorial_active: bool = false
+var current_tutorial_step: int = 1
+var _tutorial_anim_time: float = 0.0
+var _tutorial_ring_tween: Tween = null
+var spotlight_shader_material: ShaderMaterial = null
+var _tutorial_target_screen_pos: Vector2 = Vector2.ZERO
+
 var quest_banner_style_normal: StyleBoxFlat = null
 var quest_banner_style_completed: StyleBoxFlat = null
 var is_spinning_wheel: bool = false
@@ -851,6 +869,16 @@ func _ready() -> void:
 				_update_top_bar(gm.cash, gm.gems, gm.star_rating, gm.restaurant_name, gm.restaurant_level, gm.restaurant_xp, gm.xp_to_next_level)
 				_show_rapid_sanitation_banner(cost_deducted)
 			)
+		if gm.has_signal("tutorial_step_changed"):
+			gm.tutorial_step_changed.connect(func(step_idx):
+				if tutorial_active and current_tutorial_step != step_idx:
+					current_tutorial_step = step_idx
+					_refresh_tutorial_step_ui()
+			)
+		if gm.has_signal("tutorial_completed_awarded"):
+			gm.tutorial_completed_awarded.connect(func(_dia, _csh):
+				_update_top_bar(gm.cash, gm.gems, gm.star_rating, gm.restaurant_name, gm.restaurant_level, gm.restaurant_xp, gm.xp_to_next_level)
+			)
 		
 		
 		displayed_cash = gm.cash
@@ -897,6 +925,8 @@ func _ready() -> void:
 	_setup_dock_controls_fallback()
 	_setup_clean_view_indicator()
 	_setup_pipeline_ui_fallback()
+	_setup_tutorial_ui()
+	_check_start_onboarding()
 
 # ─── Tactile Squash-and-Stretch & Affordability Feedback ────────────────────
 func apply_button_squash_and_stretch(btn: Button) -> void:
@@ -1471,6 +1501,8 @@ func _process(delta: float) -> void:
 		pipeline_refresh_timer = 0.0
 		_refresh_pipeline_widget()
 
+	_update_tutorial_spotlight(delta)
+
 	if is_clean_view_active:
 		clean_view_timer -= delta
 		if clean_view_timer <= 0.0:
@@ -1763,6 +1795,8 @@ func _create_quest_card(q: Dictionary, gm: Node) -> PanelContainer:
 
 # ─── Station Upgrade Logic (Click in 3D or from UI) ─────────────────────────
 func open_upgrade(station_id: String, station_name: String, level: int) -> void:
+	if tutorial_active and current_tutorial_step == 1 and station_id == "table_1":
+		advance_tutorial(1)
 	dismiss_station_callout()
 	current_station_id = station_id
 	var gm = get_node_or_null("/root/GameManager")
@@ -2018,6 +2052,11 @@ func _on_upgrade_pressed() -> void:
 		_punch_upgrade_btn()
 
 func _on_station_upgraded(station_id: String, new_lvl: int) -> void:
+	if tutorial_active:
+		if current_tutorial_step == 2 and station_id == "table_1":
+			advance_tutorial(2)
+		elif current_tutorial_step == 3 and (station_id == "kitchen_cook" or station_id == "stove"):
+			advance_tutorial(3)
 	if station_id == current_station_id and upgrade_panel != null and upgrade_panel.visible:
 		var gm = get_node_or_null("/root/GameManager")
 		if gm != null:
@@ -2373,6 +2412,8 @@ func _create_kitchen_card(st_id: String, st_name: String, icon_str: String, gm: 
 
 # ─── Staff Roster Modal ─────────────────────────────────────────────────────
 func _on_staff_updated(_sid: String) -> void:
+	if tutorial_active and current_tutorial_step == 4:
+		advance_tutorial(4)
 	if staff_panel != null and staff_panel.visible:
 		_refresh_staff_panel()
 	_update_affordability_badges()
@@ -6809,6 +6850,8 @@ func _format_time_hms(seconds: float) -> String:
 
 # ─── Contextual 3D Station Callout Card & Smart Quick-Upgrade Pill ─────────
 func show_station_callout(target_node: Node3D, station_id: String, station_name: String, level: int) -> void:
+	if tutorial_active and current_tutorial_step == 1 and station_id == "table_1":
+		advance_tutorial(1)
 	dismiss_character_inspector(true)
 	callout_target_node = target_node
 	callout_station_id = station_id
@@ -7890,6 +7933,430 @@ func _on_pipeline_seating_pressed() -> void:
 					target_tbl = tid
 	var slvl = gm.get_station_level(target_tbl) if gm != null else 1
 	open_upgrade(target_tbl, "Booth " + target_tbl.capitalize(), slvl)
+
+# ─── Mobile Interactive Onboarding Sequence & Dynamic Spotlight ─────────────
+func _is_capture_or_headless_mode() -> bool:
+	if DisplayServer.get_name() == "headless":
+		return true
+	var gm = _get_game_manager()
+	if gm != null and gm.get("skip_boot_splash") == true:
+		return true
+	return false
+
+func _check_start_onboarding() -> void:
+	if _is_capture_or_headless_mode():
+		return
+	var gm = _get_game_manager()
+	if gm != null and not gm.is_tutorial_completed():
+		start_tutorial(gm.get_tutorial_step())
+
+func _setup_tutorial_ui() -> void:
+	if tutorial_overlay == null:
+		tutorial_overlay = get_node_or_null("TutorialOverlay")
+	if tutorial_overlay == null:
+		tutorial_overlay = Control.new()
+		tutorial_overlay.name = "TutorialOverlay"
+		tutorial_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+		tutorial_overlay.mouse_filter = Control.MOUSE_FILTER_PASS
+		tutorial_overlay.z_index = 50
+		tutorial_overlay.visible = false
+		add_child(tutorial_overlay)
+		
+		spotlight_vignette = ColorRect.new()
+		spotlight_vignette.name = "SpotlightVignette"
+		spotlight_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+		spotlight_vignette.mouse_filter = Control.MOUSE_FILTER_PASS
+		spotlight_vignette.color = Color(0.06, 0.08, 0.12, 0.72)
+		tutorial_overlay.add_child(spotlight_vignette)
+		
+		tutorial_target_ring = Panel.new()
+		tutorial_target_ring.name = "TargetRing"
+		tutorial_target_ring.custom_minimum_size = Vector2(110, 110)
+		tutorial_target_ring.size = Vector2(110, 110)
+		tutorial_target_ring.pivot_offset = Vector2(55, 55)
+		tutorial_target_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var ring_sb = StyleBoxFlat.new()
+		ring_sb.bg_color = Color(0, 0, 0, 0)
+		ring_sb.border_width_left = 4
+		ring_sb.border_width_top = 4
+		ring_sb.border_width_right = 4
+		ring_sb.border_width_bottom = 4
+		ring_sb.border_color = Color(1.0, 0.82, 0.22, 0.95)
+		ring_sb.corner_radius_top_left = 999
+		ring_sb.corner_radius_top_right = 999
+		ring_sb.corner_radius_bottom_right = 999
+		ring_sb.corner_radius_bottom_left = 999
+		ring_sb.shadow_color = Color(1.0, 0.75, 0.1, 0.45)
+		ring_sb.shadow_size = 8
+		tutorial_target_ring.add_theme_stylebox_override("panel", ring_sb)
+		tutorial_overlay.add_child(tutorial_target_ring)
+		
+		tutorial_pointer_hand = Label.new()
+		tutorial_pointer_hand.name = "PointerHand"
+		tutorial_pointer_hand.text = "👆"
+		tutorial_pointer_hand.add_theme_font_size_override("font_size", 34)
+		tutorial_pointer_hand.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.05, 1.0))
+		tutorial_pointer_hand.add_theme_constant_override("outline_size", 6)
+		tutorial_pointer_hand.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tutorial_overlay.add_child(tutorial_pointer_hand)
+		
+		tutorial_card = PanelContainer.new()
+		tutorial_card.name = "TutorialCard"
+		tutorial_card.custom_minimum_size = Vector2(280, 96)
+		tutorial_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var card_sb = StyleBoxFlat.new()
+		card_sb.bg_color = Color(0.10, 0.08, 0.14, 0.94)
+		card_sb.border_width_left = 2
+		card_sb.border_width_top = 2
+		card_sb.border_width_right = 2
+		card_sb.border_width_bottom = 4
+		card_sb.border_color = Color(1.0, 0.82, 0.22, 1.0)
+		card_sb.corner_radius_top_left = 14
+		card_sb.corner_radius_top_right = 14
+		card_sb.corner_radius_bottom_right = 14
+		card_sb.corner_radius_bottom_left = 14
+		card_sb.content_margin_left = 14
+		card_sb.content_margin_top = 10
+		card_sb.content_margin_right = 14
+		card_sb.content_margin_bottom = 10
+		card_sb.shadow_color = Color(0, 0, 0, 0.55)
+		card_sb.shadow_size = 10
+		tutorial_card.add_theme_stylebox_override("panel", card_sb)
+		
+		var vbox = VBoxContainer.new()
+		vbox.name = "VBox"
+		vbox.add_theme_constant_override("separation", 4)
+		tutorial_card.add_child(vbox)
+		
+		tutorial_step_tag = Label.new()
+		tutorial_step_tag.name = "StepTag"
+		tutorial_step_tag.text = "⭐ STEP 1 / 4  •  FIRST BOOTH"
+		tutorial_step_tag.add_theme_color_override("font_color", Color(1, 0.85, 0.22))
+		tutorial_step_tag.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.04))
+		tutorial_step_tag.add_theme_constant_override("outline_size", 4)
+		tutorial_step_tag.add_theme_font_size_override("font_size", 11)
+		vbox.add_child(tutorial_step_tag)
+		
+		tutorial_instruction_label = Label.new()
+		tutorial_instruction_label.name = "InstructionLabel"
+		tutorial_instruction_label.text = "Collect your first table earnings!"
+		tutorial_instruction_label.add_theme_color_override("font_color", Color.WHITE)
+		tutorial_instruction_label.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.04))
+		tutorial_instruction_label.add_theme_constant_override("outline_size", 4)
+		tutorial_instruction_label.add_theme_font_size_override("font_size", 13)
+		tutorial_instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		vbox.add_child(tutorial_instruction_label)
+		
+		tutorial_hint_label = Label.new()
+		tutorial_hint_label.name = "HintLabel"
+		tutorial_hint_label.text = "Tap Booth #1 to inspect and collect profits"
+		tutorial_hint_label.add_theme_color_override("font_color", Color(0.82, 0.86, 0.94))
+		tutorial_hint_label.add_theme_font_size_override("font_size", 10)
+		tutorial_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		vbox.add_child(tutorial_hint_label)
+		
+		tutorial_overlay.add_child(tutorial_card)
+		
+		tutorial_skip_btn = Button.new()
+		tutorial_skip_btn.name = "SkipBtn"
+		tutorial_skip_btn.text = "SKIP ✕"
+		tutorial_skip_btn.custom_minimum_size = Vector2(96, 34)
+		tutorial_skip_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		tutorial_skip_btn.offset_left = -116
+		tutorial_skip_btn.offset_top = 22
+		tutorial_skip_btn.offset_right = -20
+		tutorial_skip_btn.offset_bottom = 56
+		var skip_sb = StyleBoxFlat.new()
+		skip_sb.bg_color = Color(0.16, 0.12, 0.20, 0.85)
+		skip_sb.border_width_left = 1
+		skip_sb.border_width_top = 1
+		skip_sb.border_width_right = 1
+		skip_sb.border_width_bottom = 2
+		skip_sb.border_color = Color(0.85, 0.72, 0.35, 0.8)
+		skip_sb.corner_radius_top_left = 17
+		skip_sb.corner_radius_top_right = 17
+		skip_sb.corner_radius_bottom_right = 17
+		skip_sb.corner_radius_bottom_left = 17
+		tutorial_skip_btn.add_theme_stylebox_override("normal", skip_sb)
+		tutorial_skip_btn.add_theme_color_override("font_color", Color(1, 0.92, 0.7))
+		tutorial_skip_btn.add_theme_font_size_override("font_size", 11)
+		tutorial_overlay.add_child(tutorial_skip_btn)
+	else:
+		spotlight_vignette = tutorial_overlay.get_node_or_null("SpotlightVignette")
+		tutorial_target_ring = tutorial_overlay.get_node_or_null("TargetRing")
+		tutorial_pointer_hand = tutorial_overlay.get_node_or_null("PointerHand")
+		tutorial_card = tutorial_overlay.get_node_or_null("TutorialCard")
+		tutorial_step_tag = tutorial_overlay.get_node_or_null("TutorialCard/VBox/StepTag")
+		tutorial_instruction_label = tutorial_overlay.get_node_or_null("TutorialCard/VBox/InstructionLabel")
+		tutorial_hint_label = tutorial_overlay.get_node_or_null("TutorialCard/VBox/HintLabel")
+		tutorial_skip_btn = tutorial_overlay.get_node_or_null("SkipBtn")
+
+	_setup_spotlight_shader()
+
+	if tutorial_skip_btn != null and not tutorial_skip_btn.pressed.is_connected(skip_tutorial):
+		tutorial_skip_btn.pressed.connect(skip_tutorial)
+		_wire_button_bounce(tutorial_skip_btn)
+
+func _setup_spotlight_shader() -> void:
+	if spotlight_vignette == null:
+		return
+	var shader = Shader.new()
+	shader.code = """
+shader_type canvas_item;
+
+uniform vec2 target_pos = vec2(640.0, 360.0);
+uniform float cutout_radius = 55.0;
+uniform float feather = 20.0;
+uniform vec4 overlay_color : source_color = vec4(0.06, 0.08, 0.12, 0.72);
+
+void fragment() {
+	float dist = distance(FRAGCOORD.xy, target_pos);
+	float alpha = smoothstep(cutout_radius, cutout_radius + feather, dist);
+	COLOR = vec4(overlay_color.rgb, overlay_color.a * alpha);
+}
+"""
+	spotlight_shader_material = ShaderMaterial.new()
+	spotlight_shader_material.shader = shader
+	spotlight_shader_material.set_shader_parameter("target_pos", Vector2(640, 360))
+	spotlight_shader_material.set_shader_parameter("cutout_radius", 55.0)
+	spotlight_shader_material.set_shader_parameter("feather", 20.0)
+	spotlight_shader_material.set_shader_parameter("overlay_color", Color(0.06, 0.08, 0.12, 0.72))
+	spotlight_vignette.material = spotlight_shader_material
+
+func _start_target_ring_pulse() -> void:
+	if tutorial_target_ring == null:
+		return
+	if _tutorial_ring_tween != null and _tutorial_ring_tween.is_valid():
+		_tutorial_ring_tween.kill()
+	tutorial_target_ring.scale = Vector2(0.9, 0.9)
+	_tutorial_ring_tween = create_tween().set_loops()
+	_tutorial_ring_tween.tween_property(tutorial_target_ring, "scale", Vector2(1.15, 1.15), 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_tutorial_ring_tween.tween_property(tutorial_target_ring, "scale", Vector2(0.9, 0.9), 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+func is_tutorial_active() -> bool:
+	return tutorial_active
+
+func get_tutorial_step() -> int:
+	return current_tutorial_step
+
+func start_tutorial(step: int = 1) -> void:
+	var gm = _get_game_manager()
+	if gm != null and gm.is_tutorial_completed():
+		return
+	current_tutorial_step = clamp(step, 1, 4)
+	if gm != null:
+		gm.tutorial_step = current_tutorial_step
+	tutorial_active = true
+	if tutorial_overlay != null:
+		tutorial_overlay.visible = true
+	_refresh_tutorial_step_ui()
+	_start_target_ring_pulse()
+
+func advance_tutorial(expected_step: int = -1) -> void:
+	if not tutorial_active:
+		return
+	if expected_step != -1 and current_tutorial_step != expected_step:
+		return
+	if current_tutorial_step < 4:
+		current_tutorial_step += 1
+		var gm = _get_game_manager()
+		if gm != null:
+			gm.advance_tutorial_step(current_tutorial_step - 1)
+		_refresh_tutorial_step_ui()
+	else:
+		complete_tutorial()
+
+func skip_tutorial() -> void:
+	_play_click_sfx()
+	complete_tutorial()
+
+func complete_tutorial() -> void:
+	tutorial_active = false
+	if _tutorial_ring_tween != null and _tutorial_ring_tween.is_valid():
+		_tutorial_ring_tween.kill()
+		_tutorial_ring_tween = null
+	if tutorial_overlay != null:
+		tutorial_overlay.visible = false
+	var gm = _get_game_manager()
+	if gm != null:
+		gm.complete_tutorial()
+	_show_tutorial_completion_celebration()
+
+func _refresh_tutorial_step_ui() -> void:
+	if not tutorial_active:
+		return
+	match current_tutorial_step:
+		1:
+			if tutorial_step_tag != null:
+				tutorial_step_tag.text = "⭐ STEP 1 / 4  •  FIRST BOOTH"
+			if tutorial_instruction_label != null:
+				tutorial_instruction_label.text = "Collect your first table earnings!"
+			if tutorial_hint_label != null:
+				tutorial_hint_label.text = "Tap Booth #1 to inspect and collect profits"
+		2:
+			if tutorial_step_tag != null:
+				tutorial_step_tag.text = "⭐ STEP 2 / 4  •  QUICK-UPGRADE"
+			if tutorial_instruction_label != null:
+				tutorial_instruction_label.text = "Upgrade Booth #1 to Level 2!"
+			if tutorial_hint_label != null:
+				tutorial_hint_label.text = "Tap BUY on the Quick-Upgrade pill to boost earnings"
+		3:
+			if tutorial_step_tag != null:
+				tutorial_step_tag.text = "⭐ STEP 3 / 4  •  KITCHEN MASTERY"
+			if tutorial_instruction_label != null:
+				tutorial_instruction_label.text = "Upgrade Stove #1 for faster burgers!"
+			if tutorial_hint_label != null:
+				tutorial_hint_label.text = "Speed up meal preparation by upgrading the kitchen stove"
+		4:
+			if tutorial_step_tag != null:
+				tutorial_step_tag.text = "⭐ STEP 4 / 4  •  STAFF RECRUITMENT"
+			if tutorial_instruction_label != null:
+				tutorial_instruction_label.text = "Hire an extra Waiter to boost table turnover!"
+			if tutorial_hint_label != null:
+				tutorial_hint_label.text = "Open Staff tab to hire more servers and speed up dining"
+
+func _update_tutorial_spotlight(delta: float) -> void:
+	if not tutorial_active or tutorial_overlay == null or not tutorial_overlay.visible:
+		return
+	_tutorial_anim_time += delta
+	var vp = get_viewport()
+	var vp_size = vp.get_visible_rect().size if vp != null else Vector2(1280, 720)
+	var target_pos = vp_size * 0.5
+	var cutout_radius = 55.0
+	var cam: Camera3D = vp.get_camera_3d() if vp != null else null
+	if cam == null:
+		var root = get_tree().current_scene if get_tree() != null else null
+		if root != null:
+			cam = root.find_child("Camera3D", true, false)
+			
+	match current_tutorial_step:
+		1:
+			var tbl = _find_station_node("table_1")
+			if tbl != null and cam != null:
+				var world_pos = tbl.global_position + Vector3(0, 1.2, 0)
+				if not cam.is_position_behind(world_pos):
+					target_pos = cam.unproject_position(world_pos)
+			else:
+				target_pos = Vector2(vp_size.x * 0.45, vp_size.y * 0.5)
+			cutout_radius = 65.0
+		2:
+			if callout_upgrade_btn != null and callout_upgrade_btn.is_visible_in_tree() and callout_station_id == "table_1":
+				target_pos = callout_upgrade_btn.global_position + callout_upgrade_btn.size * 0.5
+				cutout_radius = 50.0
+			elif quick_buy_btn != null and quick_buy_btn.is_visible_in_tree():
+				target_pos = quick_buy_btn.global_position + quick_buy_btn.size * 0.5
+				cutout_radius = 45.0
+			elif quick_upgrade_pill != null and quick_upgrade_pill.is_visible_in_tree():
+				target_pos = quick_upgrade_pill.global_position + quick_upgrade_pill.size * 0.5
+				cutout_radius = 55.0
+			else:
+				target_pos = Vector2(vp_size.x - 130, vp_size.y - 120)
+				cutout_radius = 50.0
+		3:
+			var cook = _find_station_node("kitchen_cook")
+			if cook == null:
+				cook = _find_station_node("stove")
+			if cook != null and cam != null:
+				var world_pos = cook.global_position + Vector3(0, 1.4, 0)
+				if not cam.is_position_behind(world_pos):
+					target_pos = cam.unproject_position(world_pos)
+			else:
+				target_pos = Vector2(vp_size.x * 0.65, vp_size.y * 0.42)
+			cutout_radius = 65.0
+		4:
+			var staff_btn = get_node_or_null("HUD/BottomDock/HBox/StaffBtn")
+			var tab_staff = get_node_or_null("UpgradePanel/VBox/TopTabsHBox/TabStaffBtn")
+			var staff_panel_node = get_node_or_null("StaffPanel")
+			if staff_panel_node != null and staff_panel_node.is_visible_in_tree():
+				var first_hire = staff_panel_node.find_child("*Hire*", true, false)
+				if first_hire != null and first_hire is Control and first_hire.is_visible_in_tree():
+					target_pos = first_hire.global_position + first_hire.size * 0.5
+				else:
+					target_pos = staff_panel_node.global_position + staff_panel_node.size * 0.5
+				cutout_radius = 55.0
+			elif tab_staff != null and tab_staff.is_visible_in_tree():
+				target_pos = tab_staff.global_position + tab_staff.size * 0.5
+				cutout_radius = 48.0
+			elif staff_btn != null and staff_btn.is_visible_in_tree():
+				target_pos = staff_btn.global_position + staff_btn.size * 0.5
+				cutout_radius = 45.0
+			else:
+				target_pos = Vector2(vp_size.x * 0.5, vp_size.y - 45)
+				cutout_radius = 45.0
+
+	target_pos.x = clamp(target_pos.x, 60.0, vp_size.x - 60.0)
+	target_pos.y = clamp(target_pos.y, 60.0, vp_size.y - 60.0)
+	_tutorial_target_screen_pos = target_pos
+
+	if spotlight_shader_material != null:
+		spotlight_shader_material.set_shader_parameter("target_pos", target_pos)
+		spotlight_shader_material.set_shader_parameter("cutout_radius", cutout_radius)
+
+	if tutorial_target_ring != null:
+		tutorial_target_ring.global_position = target_pos - tutorial_target_ring.size * 0.5
+
+	if tutorial_pointer_hand != null:
+		var bounce_offset = sin(_tutorial_anim_time * 6.0) * 8.0
+		tutorial_pointer_hand.global_position = target_pos + Vector2(-16.0, cutout_radius + 8.0 + bounce_offset)
+
+	if tutorial_card != null:
+		var card_w = tutorial_card.size.x
+		var card_h = tutorial_card.size.y
+		var card_x = clamp(target_pos.x - card_w * 0.5, 20.0, vp_size.x - card_w - 20.0)
+		var card_y = 0.0
+		if target_pos.y > vp_size.y * 0.55:
+			card_y = max(20.0, target_pos.y - cutout_radius - card_h - 20.0)
+		else:
+			card_y = min(vp_size.y - card_h - 20.0, target_pos.y + cutout_radius + 65.0)
+		tutorial_card.global_position = Vector2(card_x, card_y)
+
+func _show_tutorial_completion_celebration() -> void:
+	var hud_root = get_node_or_null("HUD")
+	var parent_node = hud_root if hud_root != null else self
+	var toast = PanelContainer.new()
+	toast.name = "TutorialCompleteToast"
+	toast.custom_minimum_size = Vector2(340, 60)
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.12, 0.45, 0.18, 0.96)
+	sb.border_width_left = 3
+	sb.border_width_top = 3
+	sb.border_width_right = 3
+	sb.border_width_bottom = 5
+	sb.border_color = Color(1.0, 0.85, 0.25, 1.0)
+	sb.corner_radius_top_left = 18
+	sb.corner_radius_top_right = 18
+	sb.corner_radius_bottom_right = 18
+	sb.corner_radius_bottom_left = 18
+	sb.content_margin_left = 16
+	sb.content_margin_right = 16
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	sb.shadow_color = Color(0, 0, 0, 0.5)
+	sb.shadow_size = 10
+	toast.add_theme_stylebox_override("panel", sb)
+	
+	var label = Label.new()
+	label.text = "🎉 STARTER PACK CLAIMED!\n+25 💎 Diamonds  •  +$500 💵 Cash"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_color_override("font_color", Color(1, 0.95, 0.8))
+	toast.add_child(label)
+	
+	parent_node.add_child(toast)
+	var vp = get_viewport()
+	var vp_size = vp.get_visible_rect().size if vp != null else Vector2(1280, 720)
+	toast.global_position = Vector2((vp_size.x - 340) * 0.5, 100)
+	toast.modulate.a = 0.0
+	
+	var tw = create_tween()
+	tw.tween_property(toast, "modulate:a", 1.0, 0.25)
+	tw.tween_interval(2.5)
+	tw.tween_property(toast, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(func():
+		if is_instance_valid(toast):
+			toast.queue_free()
+	)
+
 
 
 

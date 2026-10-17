@@ -397,4 +397,56 @@ void main() {
       expect(rec['level'], greaterThanOrEqualTo(1));
     });
   });
+
+  group('Interactive Onboarding Guide Progression', () {
+    late GameState gameState;
+
+    setUp(() {
+      gameState = GameState();
+    });
+
+    test('Initial onboarding state starts at Step 1 uncompleted', () {
+      expect(gameState.tutorialCompleted, isFalse);
+      expect(gameState.tutorialStep, equals(1));
+    });
+
+    test('Advancing tutorial steps cycles through steps 1 to 4 and completes', () {
+      final initGems = gameState.gems;
+      final initCash = gameState.cash;
+
+      gameState.advanceTutorial();
+      expect(gameState.tutorialStep, equals(2));
+      expect(gameState.tutorialCompleted, isFalse);
+
+      gameState.advanceTutorial();
+      expect(gameState.tutorialStep, equals(3));
+      expect(gameState.tutorialCompleted, isFalse);
+
+      gameState.advanceTutorial();
+      expect(gameState.tutorialStep, equals(4));
+      expect(gameState.tutorialCompleted, isFalse);
+
+      // Completing Step 4 awards rewards and finishes
+      gameState.advanceTutorial();
+      expect(gameState.tutorialCompleted, isTrue);
+      expect(gameState.gems, equals(initGems + 25));
+      expect(gameState.cash, equals(initCash + 500.0));
+    });
+
+    test('completeTutorial() awards starter pack and sets completed flag', () {
+      final initGems = gameState.gems;
+      final initCash = gameState.cash;
+
+      gameState.completeTutorial();
+      expect(gameState.tutorialCompleted, isTrue);
+      expect(gameState.gems, equals(initGems + 25));
+      expect(gameState.cash, equals(initCash + 500.0));
+
+      // Repeated calls do not duplicate rewards
+      gameState.completeTutorial();
+      expect(gameState.gems, equals(initGems + 25));
+      expect(gameState.cash, equals(initCash + 500.0));
+    });
+  });
 }
+

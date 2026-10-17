@@ -57,6 +57,8 @@ signal piggy_bank_updated(current: int, max_cap: int)
 signal investor_offer_requested(investor_node: Node3D, cash_amount: float, diamond_amount: int)
 signal fever_meter_updated(current: float, max_val: float, is_active: bool)
 signal fever_mode_changed(active: bool, time_left: float)
+signal tutorial_step_changed(step_index: int)
+signal tutorial_completed_awarded(diamonds: int, cash: float)
 
 var restaurant_node: Node3D = null
 
@@ -246,6 +248,45 @@ var rush_hour_auto_timer: float = 600.0
 const RUSH_HOUR_DURATION: float = 60.0
 const RUSH_HOUR_ENERGY_COST: int = 15
 const RUSH_HOUR_AUTO_INTERVAL: float = 600.0
+
+# ─── Onboarding & Four-Step First-Session Guide ─────────────────────────────
+var tutorial_completed: bool = false
+var tutorial_step: int = 1
+
+func is_tutorial_completed() -> bool:
+	return tutorial_completed
+
+func get_tutorial_step() -> int:
+	return tutorial_step
+
+func set_tutorial_step(step: int) -> void:
+	if tutorial_completed:
+		return
+	tutorial_step = clamp(step, 1, 4)
+	tutorial_step_changed.emit(tutorial_step)
+
+func advance_tutorial_step(current_step: int = -1) -> void:
+	if tutorial_completed:
+		return
+	if current_step != -1 and current_step != tutorial_step:
+		return
+	if tutorial_step < 4:
+		tutorial_step += 1
+		tutorial_step_changed.emit(tutorial_step)
+	else:
+		complete_tutorial()
+
+func complete_tutorial() -> void:
+	if tutorial_completed:
+		return
+	tutorial_completed = true
+	add_diamonds(25)
+	add_cash(500.0)
+	tutorial_completed_awarded.emit(25, 500.0)
+	save_game()
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("cash_register", 0.05, 1.25)
 
 # ─── Franchise Prestige & Valuation ─────────────────────────────────────────
 var prestige_level: int = 0
@@ -1312,6 +1353,8 @@ func save_game() -> void:
 		"fever_charge": fever_charge,
 		"unlocked_star_tiers": unlocked_star_tiers,
 		"claimed_star_rewards": claimed_star_rewards,
+		"tutorial_completed": tutorial_completed,
+		"tutorial_step": tutorial_step,
 		"restaurant_valuation": get_restaurant_valuation(),
 		"saved_timestamp": Time.get_unix_time_from_system()
 	}
@@ -1336,6 +1379,8 @@ func load_game() -> void:
 	diamonds = int(parsed.get("diamonds", parsed.get("gems", diamonds)))
 	golden_coins = int(parsed.get("golden_coins", golden_coins))
 	fever_charge = float(parsed.get("fever_charge", fever_charge))
+	tutorial_completed = bool(parsed.get("tutorial_completed", tutorial_completed))
+	tutorial_step = int(parsed.get("tutorial_step", tutorial_step))
 	energy = int(parsed.get("energy", energy))
 	energy = clampi(energy, 0, max_energy)
 	energy_regen_timer = float(parsed.get("energy_regen_timer", energy_regen_timer))
