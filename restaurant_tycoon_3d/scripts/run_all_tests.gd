@@ -1048,9 +1048,82 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 	_assert_test(dock_hud.wardrobe_inventory_grid != null, "Inventory grid populated in wardrobe view")
 	_assert_test(dock_hud.wardrobe_inventory_grid.get_child_count() == 9, "Inventory grid renders 9 collectible gear cards")
 
+	# Part 14: Interactive Flyover Supply Drones & Screen-Edge Magnetic Indicator Pills
+	print("\n--- [FRAME 20 Part 14] Asserting Flyover Supply Drones & Screen-Edge Indicators ---")
+	
+	# 1. Supply Drone Spawning & Procedural 3D Mesh
+	var drone = rest.spawn_supply_drone()
+	_assert_test(drone != null, "rest.spawn_supply_drone() returns active SupplyDrone instance")
+	_assert_test(rest.get_active_supply_drone() == drone, "rest.get_active_supply_drone() returns spawned drone")
+	_assert_test(drone.name == "SupplyDrone", "Drone node is named SupplyDrone")
+	_assert_test(drone.global_position.y >= 6.4 and drone.global_position.y <= 6.6, "Supply drone flies at altitude Y = 6.5m")
+	_assert_test(drone.crate_node != null, "Supply drone carries golden supply crate")
+	_assert_test(drone.shadow_mesh != null, "Supply drone projects ground shadow disc")
+	_assert_test(drone.propellers.size() == 4, "Procedural quadcopter features 4 spinning propeller rotors")
+
+	# 2. Crate Drop Mechanics & Lawns Bounds [10.5, 13.5]
+	var crate_start_pos = drone.crate_node.global_position
+	drone.drop_crate()
+	_assert_test(drone.has_dropped_crate == true, "drop_crate() sets has_dropped_crate = true")
+	_assert_test(drone.is_departing == true, "Drone enters departing state upon dropping crate")
+	_assert_test(drone.move_speed > 8.0, "Drone accelerates to high speed during sky departure")
+	
+	# 3. Supply Drone Kitchen Speed Buff Integration
+	gm.activate_drone_kitchen_buff(30.0, 2.0)
+	_assert_test(gm.is_drone_kitchen_buff_active() == true, "is_drone_kitchen_buff_active() is true when buff activated")
+	_assert_test(gm.get_drone_kitchen_speed_multiplier() == 2.0, "get_drone_kitchen_speed_multiplier() returns 2.0x")
+	
+	var cook_st = rest.find_child("CookingStation", true, false)
+	if cook_st != null:
+		_assert_test(cook_st.get_cooking_speed_multiplier() >= 2.0, "CookingStation incorporates 2.0x drone speed multiplier")
+		
+	# 4. Camera Controller pan_to_world_coordinate
+	var cam: Camera3D = root.get_node_or_null("Camera3D")
+	if cam == null:
+		var cam_scn = load("res://scripts/camera_controller.gd")
+		cam = cam_scn.new()
+		cam.name = "Camera3D"
+		root.add_child(cam)
+	
+	var target_loc = Vector3(5.0, 0.0, 8.0)
+	cam.pan_to_world_coordinate(target_loc, 0.2)
+	var expected_cam_pos = Vector3(target_loc.x + 18.37, 15.0, target_loc.z + 18.37)
+	_assert_test(cam.target_position.distance_to(expected_cam_pos) < 0.1, "pan_to_world_coordinate calculates isometric offset camera position")
+	
+	# 5. Screen-Edge Magnetic Indicator Pills System
+	dock_hud._setup_screen_edge_indicators()
+	_assert_test(dock_hud.edge_indicators_root != null, "ScreenEdgeIndicators container initialized")
+	_assert_test(dock_hud.edge_indicator_pills.has("drone"), "Drone edge indicator pill created")
+	_assert_test(dock_hud.edge_indicator_pills.has("critic"), "Critic edge indicator pill created")
+	_assert_test(dock_hud.edge_indicator_pills.has("vip"), "VIP edge indicator pill created")
+	_assert_test(dock_hud.edge_indicator_pills.has("cash"), "Cash edge indicator pill created")
+	
+	# Test off-screen detection and edge clamping
+	var offscreen_drone = rest.spawn_supply_drone()
+	offscreen_drone.has_dropped_crate = false
+	offscreen_drone.global_position = Vector3(-45.0, 6.5, -35.0)
+	
+	dock_hud._update_screen_edge_indicators(0.016)
+	_assert_test(dock_hud.is_edge_indicator_visible("drone") == true, "Drone pill visible when drone is off-screen")
+	var drone_pill = dock_hud.get_edge_indicator_pill("drone")
+	_assert_test(drone_pill != null, "get_edge_indicator_pill('drone') returns valid control")
+	
+	# Test edge indicator press smoothly pans camera towards target
+	var pre_pan_target = cam.target_position
+	dock_hud._on_edge_indicator_pressed("drone")
+	_assert_test(cam.target_position != pre_pan_target, "_on_edge_indicator_pressed smoothly pans camera towards drone event")
+	
+	# Test clean view hides edge indicators
+	dock_hud.activate_clean_view(5.0)
+	dock_hud._update_screen_edge_indicators(0.016)
+	_assert_test(dock_hud.edge_indicators_root.visible == false, "Edge indicators hidden during clean view mode")
+	dock_hud.end_clean_view()
+	dock_hud._update_screen_edge_indicators(0.016)
+	_assert_test(dock_hud.edge_indicators_root.visible == true, "Edge indicators restored when clean view mode ends")
+
 	dock_hud.queue_free()
 
-	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, Blueprint Zones, Collapsible Dock, Pipeline Balance, Interactive Onboarding, and Collectible Gear Wardrobe validated.")
+	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, Blueprint Zones, Collapsible Dock, Pipeline Balance, Interactive Onboarding, Collectible Gear Wardrobe, Supply Drones, and Screen-Edge Indicators validated.")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Frame 25: Teardown & Summary

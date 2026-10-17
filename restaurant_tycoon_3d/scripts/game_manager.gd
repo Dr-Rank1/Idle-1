@@ -251,6 +251,20 @@ const RUSH_HOUR_DURATION: float = 60.0
 const RUSH_HOUR_ENERGY_COST: int = 15
 const RUSH_HOUR_AUTO_INTERVAL: float = 600.0
 
+# ─── Flyover Supply Drone Buffs ─────────────────────────────────────────────
+var drone_kitchen_buff_timer: float = 0.0
+var drone_kitchen_speed_multiplier: float = 2.0
+
+func activate_drone_kitchen_buff(duration: float = 30.0, mult: float = 2.0) -> void:
+	drone_kitchen_buff_timer = max(drone_kitchen_buff_timer, duration)
+	drone_kitchen_speed_multiplier = mult
+
+func is_drone_kitchen_buff_active() -> bool:
+	return drone_kitchen_buff_timer > 0.0
+
+func get_drone_kitchen_speed_multiplier() -> float:
+	return drone_kitchen_speed_multiplier if drone_kitchen_buff_timer > 0.0 else 1.0
+
 # ─── Onboarding & Four-Step First-Session Guide ─────────────────────────────
 var tutorial_completed: bool = false
 var tutorial_step: int = 1
@@ -1713,6 +1727,11 @@ func _process(delta: float) -> void:
 		vip_revenue_multiplier_timer -= delta
 		if vip_revenue_multiplier_timer <= 0.0:
 			vip_revenue_multiplier_timer = 0.0
+
+	if drone_kitchen_buff_timer > 0.0:
+		drone_kitchen_buff_timer -= delta
+		if drone_kitchen_buff_timer <= 0.0:
+			drone_kitchen_buff_timer = 0.0
 
 	if rush_hour_timer > 0.0:
 		rush_hour_timer -= delta

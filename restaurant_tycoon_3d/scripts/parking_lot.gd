@@ -697,3 +697,18 @@ func force_spawn_vip_helicopter() -> void:
 	helicopter_timer = 0.0
 	_spawn_helicopter()
 
+func get_active_supply_drone() -> Node3D:
+	var rest = get_parent()
+	if rest != null and rest.has_method("get_active_supply_drone"):
+		return rest.get_active_supply_drone()
+	var root = get_tree().current_scene if get_tree() != null else null
+	if root != null:
+		return root.find_child("SupplyDrone", true, false)
+	return null
+
+func trigger_supply_drone() -> Node3D:
+	var rest = get_parent()
+	if rest != null and rest.has_method("spawn_supply_drone"):
+		return rest.spawn_supply_drone()
+	return null
+

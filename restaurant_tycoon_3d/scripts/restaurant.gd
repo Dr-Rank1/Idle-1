@@ -1975,6 +1975,8 @@ func _on_staff_updated(staff_id: String) -> void:
 
 var critic_timer: float = 35.0
 var investor_spawn_timer: float = 90.0
+var supply_drone_node: Node3D = null
+var supply_drone_timer: float = 45.0
 
 func _process(delta: float) -> void:
 	spawn_timer -= delta
@@ -1999,6 +2001,7 @@ func _process(delta: float) -> void:
 	_check_seat_waiting_customers()
 	_process_catering_fulfillment(delta)
 	_dispatch_waiter_tasks()
+	_process_supply_drone(delta)
 	_process_lounge_bartender(delta)
 	_process_diner_barista(delta)
 	_process_floor_manager(delta)
@@ -2043,6 +2046,40 @@ func _process(delta: float) -> void:
 		var m_bonus = (m_lvl - 1) * 0.16
 		var pulse = sin(Time.get_ticks_msec() * 0.0035) * 0.75
 		sign_board_mat.emission_energy_multiplier = clamp(4.0 + m_bonus + pulse, 3.2, 9.5)
+
+# ─── Flyover Supply Drone Spawning & Management ─────────────────────────────
+func _process_supply_drone(delta: float) -> void:
+	if supply_drone_node != null and not is_instance_valid(supply_drone_node):
+		supply_drone_node = null
+	if supply_drone_node == null:
+		supply_drone_timer -= delta
+		if supply_drone_timer <= 0.0:
+			supply_drone_timer = randf_range(45.0, 60.0)
+			spawn_supply_drone()
+
+func spawn_supply_drone() -> Node3D:
+	if supply_drone_node != null and is_instance_valid(supply_drone_node):
+		return supply_drone_node
+	var drone_script = load("res://scripts/supply_drone.gd")
+	if drone_script != null:
+		var drone = drone_script.new()
+		add_child(drone)
+		supply_drone_node = drone
+		drone.tree_exited.connect(func():
+			if supply_drone_node == drone:
+				supply_drone_node = null
+		)
+		return drone
+	return null
+
+func get_active_supply_drone() -> Node3D:
+	if supply_drone_node != null and is_instance_valid(supply_drone_node):
+		return supply_drone_node
+	var d = find_child("SupplyDrone", true, false)
+	if d != null and is_instance_valid(d):
+		supply_drone_node = d
+		return d
+	return null
 
 func _init_sliding_doors() -> void:
 	_sliding_door_left = get_node_or_null("BuildingWalls/SlidingDoorLeft")

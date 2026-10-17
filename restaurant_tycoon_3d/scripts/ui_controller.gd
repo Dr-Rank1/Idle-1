@@ -288,6 +288,11 @@ var _dock_tween: Tween = null
 var pipeline_refresh_timer: float = 0.0
 var pipeline_weakest_sector: String = "parking"
 
+# ─── Screen-Edge Magnetic Indicator Pills ───────────────────────────────────
+var edge_indicators_root: Control = null
+var edge_indicator_pills: Dictionary = {}
+var edge_indicators_refresh_timer: float = 0.0
+
 # ─── Mobile Interactive Onboarding Sequence ─────────────────────────────────
 @onready var tutorial_overlay: Control = get_node_or_null("TutorialOverlay")
 @onready var spotlight_vignette: ColorRect = get_node_or_null("TutorialOverlay/SpotlightVignette")
@@ -952,6 +957,7 @@ func _ready() -> void:
 	_setup_tutorial_ui()
 	_check_start_onboarding()
 	_setup_wardrobe_ui()
+	_setup_screen_edge_indicators()
 
 # ─── Tactile Squash-and-Stretch & Affordability Feedback ────────────────────
 func apply_button_squash_and_stretch(btn: Button) -> void:
@@ -1539,6 +1545,7 @@ func _process(delta: float) -> void:
 		_refresh_pipeline_widget()
 
 	_update_tutorial_spotlight(delta)
+	_update_screen_edge_indicators(delta)
 
 	if is_clean_view_active:
 		clean_view_timer -= delta
@@ -9073,6 +9080,373 @@ func _show_wardrobe_toast(text: String) -> void:
 	tw.tween_interval(2.0)
 	tw.tween_property(toast, "modulate:a", 0.0, 0.3)
 	tw.tween_callback(toast.queue_free)
+
+# ─── Screen-Edge Magnetic Indicator Pills System ─────────────────────────────
+func _setup_screen_edge_indicators() -> void:
+	if edge_indicators_root != null and is_instance_valid(edge_indicators_root):
+		return
+	var hud_root = get_node_or_null("HUD")
+	if hud_root == null:
+		hud_root = self
+	
+	var cont = Control.new()
+	cont.name = "ScreenEdgeIndicators"
+	cont.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cont.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_root.add_child(cont)
+	edge_indicators_root = cont
+
+	var types = ["drone", "critic", "vip", "cash"]
+	for t_key in types:
+		_create_edge_indicator_pill(t_key)
+
+func _create_edge_indicator_pill(type_key: String) -> Control:
+	if edge_indicators_root == null:
+		return null
+	var pill = Control.new()
+	pill.name = "Indicator_" + type_key.capitalize()
+	pill.custom_minimum_size = Vector2(48, 48)
+	pill.size = Vector2(48, 48)
+	pill.pivot_offset = Vector2(24, 24)
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.visible = false
+
+	# Background circular button
+	var btn = Button.new()
+	btn.name = "BadgeButton"
+	btn.custom_minimum_size = Vector2(46, 46)
+	btn.size = Vector2(46, 46)
+	btn.position = Vector2(1, 1)
+	btn.pivot_offset = Vector2(23, 23)
+	btn.text = ""
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.1, 0.12, 0.18, 0.94)
+	sb.set_corner_radius_all(23)
+	sb.border_width_left = 3
+	sb.border_width_top = 3
+	sb.border_width_right = 3
+	sb.border_width_bottom = 3
+	sb.border_color = Color(1.0, 0.85, 0.2)
+	sb.shadow_color = Color(0, 0, 0, 0.5)
+	sb.shadow_size = 6
+	btn.add_theme_stylebox_override("normal", sb)
+	var sb_h = sb.duplicate()
+	sb_h.bg_color = Color(0.18, 0.22, 0.32, 0.98)
+	btn.add_theme_stylebox_override("hover", sb_h)
+	var sb_p = sb.duplicate()
+	sb_p.bg_color = Color(0.25, 0.3, 0.45, 1.0)
+	btn.add_theme_stylebox_override("pressed", sb_p)
+	pill.add_child(btn)
+
+	# Icon Label
+	var icon_lbl = Label.new()
+	icon_lbl.name = "IconLabel"
+	icon_lbl.text = "🎯"
+	icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	icon_lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon_lbl.add_theme_font_size_override("font_size", 20)
+	icon_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(icon_lbl)
+
+	# Arrow Holder (centered at 24, 24)
+	var arrow_holder = Node2D.new()
+	arrow_holder.name = "ArrowHolder"
+	arrow_holder.position = Vector2(24, 24)
+	pill.add_child(arrow_holder)
+
+	# Arrow Polygon (pointing right at radius 27px)
+	var arrow_poly = Polygon2D.new()
+	arrow_poly.name = "ArrowPoly"
+	arrow_poly.polygon = PackedVector2Array([
+		Vector2(26, -5),
+		Vector2(35, 0),
+		Vector2(26, 5)
+	])
+	arrow_poly.color = Color(1.0, 0.85, 0.2)
+	arrow_holder.add_child(arrow_poly)
+
+	# Bottom Tag Label
+	var tag_p = PanelContainer.new()
+	tag_p.name = "TagPanel"
+	tag_p.custom_minimum_size = Vector2(50, 16)
+	var tag_sb = StyleBoxFlat.new()
+	tag_sb.bg_color = Color(0.08, 0.1, 0.14, 0.92)
+	tag_sb.set_corner_radius_all(7)
+	tag_sb.border_width_bottom = 1
+	tag_sb.border_color = Color(0.3, 0.35, 0.45, 0.8)
+	tag_sb.content_margin_left = 6.0
+	tag_sb.content_margin_right = 6.0
+	tag_sb.content_margin_top = 2.0
+	tag_sb.content_margin_bottom = 2.0
+	tag_p.add_theme_stylebox_override("panel", tag_sb)
+	tag_p.position = Vector2(-1, 48)
+	tag_p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	var tag_lbl = Label.new()
+	tag_lbl.name = "TagLabel"
+	tag_lbl.text = type_key.to_upper()
+	tag_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tag_lbl.add_theme_font_size_override("font_size", 9)
+	tag_lbl.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.95))
+	tag_p.add_child(tag_lbl)
+	pill.add_child(tag_p)
+
+	btn.pressed.connect(func():
+		_on_edge_indicator_pressed(type_key)
+	)
+
+	edge_indicators_root.add_child(pill)
+	edge_indicator_pills[type_key] = {
+		"root": pill,
+		"btn": btn,
+		"stylebox": sb,
+		"icon": icon_lbl,
+		"arrow_holder": arrow_holder,
+		"arrow_poly": arrow_poly,
+		"tag_panel": tag_p,
+		"tag_label": tag_lbl,
+		"target_pos": Vector3.ZERO
+	}
+	return pill
+
+func _update_screen_edge_indicators(_delta: float) -> void:
+	if is_clean_view_active:
+		if edge_indicators_root != null and is_instance_valid(edge_indicators_root):
+			edge_indicators_root.visible = false
+		return
+	if edge_indicators_root != null and is_instance_valid(edge_indicators_root):
+		edge_indicators_root.visible = true
+	else:
+		_setup_screen_edge_indicators()
+		if edge_indicators_root == null:
+			return
+
+	var cam: Camera3D = get_viewport().get_camera_3d() if is_inside_tree() else null
+	if cam == null:
+		var root = get_tree().current_scene if get_tree() != null else null
+		if root != null:
+			cam = root.find_child("Camera3D", true, false)
+	if cam == null:
+		return
+
+	var vp_size = Vector2(1080, 1920)
+	if get_viewport() != null:
+		var vr = get_viewport().get_visible_rect()
+		if vr.size.x > 20.0 and vr.size.y > 20.0:
+			vp_size = vr.size
+			
+	var min_x: float = 38.0
+	var max_x: float = vp_size.x - 38.0
+	var min_y: float = 65.0
+	var max_y: float = vp_size.y - 75.0
+	var box_center: Vector2 = Vector2((min_x + max_x) * 0.5, (min_y + max_y) * 0.5)
+	var half_w: float = (max_x - min_x) * 0.5
+	var half_h: float = (max_y - min_y) * 0.5
+
+	var candidates: Dictionary = {}
+	var root_scene = get_tree().current_scene if get_tree() != null else null
+
+	# 1. Supply Drone
+	var drone = null
+	var rest_node = get_parent().find_child("Restaurant", true, false) if get_parent() != null else null
+	if rest_node != null and rest_node.has_method("get_active_supply_drone"):
+		drone = rest_node.get_active_supply_drone()
+	if drone == null and root_scene != null:
+		drone = root_scene.find_child("SupplyDrone", true, false)
+	if drone != null and is_instance_valid(drone) and not drone.get("has_dropped_crate"):
+		candidates["drone"] = {
+			"pos": drone.global_position,
+			"icon": "🚁",
+			"label": "DRONE",
+			"color": Color(1.0, 0.82, 0.15)
+		}
+
+	# 2. Michelin Critic
+	var critic_node = null
+	if root_scene != null:
+		var cust_cont = root_scene.find_child("Customers", true, false)
+		if cust_cont != null:
+			for c in cust_cont.get_children():
+				if is_instance_valid(c) and c.get("is_vip_critic") == true:
+					var st = c.get("current_state") if "current_state" in c else 0
+					if st != 8:
+						critic_node = c
+						break
+	if critic_node != null and is_instance_valid(critic_node):
+		candidates["critic"] = {
+			"pos": critic_node.global_position + Vector3(0, 1.2, 0),
+			"icon": "👑",
+			"label": "CRITIC",
+			"color": Color(1.0, 0.45, 0.85)
+		}
+
+	# 3. Helipad VIP
+	var vip_node = null
+	var vip_pos = Vector3.ZERO
+	if root_scene != null:
+		var p_lot = root_scene.find_child("ParkingLot", true, false)
+		if p_lot != null and is_instance_valid(p_lot):
+			var heli_node = p_lot.get("helicopter_node")
+			var heli_state = p_lot.get("helicopter_state")
+			if heli_node != null and is_instance_valid(heli_node) and heli_state in ["APPROACHING", "LANDING", "DISEMBARKING", "TAKEOFF"]:
+				vip_node = heli_node
+				vip_pos = heli_node.global_position
+		if vip_node == null:
+			var cust_cont = root_scene.find_child("Customers", true, false)
+			if cust_cont != null:
+				for c in cust_cont.get_children():
+					if is_instance_valid(c) and c.get("is_vip_investor") == true:
+						if c.get("vip_reward_claimed") == false:
+							var st = c.get("current_state") if "current_state" in c else 0
+							if st != 8:
+								vip_node = c
+								vip_pos = c.global_position + Vector3(0, 1.2, 0)
+								break
+	if vip_node != null:
+		candidates["vip"] = {
+			"pos": vip_pos,
+			"icon": "💼",
+			"label": "VIP",
+			"color": Color(0.25, 0.75, 1.0)
+		}
+
+	# 4. Highest Full Cash Stack
+	var best_cash_pos = Vector3.ZERO
+	var best_cash_val: float = 0.0
+	var gm_ref = get_node_or_null("/root/GameManager")
+	if root_scene != null:
+		var tables_cont = root_scene.find_child("Tables", true, false)
+		if tables_cont != null:
+			for t in tables_cont.get_children():
+				if is_instance_valid(t) and t.has_method("has_visible_cash_stack") and t.has_visible_cash_stack():
+					var amt = t.get("current_cash_stack") if "current_cash_stack" in t else (t.get("cash_amount") if "cash_amount" in t else 50.0)
+					if amt > best_cash_val:
+						best_cash_val = amt
+						best_cash_pos = t.global_position + Vector3(0, 0.5, 0)
+		var kitchen_cont = root_scene.find_child("CookingStations", true, false)
+		if kitchen_cont != null:
+			for st in kitchen_cont.get_children():
+				if is_instance_valid(st) and st.has_method("has_visible_cash_stack") and st.has_visible_cash_stack():
+					var amt = st.get("current_cash_stack") if "current_cash_stack" in st else 75.0
+					if amt > best_cash_val:
+						best_cash_val = amt
+						best_cash_pos = st.global_position + Vector3(0, 0.5, 0)
+		var hostess_mat = root_scene.find_child("HostessCashMat", true, false)
+		if hostess_mat != null and is_instance_valid(hostess_mat) and hostess_mat.visible:
+			var rest_ref = root_scene.find_child("Restaurant", true, false)
+			var amt = rest_ref.get("hostess_cash_amount") if (rest_ref != null and "hostess_cash_amount" in rest_ref) else 50.0
+			if amt > best_cash_val:
+				best_cash_val = amt
+				best_cash_pos = hostess_mat.global_position + Vector3(0, 0.3, 0)
+	if best_cash_val > 0.0:
+		var amt_str = "$%s" % (gm_ref.format_money(best_cash_val) if gm_ref != null else str(round(best_cash_val)))
+		candidates["cash"] = {
+			"pos": best_cash_pos,
+			"icon": "💵",
+			"label": amt_str,
+			"color": Color(0.25, 0.9, 0.45)
+		}
+
+	var all_keys = ["drone", "critic", "vip", "cash"]
+	for idx in range(all_keys.size()):
+		var k = all_keys[idx]
+		if not candidates.has(k):
+			if edge_indicator_pills.has(k):
+				edge_indicator_pills[k]["root"].visible = false
+			continue
+
+		if not edge_indicator_pills.has(k):
+			_create_edge_indicator_pill(k)
+		var entry = edge_indicator_pills[k]
+		var c_data = candidates[k]
+		var target_pos: Vector3 = c_data["pos"]
+		entry["target_pos"] = target_pos
+
+		var is_behind = cam.is_position_behind(target_pos)
+		var screen_pos = cam.unproject_position(target_pos)
+		var is_inside = not is_behind and screen_pos.x >= min_x and screen_pos.x <= max_x and screen_pos.y >= min_y and screen_pos.y <= max_y
+
+		if is_inside:
+			entry["root"].visible = false
+		else:
+			entry["root"].visible = true
+
+			var dx = (target_pos - cam.global_position).dot(cam.global_transform.basis.x)
+			var dy = -(target_pos - cam.global_position).dot(cam.global_transform.basis.y)
+			var dir_2d = Vector2(dx, dy)
+			if dir_2d.length_squared() < 0.0001:
+				dir_2d = Vector2(0, 1)
+			else:
+				dir_2d = dir_2d.normalized()
+
+			var t_x = INF
+			if abs(dir_2d.x) > 0.0001:
+				t_x = half_w / abs(dir_2d.x)
+			var t_y = INF
+			if abs(dir_2d.y) > 0.0001:
+				t_y = half_h / abs(dir_2d.y)
+			var t = min(t_x, t_y)
+
+			var edge_pos = box_center + dir_2d * t
+			var arrow_angle = dir_2d.angle()
+
+			entry["root"].global_position = edge_pos - Vector2(24, 24)
+			entry["arrow_holder"].rotation = arrow_angle
+
+			var col: Color = c_data["color"]
+			entry["stylebox"].border_color = col
+			entry["arrow_poly"].color = col
+			entry["icon"].text = c_data["icon"]
+			entry["tag_label"].text = c_data["label"]
+
+			var pulse = 1.0 + sin(Time.get_ticks_msec() * 0.006 + idx * 1.5) * 0.08
+			entry["root"].scale = Vector2(pulse, pulse)
+
+func _on_edge_indicator_pressed(type_key: String) -> void:
+	if not edge_indicator_pills.has(type_key):
+		return
+	var data = edge_indicator_pills[type_key]
+	var target_pos: Vector3 = data.get("target_pos", Vector3.ZERO)
+	if target_pos == Vector3.ZERO:
+		return
+
+	var am = get_node_or_null("/root/AudioManager")
+	if am != null and am.has_method("play_sfx"):
+		am.play_sfx("tap", 0.05, 1.3)
+
+	var btn = data.get("btn", null)
+	if btn != null:
+		apply_button_squash_and_stretch(btn)
+
+	var cam: Camera3D = get_viewport().get_camera_3d() if is_inside_tree() else null
+	if cam == null:
+		var root = get_tree().current_scene if get_tree() != null else null
+		if root != null:
+			cam = root.find_child("Camera3D", true, false)
+	if cam != null:
+		if cam.has_method("pan_to_world_coordinate"):
+			cam.pan_to_world_coordinate(target_pos, 0.45)
+		elif cam.has_method("pan_to_position"):
+			var cam_pos = Vector3(target_pos.x + 18.37, 15.0, target_pos.z + 18.37)
+			cam.pan_to_position(cam_pos, 0.45, false)
+
+func get_edge_indicator_pill(type_key: String) -> Control:
+	if edge_indicator_pills.has(type_key):
+		return edge_indicator_pills[type_key].get("root", null)
+	return null
+
+func is_edge_indicator_visible(type_key: String) -> bool:
+	var p = get_edge_indicator_pill(type_key)
+	return p != null and p.visible
+
+func get_edge_indicator_target_pos(type_key: String) -> Vector3:
+	if edge_indicator_pills.has(type_key):
+		return edge_indicator_pills[type_key].get("target_pos", Vector3.ZERO)
+	return Vector3.ZERO
+
 
 
 

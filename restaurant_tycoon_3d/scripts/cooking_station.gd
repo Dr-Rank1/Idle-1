@@ -702,9 +702,12 @@ func _on_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vect
 
 func get_cooking_speed_multiplier() -> float:
 	var gm = get_node_or_null("/root/GameManager")
+	var mult: float = 1.0
 	if gm != null and gm.has_method("get_card_cook_speed_multiplier"):
-		return gm.get_card_cook_speed_multiplier()
-	return 1.0
+		mult *= gm.get_card_cook_speed_multiplier()
+	if gm != null and gm.has_method("get_drone_kitchen_speed_multiplier"):
+		mult *= gm.get_drone_kitchen_speed_multiplier()
+	return mult
 
 func start_catering_batch(meals: int) -> void:
 	catering_active = true

@@ -240,9 +240,11 @@ func focus_station(station_id: String) -> void:
 
 func focus_target_node(target: Node3D, duration: float = 0.45) -> void:
 	if target != null and is_instance_valid(target):
-		var wp = target.global_position
-		var cam_pos = Vector3(wp.x + 18.37, 15.0, wp.z + 18.37)
-		pan_to_position(cam_pos, duration, false)
+		pan_to_world_coordinate(target.global_position, duration)
+
+func pan_to_world_coordinate(world_pos: Vector3, duration: float = 0.45) -> void:
+	var cam_pos = Vector3(world_pos.x + 18.37, 15.0, world_pos.z + 18.37)
+	pan_to_position(cam_pos, duration, false)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:

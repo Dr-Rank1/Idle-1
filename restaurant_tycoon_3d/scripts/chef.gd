@@ -85,6 +85,8 @@ func get_inspector_info() -> Dictionary:
 			cook_mult = gm.get_staff_cooking_multiplier(staff_key)
 		if gm.has_method("get_fever_speed_multiplier"):
 			cook_mult *= gm.get_fever_speed_multiplier()
+		if gm.has_method("get_drone_kitchen_speed_multiplier"):
+			cook_mult *= gm.get_drone_kitchen_speed_multiplier()
 	var speed = (0.28 + (chef_index % 3) * 0.05) * cook_mult
 	var offset = float(chef_index) * 0.27 + (0.15 if is_prep_chef else 0.0)
 	var cycle_prog = fmod(time_passed * speed + offset, 1.0)
@@ -182,6 +184,8 @@ func _process(delta: float) -> void:
 				cook_mult *= 1.25
 			if gm.has_method("get_fever_speed_multiplier"):
 				cook_mult *= gm.get_fever_speed_multiplier()
+			if gm.has_method("get_drone_kitchen_speed_multiplier"):
+				cook_mult *= gm.get_drone_kitchen_speed_multiplier()
 		var speed = (0.28 + (chef_index % 3) * 0.05) * cook_mult
 		var offset = float(chef_index) * 0.27 + (0.15 if is_prep_chef else 0.0)
 		var cook_progress = fmod(time_passed * speed + offset, 1.0)
