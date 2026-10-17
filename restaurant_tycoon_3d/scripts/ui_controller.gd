@@ -200,6 +200,36 @@ var boost_timer_bar: Panel = null
 @onready var close_spin_btn: Button = get_node_or_null("SpinWheelModal/VBox/CloseSpinBtn")
 @onready var close_spin_banner_btn: Button = get_node_or_null("SpinWheelModal/VBox/HeaderBanner/BannerHBox/CloseSpinBannerBtn")
 
+# ─── Screen-Space Contextual Station Callout Card ───────────────────────────
+@onready var station_callout_card: Control = get_node_or_null("StationCalloutCard")
+@onready var callout_station_name: Label = get_node_or_null("StationCalloutCard/CardPanel/VBox/TopRow/StationName")
+@onready var callout_star_badge: Label = get_node_or_null("StationCalloutCard/CardPanel/VBox/TopRow/StarBadge")
+@onready var callout_level_label: Label = get_node_or_null("StationCalloutCard/CardPanel/VBox/TopRow/LevelLabel")
+@onready var callout_milestone_bar: ProgressBar = get_node_or_null("StationCalloutCard/CardPanel/VBox/MilestoneBar")
+@onready var callout_milestone_label: Label = get_node_or_null("StationCalloutCard/CardPanel/VBox/MilestoneLabel")
+@onready var callout_revenue_label: Label = get_node_or_null("StationCalloutCard/CardPanel/VBox/StatsRow/RevenueLabel")
+@onready var callout_duration_label: Label = get_node_or_null("StationCalloutCard/CardPanel/VBox/StatsRow/DurationLabel")
+@onready var callout_upgrade_btn: Button = get_node_or_null("StationCalloutCard/CardPanel/VBox/BottomRow/UpgradeBtn")
+@onready var callout_expand_btn: Button = get_node_or_null("StationCalloutCard/CardPanel/VBox/BottomRow/ExpandBtn")
+
+var callout_target_node: Node3D = null
+var callout_station_id: String = ""
+var callout_station_name_str: String = ""
+var callout_station_level: int = 1
+
+# ─── Smart Quick-Upgrade HUD Pill ───────────────────────────────────────────
+@onready var quick_upgrade_pill: PanelContainer = get_node_or_null("HUD/QuickUpgradePill")
+@onready var quick_thumb_btn: Button = get_node_or_null("HUD/QuickUpgradePill/HBox/ThumbBtn")
+@onready var quick_thumb_icon: Label = get_node_or_null("HUD/QuickUpgradePill/HBox/ThumbBtn/ThumbIcon")
+@onready var quick_station_label: Label = get_node_or_null("HUD/QuickUpgradePill/HBox/InfoVBox/StationLabel")
+@onready var quick_level_label: Label = get_node_or_null("HUD/QuickUpgradePill/HBox/InfoVBox/LevelHBox/LevelLabel")
+@onready var quick_milestone_tag: Label = get_node_or_null("HUD/QuickUpgradePill/HBox/InfoVBox/LevelHBox/MilestoneTag")
+@onready var quick_buy_btn: Button = get_node_or_null("HUD/QuickUpgradePill/HBox/BuyBtn")
+
+var quick_upgrade_station_id: String = ""
+var quick_upgrade_refresh_timer: float = 0.0
+var _hold_forced_multiplier: String = ""
+
 var quest_banner_style_normal: StyleBoxFlat = null
 var quest_banner_style_completed: StyleBoxFlat = null
 var is_spinning_wheel: bool = false
@@ -795,6 +825,29 @@ func _ready() -> void:
 	_wire_all_buttons_in_tree(self)
 	_update_affordability_badges()
 
+	# Callout Expand & Upgrade button wiring
+	if callout_expand_btn != null:
+		callout_expand_btn.pressed.connect(func():
+			_play_click_sfx()
+			var sid = callout_station_id
+			var sname = callout_station_name_str
+			var slvl = callout_station_level
+			dismiss_station_callout()
+			open_upgrade(sid, sname, slvl)
+		)
+	if callout_upgrade_btn != null:
+		_connect_hold_upgrade_button(callout_upgrade_btn, func(): return callout_station_id, false, "1")
+
+	# Quick-Upgrade Pill wiring
+	if quick_thumb_btn != null:
+		quick_thumb_btn.pressed.connect(func():
+			_play_click_sfx()
+			_on_quick_upgrade_thumb_pressed()
+		)
+	if quick_buy_btn != null:
+		_connect_hold_upgrade_button(quick_buy_btn, func(): return quick_upgrade_station_id, false, "1")
+	_refresh_quick_upgrade_pill()
+
 # ─── Tactile Squash-and-Stretch & Affordability Feedback ────────────────────
 func apply_button_squash_and_stretch(btn: Button) -> void:
 	if btn == null or not is_instance_valid(btn):
@@ -1220,6 +1273,9 @@ func _on_cash_changed(new_cash: float) -> void:
 	if shop_panel != null and shop_panel.visible:
 		_refresh_shop_panel()
 	_update_affordability_badges()
+	_refresh_quick_upgrade_pill()
+	if station_callout_card != null and station_callout_card.visible:
+		_refresh_station_callout()
 
 func _on_gems_changed(new_gems: int) -> void:
 	if gems_tween != null and gems_tween.is_valid():
@@ -1352,6 +1408,12 @@ func _process(delta: float) -> void:
 		if staff_refresh_timer >= 1.0:
 			staff_refresh_timer = 0.0
 			_refresh_staff_panel()
+
+	_update_station_callout_position()
+	quick_upgrade_refresh_timer += delta
+	if quick_upgrade_refresh_timer >= 0.5:
+		quick_upgrade_refresh_timer = 0.0
+		_refresh_quick_upgrade_pill()
 
 	# ─── VIP Arrival Alert Toast Countdown ─────────────────────────────────────
 	if active_vip_toast != null and is_instance_valid(active_vip_toast):
@@ -1640,6 +1702,7 @@ func _create_quest_card(q: Dictionary, gm: Node) -> PanelContainer:
 
 # ─── Station Upgrade Logic (Click in 3D or from UI) ─────────────────────────
 func open_upgrade(station_id: String, station_name: String, level: int) -> void:
+	dismiss_station_callout()
 	current_station_id = station_id
 	var gm = get_node_or_null("/root/GameManager")
 	if gm == null:
@@ -1924,6 +1987,11 @@ func _on_station_upgraded(station_id: String, new_lvl: int) -> void:
 	if terrace_panel != null and terrace_panel.visible:
 		_refresh_terrace_panel()
 	_update_affordability_badges()
+	_refresh_quick_upgrade_pill()
+	if station_callout_card != null and station_callout_card.visible:
+		if station_id == callout_station_id or callout_station_id == "":
+			callout_station_level = new_lvl
+			_refresh_station_callout()
 
 # ─── Dining Floor Management Modal ──────────────────────────────────────────
 func _refresh_dining_panel() -> void:
@@ -5848,6 +5916,7 @@ func _stop_hold_upgrade() -> void:
 	_hold_timer = 0.0
 	_hold_consecutive = 0
 	_hold_delay_passed = false
+	_hold_forced_multiplier = ""
 	if _just_upgraded_on_hold:
 		var tree = get_tree()
 		if tree != null:
@@ -5883,16 +5952,20 @@ func _perform_hold_step() -> void:
 		_stop_hold_upgrade()
 		return
 		
-	var info = gm.get_upgrade_multi_info(_hold_station_id, current_multiplier)
+	var multi = _hold_forced_multiplier if _hold_forced_multiplier != "" else current_multiplier
+	var info = gm.get_upgrade_multi_info(_hold_station_id, multi)
 	if not info.can_afford or info.levels <= 0:
 		_stop_hold_upgrade()
 		return
 		
 	_just_upgraded_on_hold = true
-	var success = gm.upgrade_station_multi(_hold_station_id, current_multiplier, _hold_consecutive)
+	var success = gm.upgrade_station_multi(_hold_station_id, multi, _hold_consecutive)
 	if success:
 		_hold_consecutive += 1
 		_punch_upgrade_btn()
+		_refresh_quick_upgrade_pill()
+		if station_callout_card != null and station_callout_card.visible:
+			_refresh_station_callout()
 	else:
 		_stop_hold_upgrade()
 
@@ -5902,12 +5975,23 @@ func _punch_upgrade_btn() -> void:
 		var tw = create_tween()
 		tw.tween_property(upgrade_btn, "scale", Vector2(1.07, 1.07), 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		tw.tween_property(upgrade_btn, "scale", Vector2.ONE, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	if callout_upgrade_btn != null and callout_upgrade_btn.is_inside_tree() and callout_upgrade_btn.button_pressed:
+		callout_upgrade_btn.pivot_offset = callout_upgrade_btn.size * 0.5
+		var tw = create_tween()
+		tw.tween_property(callout_upgrade_btn, "scale", Vector2(1.06, 1.06), 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(callout_upgrade_btn, "scale", Vector2.ONE, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	if quick_buy_btn != null and quick_buy_btn.is_inside_tree() and quick_buy_btn.button_pressed:
+		quick_buy_btn.pivot_offset = quick_buy_btn.size * 0.5
+		var tw = create_tween()
+		tw.tween_property(quick_buy_btn, "scale", Vector2(1.06, 1.06), 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(quick_buy_btn, "scale", Vector2.ONE, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 
-func _connect_hold_upgrade_button(btn: Button, get_id_callable: Callable, is_staff: bool = false) -> void:
+func _connect_hold_upgrade_button(btn: Button, get_id_callable: Callable, is_staff: bool = false, forced_multi: String = "") -> void:
 	if btn == null:
 		return
 	btn.button_down.connect(func():
 		var id = get_id_callable.call()
+		_hold_forced_multiplier = forced_multi
 		_start_hold_upgrade(id, is_staff)
 	)
 	btn.button_up.connect(func():
@@ -6661,6 +6745,205 @@ func _format_time_hms(seconds: float) -> String:
 	if hrs > 0:
 		return "%02dh %02dm" % [hrs, mins]
 	return "%02dm %02ds" % [mins, secs]
+
+# ─── Contextual 3D Station Callout Card & Smart Quick-Upgrade Pill ─────────
+func show_station_callout(target_node: Node3D, station_id: String, station_name: String, level: int) -> void:
+	callout_target_node = target_node
+	callout_station_id = station_id
+	callout_station_name_str = station_name
+	callout_station_level = level
+	
+	_refresh_station_callout()
+	if station_callout_card != null:
+		station_callout_card.visible = true
+		station_callout_card.pivot_offset = Vector2(130, 142)
+		station_callout_card.scale = Vector2(0.2, 0.2)
+		_update_station_callout_position()
+		var tw = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(station_callout_card, "scale", Vector2.ONE, 0.15)
+
+func dismiss_station_callout(immediate: bool = false) -> void:
+	if station_callout_card != null and station_callout_card.visible:
+		if immediate or DisplayServer.get_name() == "headless":
+			station_callout_card.visible = false
+			callout_target_node = null
+			return
+		var tw = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(station_callout_card, "scale", Vector2(0.2, 0.2), 0.1)
+		tw.tween_callback(func():
+			if station_callout_card != null:
+				station_callout_card.visible = false
+				callout_target_node = null
+		)
+
+func _update_station_callout_position() -> void:
+	if station_callout_card == null or not station_callout_card.visible:
+		return
+	if callout_target_node == null or not is_instance_valid(callout_target_node):
+		station_callout_card.visible = false
+		return
+	var cam: Camera3D = get_viewport().get_camera_3d() if get_viewport() != null else null
+	if cam == null:
+		var root = get_tree().current_scene if get_tree() != null else null
+		if root != null:
+			cam = root.find_child("Camera3D", true, false)
+	if cam == null:
+		return
+	var world_pos = callout_target_node.global_position + Vector3(0, 2.4, 0)
+	if cam.is_position_behind(world_pos):
+		station_callout_card.visible = false
+		return
+	var screen_pos = cam.unproject_position(world_pos)
+	station_callout_card.global_position = screen_pos - Vector2(130, 142)
+
+func _refresh_station_callout() -> void:
+	var gm = _get_game_manager()
+	if gm == null or callout_station_id == "":
+		return
+	var cur_lvl = gm.get_station_level(callout_station_id)
+	var max_lvl = gm.get_station_max_level(callout_station_id)
+	callout_station_level = cur_lvl
+	
+	if callout_station_name != null:
+		callout_station_name.text = callout_station_name_str
+	if callout_level_label != null:
+		callout_level_label.text = "Lv. %d / %d" % [cur_lvl, max_lvl]
+		
+	var stars_str = "⭐"
+	if cur_lvl >= 50:
+		stars_str = "⭐⭐⭐⭐"
+	elif cur_lvl >= 25:
+		stars_str = "⭐⭐⭐"
+	elif cur_lvl >= 10:
+		stars_str = "⭐⭐"
+	if callout_star_badge != null:
+		callout_star_badge.text = stars_str
+		
+	# Milestone progress bar
+	var m_info = gm.get_station_next_milestone_info(callout_station_id)
+	if callout_milestone_bar != null:
+		callout_milestone_bar.min_value = m_info.prev_level
+		callout_milestone_bar.max_value = m_info.target_level
+		callout_milestone_bar.value = cur_lvl
+	if callout_milestone_label != null:
+		if m_info.is_max:
+			callout_milestone_label.text = "⭐ MAX TIER REACHED!"
+		else:
+			callout_milestone_label.text = "Next Tier: %s Profit at Lv. %d" % [m_info.multiplier_text, m_info.target_level]
+			
+	# Stats
+	var inc = gm.get_station_income(callout_station_id)
+	if callout_revenue_label != null:
+		callout_revenue_label.text = "💰 +$" + _format_money(inc) + " / dish"
+	var dur = gm.get_station_duration(callout_station_id)
+	if callout_duration_label != null:
+		callout_duration_label.text = "⏱️ %.1fs" % dur
+		
+	# Upgrade button
+	if callout_upgrade_btn != null:
+		if cur_lvl >= max_lvl:
+			callout_upgrade_btn.text = "MAX LEVEL ⭐"
+			callout_upgrade_btn.disabled = true
+			callout_upgrade_btn.modulate = Color(0.7, 0.7, 0.7, 1.0)
+		else:
+			var u_info = gm.get_upgrade_multi_info(callout_station_id, "1")
+			callout_upgrade_btn.text = "UPGRADE $" + _format_money(u_info.cost)
+			callout_upgrade_btn.disabled = false
+			if u_info.can_afford:
+				callout_upgrade_btn.modulate = Color(1.0, 1.0, 1.0, 1.0)
+			else:
+				callout_upgrade_btn.modulate = Color(0.75, 0.75, 0.75, 0.9)
+
+func _refresh_quick_upgrade_pill() -> void:
+	var gm = _get_game_manager()
+	if gm == null or quick_upgrade_pill == null:
+		return
+	var rec = gm.get_smart_upgrade_recommendation()
+	if rec.is_empty() or rec.get("station_id", "") == "":
+		quick_upgrade_pill.visible = false
+		return
+		
+	quick_upgrade_pill.visible = true
+	quick_upgrade_station_id = rec.station_id
+	
+	if quick_thumb_icon != null:
+		quick_thumb_icon.text = rec.icon
+	if quick_station_label != null:
+		quick_station_label.text = rec.station_name
+	if quick_level_label != null:
+		quick_level_label.text = "Lv. %d ➔ %d" % [rec.level, rec.next_level]
+	if quick_milestone_tag != null:
+		quick_milestone_tag.visible = rec.is_milestone
+		if rec.get("is_immediate_milestone", false):
+			quick_milestone_tag.text = "⭐ MILESTONE AT LV. %d!" % rec.next_level
+		else:
+			quick_milestone_tag.text = "⭐ MILESTONE NEXT! (LV. %d)" % rec.milestone_target
+	if quick_buy_btn != null:
+		quick_buy_btn.text = "BUY\n$" + _format_money(rec.cost)
+		quick_buy_btn.disabled = false
+		if rec.can_afford:
+			quick_buy_btn.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		else:
+			quick_buy_btn.modulate = Color(0.75, 0.75, 0.75, 0.9)
+
+func _on_quick_upgrade_thumb_pressed() -> void:
+	if quick_upgrade_station_id == "":
+		return
+	var gm = _get_game_manager()
+	var cam: Camera3D = get_viewport().get_camera_3d() if get_viewport() != null else null
+	if cam == null:
+		var root = get_tree().current_scene if get_tree() != null else null
+		if root != null:
+			cam = root.find_child("Camera3D", true, false)
+	if cam != null and cam.has_method("focus_station"):
+		cam.focus_station(quick_upgrade_station_id)
+	var target_node = _find_station_node(quick_upgrade_station_id)
+	if target_node != null:
+		var sname = quick_station_label.text if quick_station_label != null else quick_upgrade_station_id.capitalize()
+		var cur_lvl = gm.get_station_level(quick_upgrade_station_id) if gm != null else 1
+		show_station_callout(target_node, quick_upgrade_station_id, sname, cur_lvl)
+
+func _find_station_node(station_id: String) -> Node3D:
+	var tree = get_tree()
+	if tree == null:
+		return null
+	var root = tree.current_scene
+	if root == null:
+		return null
+	if station_id.begins_with("table_"):
+		var t_num = station_id.trim_prefix("table_")
+		var node = root.find_child("Table" + t_num, true, false)
+		if node != null:
+			return node
+		node = root.find_child("Table_" + t_num, true, false)
+		if node != null:
+			return node
+		var tables = root.find_child("Tables", true, false)
+		if tables != null:
+			for t in tables.get_children():
+				if t.get("table_id") == station_id:
+					return t
+	elif station_id == "kitchen_cook" or station_id == "stove":
+		var node = root.find_child("CookingStation", true, false)
+		if node != null:
+			return node
+	elif station_id.begins_with("milkshake"):
+		var node = root.find_child("MilkshakeCounter", true, false)
+		if node == null:
+			node = root.find_child("MilkshakeBar", true, false)
+		if node != null:
+			return node
+	elif station_id.begins_with("parking"):
+		var node = root.find_child("ParkingLot", true, false)
+		if node != null:
+			return node
+	return null
+
+func _unhandled_input(event: InputEvent) -> void:
+	if (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) \
+		or (event is InputEventScreenTouch and event.pressed):
+		if station_callout_card != null and station_callout_card.visible:
+			dismiss_station_callout()
 
 
 

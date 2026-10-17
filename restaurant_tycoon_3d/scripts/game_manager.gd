@@ -2095,6 +2095,137 @@ func unlock_parking_stall(idx: int) -> bool:
 		return true
 	return false
 
+# ─── Smart Quick-Upgrade Recommendation & Milestone System ───────────────────
+func get_smart_upgrade_recommendation() -> Dictionary:
+	var candidate_ids = [
+		"table_1", "table_2", "table_3", "table_4", "table_5", "table_6",
+		"table_7", "table_8", "table_9", "table_10", "table_11", "table_12",
+		"kitchen_cook", "milkshake_bar", "parking_lot"
+	]
+	
+	var station_names = {
+		"kitchen_cook": "Master Stove",
+		"stove": "Master Stove",
+		"milkshake_bar": "Milkshake Diner",
+		"parking_lot": "Parking Lot",
+		"parking": "Parking Lot"
+	}
+	var station_icons = {
+		"kitchen_cook": "🍳",
+		"stove": "🍳",
+		"milkshake_bar": "🥤",
+		"parking_lot": "🚗",
+		"parking": "🚗"
+	}
+	for i in range(1, 13):
+		var tid = "table_%d" % i
+		station_names[tid] = "Booth #%d" % i
+		station_icons[tid] = "🪑"
+	
+	var candidates: Array = []
+	var milestone_thresholds = [10, 25, 50]
+	
+	for sid in candidate_ids:
+		if sid.begins_with("table_") and not is_table_unlocked(sid):
+			continue
+		
+		var cur_lvl = get_station_level(sid)
+		var max_lvl = get_station_max_level(sid)
+		if cur_lvl >= max_lvl:
+			continue
+		
+		var info = get_upgrade_multi_info(sid, "1")
+		var cost = info.cost
+		var can_afford = cash >= cost
+		var next_lvl = cur_lvl + 1
+		
+		var is_milestone = false
+		var milestone_target = 0
+		for m in milestone_thresholds:
+			if m <= max_lvl and cur_lvl < m and next_lvl <= m:
+				if (m - cur_lvl) <= 2:
+					is_milestone = true
+					milestone_target = m
+					break
+		
+		var sname = station_names.get(sid, sid.capitalize())
+		var sicon = station_icons.get(sid, "🍽️")
+		
+		candidates.append({
+			"station_id": sid,
+			"station_name": sname,
+			"level": cur_lvl,
+			"next_level": next_lvl,
+			"cost": cost,
+			"can_afford": can_afford,
+			"is_milestone": is_milestone,
+			"is_immediate_milestone": (next_lvl in milestone_thresholds),
+			"milestone_target": milestone_target,
+			"icon": sicon
+		})
+		
+	if candidates.is_empty():
+		return {}
+		
+	# Priority 1: Any station within 1-2 levels of a Milestone that the player can afford
+	var milestone_affordable: Array = []
+	for c in candidates:
+		if c.is_milestone and c.can_afford:
+			milestone_affordable.append(c)
+	if not milestone_affordable.is_empty():
+		milestone_affordable.sort_custom(func(a, b): return a.cost < b.cost)
+		return milestone_affordable[0]
+		
+	# Priority 2: Lowest-cost affordable upgrade across all active sectors
+	var general_affordable: Array = []
+	for c in candidates:
+		if c.can_afford:
+			general_affordable.append(c)
+	if not general_affordable.is_empty():
+		general_affordable.sort_custom(func(a, b): return a.cost < b.cost)
+		return general_affordable[0]
+		
+	# Fallback: Lowest-cost overall across active sectors
+	candidates.sort_custom(func(a, b): return a.cost < b.cost)
+	return candidates[0]
+
+func get_station_next_milestone_info(station_id: String) -> Dictionary:
+	var cur_lvl: int = get_station_level(station_id)
+	var max_lvl: int = get_station_max_level(station_id)
+	var milestone_thresholds = [10, 25, 50]
+	var mults = {10: "x2", 25: "x2", 50: "x3"}
+	var target_milestone = max_lvl
+	var target_mult = "x2"
+	var prev_milestone = 1
+	for m in milestone_thresholds:
+		if m <= max_lvl and cur_lvl < m:
+			target_milestone = m
+			target_mult = mults.get(m, "x2")
+			break
+		elif cur_lvl >= m:
+			prev_milestone = m
+	return {
+		"current_level": cur_lvl,
+		"max_level": max_lvl,
+		"target_level": target_milestone,
+		"prev_level": prev_milestone,
+		"multiplier_text": target_mult,
+		"is_max": cur_lvl >= max_lvl
+	}
+
+func get_station_duration(station_id: String) -> float:
+	var lvl = get_station_level(station_id)
+	var sid = station_id.to_lower()
+	if sid.begins_with("table_"):
+		return max(5.0, 12.0 - (lvl - 1) * 0.15)
+	elif sid == "kitchen_cook" or sid == "stove":
+		return max(1.5, 4.5 - (lvl - 1) * 0.08)
+	elif sid.begins_with("milkshake"):
+		return max(1.0, 2.8 - (lvl - 1) * 0.04)
+	elif sid.begins_with("parking"):
+		return max(2.5, 5.0 - (lvl - 1) * 0.1)
+	return 5.0
+
 func award_critic_review(is_positive: bool, bounty: float = 0.0) -> void:
 	if is_positive:
 		star_rating = min(5.0, star_rating + 0.1)

@@ -610,7 +610,84 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 	test_hud.queue_free()
 	investor.queue_free()
 
-	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, and VIP Investor validated.")
+	# Part 7: Contextual 3D Station Callout Card & Smart Quick-Upgrade Pill
+	print("\n--- [FRAME 20 Part 7] Asserting Contextual Callout Card & Smart Quick-Upgrade Pill ---")
+	# 1. GameManager Smart Recommendation Algorithm
+	gm.cash = 100000.0
+	var rec = gm.get_smart_upgrade_recommendation()
+	_assert_test(not rec.is_empty(), "Smart upgrade recommendation returns valid station data")
+	_assert_test(rec.has("station_id") and rec.has("cost") and rec.has("level"), "Recommendation contains station_id, cost, and level")
+	_assert_test(rec["can_afford"] == true, "Recommendation can_afford is true with sufficient cash")
+
+	# Milestone prioritization: Set table_1 to level 9 (1 level away from milestone 10)
+	gm.station_levels["table_1"] = 9
+	var rec_milestone = gm.get_smart_upgrade_recommendation()
+	_assert_test(rec_milestone["is_milestone"] == true, "Recommendation detects station within 1-2 levels of milestone")
+	_assert_test(rec_milestone["milestone_target"] == 10, "Milestone target correctly identified as 10")
+	_assert_test(rec_milestone["station_id"] == "table_1", "Priority 1 correctly selects near-milestone station table_1")
+
+	# Lowest cost affordable prioritization: Set table_1 to level 10 (milestone achieved)
+	gm.station_levels["table_1"] = 10
+	var rec_lowest = gm.get_smart_upgrade_recommendation()
+	_assert_test(rec_lowest["can_afford"] == true, "Priority 2 selects affordable station")
+
+	# Next milestone info helper
+	var m_info = gm.get_station_next_milestone_info("table_1")
+	_assert_test(m_info["target_level"] == 25, "Next milestone for Lv 10 table is Lv 25")
+	_assert_test(m_info["prev_level"] == 10, "Previous milestone recorded as 10")
+
+	# Station duration helper
+	var dur_table = gm.get_station_duration("table_1")
+	_assert_test(dur_table > 0.0 and dur_table <= 12.0, "Station duration calculation returns valid range")
+
+	# 2. Contextual Station Callout Card & Quick-Upgrade Pill UI tests
+	var callout_hud = hud_scn.instantiate()
+	root.add_child(callout_hud)
+
+	var callout_card = callout_hud.find_child("StationCalloutCard", true, false)
+	_assert_test(callout_card != null, "StationCalloutCard node exists in HUD scene")
+	_assert_test(callout_card.visible == false, "StationCalloutCard is hidden by default")
+	_assert_test(callout_card.pivot_offset == Vector2(130, 142), "Callout card pivot offset anchored at bottom pointer tip (130, 142)")
+
+	# Test show_station_callout
+	var dummy_station = Node3D.new()
+	dummy_station.position = Vector3(0, 0, 0)
+	root.add_child(dummy_station)
+
+	callout_hud.show_station_callout(dummy_station, "table_1", "Booth #1", 10)
+	_assert_test(callout_card.visible == true, "Callout card visible after show_station_callout")
+	var c_title = callout_hud.callout_station_name
+	_assert_test(c_title != null and c_title.text == "Booth #1", "Callout card displays correct station name")
+	var c_lvl = callout_hud.callout_level_label
+	_assert_test(c_lvl != null and "10" in c_lvl.text, "Callout card displays correct station level")
+	var c_rev = callout_hud.callout_revenue_label
+	_assert_test(c_rev != null and "$" in c_rev.text, "Callout card displays revenue per dish")
+	var c_dur = callout_hud.callout_duration_label
+	_assert_test(c_dur != null and "s" in c_dur.text, "Callout card displays eat/cook duration")
+	var c_up_btn = callout_hud.callout_upgrade_btn
+	_assert_test(c_up_btn != null and "UPGRADE" in c_up_btn.text, "Callout card features wide lime-green hold-to-upgrade button")
+	var c_gear_btn = callout_hud.callout_expand_btn
+	_assert_test(c_gear_btn != null and c_gear_btn.text == "⚙️", "Callout card features compact gear/expand button")
+
+	# Test callout dismiss
+	callout_hud.dismiss_station_callout()
+	_assert_test(callout_hud.callout_target_node == null or callout_card.visible == false, "Callout card dismissed cleanly")
+
+	# Test Quick-Upgrade Pill UI
+	var pill = callout_hud.find_child("QuickUpgradePill", true, false)
+	_assert_test(pill != null, "QuickUpgradePill node exists in HUD scene")
+	_assert_test(pill.visible == true, "QuickUpgradePill is visible with active recommendations")
+	var pill_thumb = callout_hud.find_child("ThumbBtn", true, false)
+	_assert_test(pill_thumb != null, "QuickUpgradePill features mini thumbnail button with camera-pan icon")
+	var pill_station = callout_hud.find_child("StationLabel", true, false)
+	_assert_test(pill_station != null and pill_station.text != "", "QuickUpgradePill displays target station name")
+	var pill_buy = callout_hud.find_child("BuyBtn", true, false)
+	_assert_test(pill_buy != null and "BUY" in pill_buy.text, "QuickUpgradePill features tactile green BUY button")
+
+	dummy_station.queue_free()
+	callout_hud.queue_free()
+
+	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, and Quick-Upgrade Pill validated.")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Frame 25: Teardown & Summary

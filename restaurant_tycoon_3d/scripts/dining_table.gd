@@ -1646,4 +1646,9 @@ func _on_input_event(_camera: Camera3D, event: InputEvent, _event_position: Vect
 			clean_table()
 			return
 		var lvl: int = gm.get_station_level(table_id)
-		table_clicked.emit(table_id, table_name, lvl)
+		var root = get_tree().current_scene if get_tree() != null else null
+		var hud = root.find_child("HUD", true, false) if root != null else null
+		if hud != null and hud.has_method("show_station_callout"):
+			hud.show_station_callout(self, table_id, table_name, lvl)
+		else:
+			table_clicked.emit(table_id, table_name, lvl)

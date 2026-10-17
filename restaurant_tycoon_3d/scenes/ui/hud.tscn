@@ -869,6 +869,86 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_callout_cream"]
+bg_color = Color(0.99, 0.98, 0.93, 0.98)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.85, 0.68, 0.22, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 8
+shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_callout_bar_bg"]
+bg_color = Color(0.86, 0.83, 0.77, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_callout_bar_fill"]
+bg_color = Color(0.98, 0.74, 0.16, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_callout_btn_expand"]
+bg_color = Color(0.92, 0.88, 0.80, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 3
+border_color = Color(0.8, 0.65, 0.2, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_quick_pill"]
+bg_color = Color(0.16, 0.10, 0.07, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 4
+border_color = Color(0.95, 0.72, 0.2, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 8
+shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_quick_thumb"]
+bg_color = Color(0.28, 0.18, 0.12, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.82, 0.3, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_script")
 
@@ -1678,6 +1758,109 @@ theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("StyleBoxFlat_all_managers")
 text = "⚡"
+
+[node name="QuickUpgradePill" type="PanelContainer" parent="HUD"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -312.0
+offset_top = -146.0
+offset_right = -16.0
+offset_bottom = -82.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_quick_pill")
+
+[node name="HBox" type="HBoxContainer" parent="HUD/QuickUpgradePill"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="ThumbBtn" type="Button" parent="HUD/QuickUpgradePill/HBox"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_quick_thumb")
+text = ""
+
+[node name="ThumbIcon" type="Label" parent="HUD/QuickUpgradePill/HBox/ThumbBtn"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -16.0
+offset_top = -16.0
+offset_right = 16.0
+offset_bottom = 16.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 20
+text = "🪑"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CamBadge" type="Label" parent="HUD/QuickUpgradePill/HBox/ThumbBtn"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -16.0
+offset_top = -16.0
+offset_right = 2.0
+offset_bottom = 2.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 10
+text = "🎥"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="InfoVBox" type="VBoxContainer" parent="HUD/QuickUpgradePill/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="StationLabel" type="Label" parent="HUD/QuickUpgradePill/HBox/InfoVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.95, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.05, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 12
+text = "Booth #1"
+
+[node name="LevelHBox" type="HBoxContainer" parent="HUD/QuickUpgradePill/HBox/InfoVBox"]
+layout_mode = 2
+
+[node name="LevelLabel" type="Label" parent="HUD/QuickUpgradePill/HBox/InfoVBox/LevelHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.8, 0.7, 1)
+theme_override_font_sizes/font_size = 10
+text = "Lv. 1 ➔ 2"
+
+[node name="MilestoneTag" type="Label" parent="HUD/QuickUpgradePill/HBox/InfoVBox/LevelHBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_colors/font_outline_color = Color(0.2, 0.1, 0.0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 9
+text = "⭐ MILESTONE NEXT!"
+
+[node name="BuyBtn" type="Button" parent="HUD/QuickUpgradePill/HBox"]
+custom_minimum_size = Vector2(78, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.05, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_green_3d")
+text = "BUY\n$45"
 
 
 [node name="UpgradePanel" type="PanelContainer" parent="."]
@@ -2827,6 +3010,119 @@ text = "CLAIM TODAY'S REWARD 🎁"
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
 text = "✕ Close"
+
+[node name="StationCalloutCard" type="Control" parent="."]
+visible = false
+custom_minimum_size = Vector2(260, 144)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 260.0
+offset_bottom = 144.0
+pivot_offset = Vector2(130, 142)
+mouse_filter = 1
+
+[node name="CardPanel" type="PanelContainer" parent="StationCalloutCard"]
+custom_minimum_size = Vector2(260, 130)
+layout_mode = 0
+offset_right = 260.0
+offset_bottom = 130.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_callout_cream")
+
+[node name="VBox" type="VBoxContainer" parent="StationCalloutCard/CardPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TopRow" type="HBoxContainer" parent="StationCalloutCard/CardPanel/VBox"]
+layout_mode = 2
+
+[node name="StationName" type="Label" parent="StationCalloutCard/CardPanel/VBox/TopRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.12, 0.05, 1)
+theme_override_font_sizes/font_size = 13
+text = "Booth #4"
+
+[node name="StarBadge" type="Label" parent="StationCalloutCard/CardPanel/VBox/TopRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.65, 0.1, 1)
+theme_override_font_sizes/font_size = 11
+text = "⭐"
+
+[node name="LevelLabel" type="Label" parent="StationCalloutCard/CardPanel/VBox/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.45, 0.3, 0.15, 1)
+theme_override_font_sizes/font_size = 11
+text = "Lv. 8 / 50"
+horizontal_alignment = 2
+
+[node name="MilestoneBar" type="ProgressBar" parent="StationCalloutCard/CardPanel/VBox"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_callout_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_callout_bar_fill")
+max_value = 10.0
+value = 8.0
+show_percentage = false
+
+[node name="MilestoneLabel" type="Label" parent="StationCalloutCard/CardPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.45, 0.05, 1)
+theme_override_font_sizes/font_size = 10
+text = "Next Tier: x2 Profit at Lv. 10"
+
+[node name="StatsRow" type="HBoxContainer" parent="StationCalloutCard/CardPanel/VBox"]
+layout_mode = 2
+
+[node name="RevenueLabel" type="Label" parent="StationCalloutCard/CardPanel/VBox/StatsRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.15, 0.5, 0.2, 1)
+theme_override_font_sizes/font_size = 10
+text = "💰 +$28 / dish"
+
+[node name="DurationLabel" type="Label" parent="StationCalloutCard/CardPanel/VBox/StatsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.4, 0.4, 0.45, 1)
+theme_override_font_sizes/font_size = 10
+text = "⏱️ 10.5s"
+horizontal_alignment = 2
+
+[node name="BottomRow" type="HBoxContainer" parent="StationCalloutCard/CardPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="UpgradeBtn" type="Button" parent="StationCalloutCard/CardPanel/VBox/BottomRow"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.1, 0.4, 0.15, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_green_3d")
+text = "UPGRADE $120"
+
+[node name="ExpandBtn" type="Button" parent="StationCalloutCard/CardPanel/VBox/BottomRow"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+tooltip_text = "Open Sector Management Drawer"
+theme_override_colors/font_color = Color(0.2, 0.15, 0.08, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_callout_btn_expand")
+text = "⚙️"
+
+[node name="PointerTriangle" type="Polygon2D" parent="StationCalloutCard"]
+color = Color(0.99, 0.98, 0.93, 1)
+polygon = PackedVector2Array(118, 130, 142, 130, 130, 142)
+
+[node name="PointerBorder" type="Line2D" parent="StationCalloutCard"]
+points = PackedVector2Array(118, 130, 130, 142, 142, 130)
+width = 3.0
+default_color = Color(0.85, 0.68, 0.22, 1)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+
 
 
 
