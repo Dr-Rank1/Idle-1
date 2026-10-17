@@ -6,8 +6,8 @@ signal cinematic_reveal_completed
 @export var key_pan_speed: float = 14.0
 @export var zoom_speed: float = 1.4
 @export var default_ortho_size: float = 12.0
-@export var min_ortho_size: float = 8.5
-@export var max_ortho_size: float = 16.5
+@export var min_ortho_size: float = 9.0
+@export var max_ortho_size: float = 16.0
 @export var min_zoom_dist: float = 9.0
 @export var max_zoom_dist: float = 32.0
 @export var inertia_friction: float = 5.5
@@ -28,6 +28,14 @@ var initialized: bool = false
 var drag_velocity: Vector3 = Vector3.ZERO
 var pan_velocity: Vector3 = Vector3.ZERO
 var last_drag_time: float = 0.0
+
+# Multi-touch pinch zoom & Tap raycasting state
+var _active_touches: Dictionary = {}
+var _initial_pinch_dist: float = 0.0
+var _initial_pinch_size: float = 12.0
+var _touch_start_pos: Vector2 = Vector2.ZERO
+var _touch_start_time: float = 0.0
+var _total_touch_move: float = 0.0
 
 # Camera forward and right vectors projected onto ground XZ plane
 var ground_right: Vector3 = Vector3.RIGHT
@@ -254,13 +262,18 @@ func _unhandled_input(event: InputEvent) -> void:
 					pan_tween.kill()
 				is_dragging = true
 				last_mouse_pos = event.position
+				_touch_start_pos = event.position
+				_touch_start_time = Time.get_ticks_usec() / 1000000.0
+				_total_touch_move = 0.0
 				pan_velocity = Vector3.ZERO
 				drag_velocity = Vector3.ZERO
 				last_drag_time = Time.get_ticks_usec() / 1000000.0
 			else:
 				is_dragging = false
 				var now = Time.get_ticks_usec() / 1000000.0
-				if now - last_drag_time < 0.08:
+				if _total_touch_move < 12.0 and (now - _touch_start_time < 0.35):
+					_raycast_tap(event.position)
+				elif now - last_drag_time < 0.08:
 					pan_velocity = drag_velocity.limit_length(max_drag_velocity)
 				else:
 					pan_velocity = Vector3.ZERO
@@ -277,6 +290,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 		var delta_mouse: Vector2 = event.position - last_mouse_pos
 		last_mouse_pos = event.position
+		_total_touch_move += delta_mouse.length()
 
 		var move_vec: Vector3 = (-ground_right * delta_mouse.x + -ground_forward * delta_mouse.y) * pan_speed
 		target_position += move_vec
@@ -290,35 +304,67 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.pressed:
 			if pan_tween != null and pan_tween.is_valid():
 				pan_tween.kill()
-			is_dragging = true
-			last_mouse_pos = event.position
+			_active_touches[event.index] = event.position
+			last_drag_time = Time.get_ticks_usec() / 1000000.0
 			pan_velocity = Vector3.ZERO
 			drag_velocity = Vector3.ZERO
-			last_drag_time = Time.get_ticks_usec() / 1000000.0
+			
+			if _active_touches.size() == 1:
+				is_dragging = true
+				last_mouse_pos = event.position
+				_touch_start_pos = event.position
+				_touch_start_time = last_drag_time
+				_total_touch_move = 0.0
+			elif _active_touches.size() == 2:
+				is_dragging = false
+				var t_keys = _active_touches.keys()
+				_initial_pinch_dist = _active_touches[t_keys[0]].distance_to(_active_touches[t_keys[1]])
+				_initial_pinch_size = size
 		else:
-			is_dragging = false
 			var now = Time.get_ticks_usec() / 1000000.0
-			if now - last_drag_time < 0.08:
+			if _active_touches.size() == 1 and _total_touch_move < 14.0 and (now - _touch_start_time < 0.40):
+				_raycast_tap(event.position)
+			elif now - last_drag_time < 0.08:
 				pan_velocity = drag_velocity.limit_length(max_drag_velocity)
 			else:
 				pan_velocity = Vector3.ZERO
 			drag_velocity = Vector3.ZERO
+			
+			_active_touches.erase(event.index)
+			if _active_touches.is_empty():
+				is_dragging = false
+			elif _active_touches.size() == 1:
+				var rem_key = _active_touches.keys()[0]
+				last_mouse_pos = _active_touches[rem_key]
+				last_drag_time = now
+				is_dragging = true
 
-	elif event is InputEventScreenDrag and is_dragging:
+	elif event is InputEventScreenDrag:
+		_active_touches[event.index] = event.position
 		var now: float = Time.get_ticks_usec() / 1000000.0
 		var dt: float = now - last_drag_time
 		last_drag_time = now
+		
+		if _active_touches.size() >= 2:
+			# Two-finger pinch-to-zoom between size = 9.0 and size = 16.0
+			var t_keys = _active_touches.keys()
+			var current_dist = _active_touches[t_keys[0]].distance_to(_active_touches[t_keys[1]])
+			if _initial_pinch_dist > 8.0 and current_dist > 8.0:
+				var scale_factor = _initial_pinch_dist / current_dist
+				size = clamp(_initial_pinch_size * scale_factor, min_ortho_size, max_ortho_size)
+		elif is_dragging and _active_touches.size() == 1:
+			# Single-finger drag pans camera
+			var delta_touch: Vector2 = event.relative
+			last_mouse_pos = event.position
+			_total_touch_move += delta_touch.length()
 
-		var delta_touch: Vector2 = event.relative
-		last_mouse_pos = event.position
+			var move_vec: Vector3 = (-ground_right * delta_touch.x + -ground_forward * delta_touch.y) * pan_speed
+			target_position += move_vec
+			_clamp_target()
 
-		var move_vec: Vector3 = (-ground_right * delta_touch.x + -ground_forward * delta_touch.y) * pan_speed
-		target_position += move_vec
-		_clamp_target()
-
-		if dt > 0.0001:
-			var inst_vel = move_vec / dt
-			drag_velocity = drag_velocity.lerp(inst_vel, 0.55)
+			if dt > 0.0001:
+				var inst_vel = move_vec / dt
+				drag_velocity = drag_velocity.lerp(inst_vel, 0.55)
 
 	elif event is InputEventMagnifyGesture:
 		_zoom(-(event.factor - 1.0) * 10.0)
@@ -332,3 +378,79 @@ func _zoom(amount: float) -> void:
 		var dist = new_pos.length()
 		if dist >= min_zoom_dist and dist <= max_zoom_dist:
 			target_position = new_pos
+
+func _raycast_tap(screen_pos: Vector2) -> void:
+	var space_state = get_world_3d().direct_space_state if get_world_3d() != null else null
+	if space_state == null:
+		return
+	var ray_origin = project_ray_origin(screen_pos)
+	var ray_normal = project_ray_normal(screen_pos)
+	var ray_params = PhysicsRayQueryParameters3D.create(ray_origin, ray_origin + ray_normal * 120.0)
+	ray_params.collide_with_areas = true
+	ray_params.collide_with_bodies = true
+	var hit = space_state.intersect_ray(ray_params)
+	if hit.is_empty() or not hit.has("collider"):
+		return
+		
+	var collider = hit["collider"]
+	var curr = collider
+	var target_entity = null
+	while curr != null and curr != get_tree().current_scene:
+		if curr.has_method("collect_booth_cash") or curr.has_method("collect_station_cash") or curr.has_method("show_station_callout") or curr.get("table_id") != null or curr.get("station_id") != null or curr.has_method("get_inspector_info") or curr.has_method("drop_supply_crate"):
+			target_entity = curr
+			break
+		curr = curr.get_parent()
+		
+	if target_entity == null:
+		target_entity = collider
+		
+	var gm = get_node_or_null("/root/GameManager")
+	var root = get_tree().current_scene if get_tree() != null else null
+	var hud = root.find_child("HUD", true, false) if root != null else null
+
+	# 1. Supply Drone
+	if target_entity.has_method("drop_supply_crate"):
+		target_entity.drop_supply_crate()
+		return
+		
+	# 2. Dining Table / Booth
+	if target_entity.get("table_id") != null:
+		if target_entity.has_method("has_visible_cash_stack") and target_entity.has_visible_cash_stack():
+			target_entity.collect_booth_cash()
+			return
+		if target_entity.get("is_unlocked") == false and gm != null:
+			var success = gm.unlock_table(target_entity.table_id)
+			if not success:
+				if target_entity.has_method("_spawn_floating_text"):
+					target_entity._spawn_floating_text("Need $%d to Unlock!" % round(target_entity.current_unlock_cost), Color(1.0, 0.4, 0.4))
+			return
+		if target_entity.get("is_dirty") == true and target_entity.has_method("clean_table"):
+			target_entity.clean_table()
+			return
+		var tid = target_entity.table_id
+		var tname = target_entity.get("table_name") if target_entity.get("table_name") != null else "Booth " + tid.capitalize()
+		var lvl = gm.get_station_level(tid) if gm != null else 1
+		if hud != null and hud.has_method("show_station_callout"):
+			hud.show_station_callout(target_entity, tid, tname, lvl)
+		elif hud != null and hud.has_method("open_upgrade"):
+			hud.open_upgrade(tid, tname, lvl)
+		return
+
+	# 3. Cooking Station / Stove
+	if target_entity.get("station_id") != null or target_entity.name.begins_with("CookingStation") or target_entity.name.begins_with("Stove"):
+		var sid = target_entity.get("station_id") if target_entity.get("station_id") != null else "stove"
+		var sname = target_entity.get("station_name") if target_entity.get("station_name") != null else "Master Range Stoves"
+		if target_entity.has_method("has_visible_cash_stack") and target_entity.has_visible_cash_stack():
+			target_entity.collect_station_cash()
+			return
+		var slvl = gm.get_station_level(sid) if gm != null else 1
+		if hud != null and hud.has_method("show_station_callout"):
+			hud.show_station_callout(target_entity, sid, sname, slvl)
+		elif hud != null and hud.has_method("open_upgrade"):
+			hud.open_upgrade(sid, sname, slvl)
+		return
+
+	# 4. Character Inspector (Customer / Chef / Waiter)
+	if target_entity.has_method("get_inspector_info") and hud != null and hud.has_method("show_character_inspector"):
+		hud.show_character_inspector(target_entity)
+		return

@@ -10303,11 +10303,53 @@ func _replace_label_with_png_icon(parent_node: Node, target_name: String, textur
 	return null
 
 func _apply_clean_mobile_hud_layout() -> void:
+	_apply_mobile_safe_area_margins()
 	_setup_compact_top_header()
 	_setup_clean_right_dock()
 	_setup_clean_bottom_bar()
 	_hide_main_screen_hud_clutter()
 	_setup_more_drawer_modal()
+	
+	var vp = get_viewport()
+	if vp != null and not vp.size_changed.is_connected(_apply_mobile_safe_area_margins):
+		vp.size_changed.connect(_apply_mobile_safe_area_margins)
+
+func _apply_mobile_safe_area_margins() -> void:
+	var hud_root = get_node_or_null("HUD")
+	if hud_root == null or not is_instance_valid(hud_root):
+		return
+	
+	var safe_area = DisplayServer.get_display_safe_area()
+	var win_size = DisplayServer.window_get_size()
+	if win_size.y <= 0 or win_size.x <= 0:
+		return
+		
+	var top_inset = safe_area.position.y
+	var bottom_inset = max(0, win_size.y - (safe_area.position.y + safe_area.size.y))
+	var left_inset = safe_area.position.x
+	var right_inset = max(0, win_size.x - (safe_area.position.x + safe_area.size.x))
+	
+	var vp = get_viewport()
+	if vp != null:
+		var vp_size = vp.get_visible_rect().size
+		if win_size.y > 0 and vp_size.y > 0:
+			var scale_y = vp_size.y / float(win_size.y)
+			var scale_x = vp_size.x / float(win_size.x)
+			top_inset = int(top_inset * scale_y)
+			bottom_inset = int(bottom_inset * scale_y)
+			left_inset = int(left_inset * scale_x)
+			right_inset = int(right_inset * scale_x)
+			
+	top_inset = clamp(top_inset, 0, 160)
+	bottom_inset = clamp(bottom_inset, 0, 120)
+	left_inset = clamp(left_inset, 0, 80)
+	right_inset = clamp(right_inset, 0, 80)
+	
+	if hud_root is Control:
+		hud_root.offset_left = left_inset
+		hud_root.offset_right = -right_inset
+		hud_root.offset_top = top_inset
+		hud_root.offset_bottom = -bottom_inset
 
 func _setup_compact_top_header() -> void:
 	var hud_root = get_node_or_null("HUD")

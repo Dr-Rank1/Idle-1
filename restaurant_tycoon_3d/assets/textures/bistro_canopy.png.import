@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bqwi3xgoh62y7"
 path.s3tc="res://.godot/imported/bistro_canopy.png-4d6dae1a11ff3afa7ebd6195bb17571d.s3tc.ctex"
+path.etc2="res://.godot/imported/bistro_canopy.png-4d6dae1a11ff3afa7ebd6195bb17571d.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/bistro_canopy.png"
-dest_files=["res://.godot/imported/bistro_canopy.png-4d6dae1a11ff3afa7ebd6195bb17571d.s3tc.ctex"]
+dest_files=["res://.godot/imported/bistro_canopy.png-4d6dae1a11ff3afa7ebd6195bb17571d.s3tc.ctex", "res://.godot/imported/bistro_canopy.png-4d6dae1a11ff3afa7ebd6195bb17571d.etc2.ctex"]
 
 [params]
 

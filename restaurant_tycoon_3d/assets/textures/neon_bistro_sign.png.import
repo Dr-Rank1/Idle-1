@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cnjcqg78pjflr"
 path.s3tc="res://.godot/imported/neon_bistro_sign.png-7893cb4ae3b2e61cdcd192076649aeb2.s3tc.ctex"
+path.etc2="res://.godot/imported/neon_bistro_sign.png-7893cb4ae3b2e61cdcd192076649aeb2.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/neon_bistro_sign.png"
-dest_files=["res://.godot/imported/neon_bistro_sign.png-7893cb4ae3b2e61cdcd192076649aeb2.s3tc.ctex"]
+dest_files=["res://.godot/imported/neon_bistro_sign.png-7893cb4ae3b2e61cdcd192076649aeb2.s3tc.ctex", "res://.godot/imported/neon_bistro_sign.png-7893cb4ae3b2e61cdcd192076649aeb2.etc2.ctex"]
 
 [params]
 

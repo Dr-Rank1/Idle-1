@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cb4ccgh5pa0g6"
 path.s3tc="res://.godot/imported/restaurantbits_texture.png-58ce7da18916a577da2cd7c6af839d8b.s3tc.ctex"
+path.etc2="res://.godot/imported/restaurantbits_texture.png-58ce7da18916a577da2cd7c6af839d8b.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/kaykit_restaurant/obj/restaurantbits_texture.png"
-dest_files=["res://.godot/imported/restaurantbits_texture.png-58ce7da18916a577da2cd7c6af839d8b.s3tc.ctex"]
+dest_files=["res://.godot/imported/restaurantbits_texture.png-58ce7da18916a577da2cd7c6af839d8b.s3tc.ctex", "res://.godot/imported/restaurantbits_texture.png-58ce7da18916a577da2cd7c6af839d8b.etc2.ctex"]
 
 [params]
 
