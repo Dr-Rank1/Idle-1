@@ -1104,11 +1104,13 @@ offset_top = 0.0
 offset_right = 0.0
 offset_bottom = 20.0
 grow_horizontal = 2
+mouse_filter = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_milestone_track")
 
 [node name="FillBar" type="ProgressBar" parent="HUD/StarMilestoneBar"]
 custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
+mouse_filter = 2
 theme_override_styles/background = SubResource("StyleBoxFlat_xp_bg")
 theme_override_styles/fill = SubResource("StyleBoxFlat_blue_progress_fill")
 max_value = 100.0
@@ -1117,7 +1119,12 @@ show_percentage = false
 
 [node name="HBox" type="HBoxContainer" parent="HUD/StarMilestoneBar"]
 layout_mode = 2
+mouse_filter = 2
 alignment = 1
+
+[node name="StarBarBtn" type="Button" parent="HUD/StarMilestoneBar"]
+layout_mode = 2
+flat = true
 
 [node name="Star1" type="Label" parent="HUD/StarMilestoneBar/HBox"]
 layout_mode = 2

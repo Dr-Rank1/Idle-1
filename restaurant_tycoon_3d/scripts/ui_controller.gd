@@ -5,6 +5,8 @@ extends CanvasLayer
 @onready var avatar_label: Label = get_node_or_null("HUD/TopBar/ProfilePanel/VBox/AvatarLabel")
 @onready var level_label: Label = get_node_or_null("HUD/TopBar/ProfilePanel/VBox/LevelLabel")
 @onready var star_milestone_bar: ProgressBar = get_node_or_null("HUD/StarMilestoneBar/FillBar")
+@onready var star_milestone_container: PanelContainer = get_node_or_null("HUD/StarMilestoneBar")
+@onready var star_bar_btn: Button = get_node_or_null("HUD/StarMilestoneBar/StarBarBtn")
 @onready var rest_name_label: Label = get_node_or_null("HUD/TopBar/ProfilePanel/VBox/RestNameLabel")
 @onready var star_label: Label = get_node_or_null("HUD/TopBar/ProfilePanel/VBox/HBox/StarLabel")
 @onready var xp_bar: ProgressBar = get_node_or_null("HUD/TopBar/ProfilePanel/VBox/XPBar")
@@ -293,6 +295,24 @@ var edge_indicators_root: Control = null
 var edge_indicator_pills: Dictionary = {}
 var edge_indicators_refresh_timer: float = 0.0
 
+# ─── Diner Reviews & Star Rating Drawer ─────────────────────────────────────
+var review_drawer: PanelContainer = null
+var review_scrim: Control = null
+var review_overall_score_label: Label = null
+var review_overall_stars_label: Label = null
+var review_status_label: Label = null
+var review_food_bar: ProgressBar = null
+var review_food_score_label: Label = null
+var review_service_bar: ProgressBar = null
+var review_service_score_label: Label = null
+var review_ambience_bar: ProgressBar = null
+var review_ambience_score_label: Label = null
+var review_cleanliness_bar: ProgressBar = null
+var review_cleanliness_score_label: Label = null
+var review_feed_vbox: VBoxContainer = null
+var is_review_drawer_open: bool = false
+var review_drawer_refresh_timer: float = 0.0
+
 # ─── Mobile Interactive Onboarding Sequence ─────────────────────────────────
 @onready var tutorial_overlay: Control = get_node_or_null("TutorialOverlay")
 @onready var spotlight_vignette: ColorRect = get_node_or_null("TutorialOverlay/SpotlightVignette")
@@ -503,6 +523,17 @@ func _ready() -> void:
 	if add_gem_btn != null: add_gem_btn.pressed.connect(func(): _open_shop_at_section("currencies"))
 	if add_gold_btn != null: add_gold_btn.pressed.connect(func(): _open_shop_at_section("currencies"))
 	if add_energy_btn != null: add_energy_btn.pressed.connect(func(): _open_shop_at_section("currencies"))
+
+	if star_bar_btn != null and not star_bar_btn.pressed.is_connected(toggle_review_drawer):
+		star_bar_btn.pressed.connect(toggle_review_drawer)
+	if star_milestone_container != null and not star_milestone_container.gui_input.is_connected(_on_star_bar_gui_input):
+		star_milestone_container.mouse_filter = Control.MOUSE_FILTER_STOP
+		star_milestone_container.gui_input.connect(_on_star_bar_gui_input)
+	if profile_panel != null and not profile_panel.gui_input.is_connected(_on_star_bar_gui_input):
+		profile_panel.gui_input.connect(_on_star_bar_gui_input)
+	var gm_star = get_node_or_null("/root/GameManager")
+	if gm_star != null and gm_star.has_signal("guest_review_added") and not gm_star.guest_review_added.is_connected(_on_guest_review_received):
+		gm_star.guest_review_added.connect(_on_guest_review_received)
 
 	if tab_featured_btn != null: tab_featured_btn.pressed.connect(func(): _select_shop_category("featured"))
 	if tab_boosts_btn != null: tab_boosts_btn.pressed.connect(func(): _select_shop_category("boosts"))
@@ -958,6 +989,7 @@ func _ready() -> void:
 	_check_start_onboarding()
 	_setup_wardrobe_ui()
 	_setup_screen_edge_indicators()
+	_setup_review_drawer()
 
 # ─── Tactile Squash-and-Stretch & Affordability Feedback ────────────────────
 func apply_button_squash_and_stretch(btn: Button) -> void:
@@ -1240,6 +1272,11 @@ func _hide_all_modals() -> void:
 		investor_offer_modal.visible = false
 		investor_offer_modal.queue_free()
 		investor_offer_modal = null
+	if review_drawer != null and is_instance_valid(review_drawer):
+		review_drawer.visible = false
+	if review_scrim != null and is_instance_valid(review_scrim):
+		review_scrim.visible = false
+	is_review_drawer_open = false
 
 func _open_modal(panel: PanelContainer) -> void:
 	if panel == null: return
@@ -1546,6 +1583,12 @@ func _process(delta: float) -> void:
 
 	_update_tutorial_spotlight(delta)
 	_update_screen_edge_indicators(delta)
+
+	if is_review_drawer_open:
+		review_drawer_refresh_timer += delta
+		if review_drawer_refresh_timer >= 1.0:
+			review_drawer_refresh_timer = 0.0
+			_refresh_review_drawer()
 
 	if is_clean_view_active:
 		clean_view_timer -= delta
@@ -9446,6 +9489,551 @@ func get_edge_indicator_target_pos(type_key: String) -> Vector3:
 	if edge_indicator_pills.has(type_key):
 		return edge_indicator_pills[type_key].get("target_pos", Vector3.ZERO)
 	return Vector3.ZERO
+
+# ─── Diner Reviews & Star Rating Drawer System ─────────────────────────────
+func _setup_review_drawer() -> void:
+	if review_drawer != null and is_instance_valid(review_drawer):
+		return
+	var hud_root = get_node_or_null("HUD")
+	if hud_root == null:
+		hud_root = self
+
+	# 1. Wire StarMilestoneBar and profile panel to open review drawer
+	if star_milestone_container != null:
+		star_milestone_container.mouse_filter = Control.MOUSE_FILTER_STOP
+		if not star_milestone_container.gui_input.is_connected(_on_star_bar_gui_input):
+			star_milestone_container.gui_input.connect(_on_star_bar_gui_input)
+	if star_bar_btn != null and not star_bar_btn.pressed.is_connected(toggle_review_drawer):
+		star_bar_btn.pressed.connect(toggle_review_drawer)
+	if profile_panel != null and not profile_panel.gui_input.is_connected(_on_star_bar_gui_input):
+		profile_panel.gui_input.connect(_on_star_bar_gui_input)
+
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_signal("guest_review_added") and not gm.guest_review_added.is_connected(_on_guest_review_received):
+		gm.guest_review_added.connect(_on_guest_review_received)
+
+	# 2. Dim Scrim Backdrop
+	review_scrim = Control.new()
+	review_scrim.name = "ReviewDrawerScrim"
+	review_scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	review_scrim.mouse_filter = Control.MOUSE_FILTER_STOP
+	review_scrim.visible = false
+
+	var scrim_color = ColorRect.new()
+	scrim_color.name = "ScrimColor"
+	scrim_color.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim_color.color = Color(0.04, 0.06, 0.10, 0.65)
+	scrim_color.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	review_scrim.add_child(scrim_color)
+
+	review_scrim.gui_input.connect(func(event: InputEvent):
+		if (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) or (event is InputEventScreenTouch and event.pressed):
+			close_review_drawer()
+	)
+	hud_root.add_child(review_scrim)
+
+	# 3. Slide-Down Review Drawer Card
+	var drawer = PanelContainer.new()
+	drawer.name = "DinerReviewDrawer"
+	drawer.custom_minimum_size = Vector2(400, 480)
+	drawer.size = Vector2(420, 490)
+	drawer.visible = false
+
+	var d_sb = StyleBoxFlat.new()
+	d_sb.bg_color = Color(0.10, 0.13, 0.20, 0.98)
+	d_sb.border_width_left = 3
+	d_sb.border_width_top = 3
+	d_sb.border_width_right = 3
+	d_sb.border_width_bottom = 3
+	d_sb.border_color = Color(1.0, 0.82, 0.22, 1.0)
+	d_sb.set_corner_radius_all(20)
+	d_sb.shadow_color = Color(0, 0, 0, 0.55)
+	d_sb.shadow_size = 16
+	d_sb.content_margin_left = 16.0
+	d_sb.content_margin_right = 16.0
+	d_sb.content_margin_top = 14.0
+	d_sb.content_margin_bottom = 14.0
+	drawer.add_theme_stylebox_override("panel", d_sb)
+
+	var main_vbox = VBoxContainer.new()
+	main_vbox.name = "MainVBox"
+	main_vbox.add_theme_constant_override("separation", 10)
+	drawer.add_child(main_vbox)
+
+	# ── Header Row ──
+	var header_row = HBoxContainer.new()
+	header_row.name = "HeaderRow"
+
+	var title_vb = VBoxContainer.new()
+	title_vb.add_theme_constant_override("separation", 1)
+
+	var title_lbl = Label.new()
+	title_lbl.name = "DrawerTitle"
+	title_lbl.text = "⭐ DINER REVIEWS & RATINGS"
+	title_lbl.add_theme_font_size_override("font_size", 14)
+	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
+	title_lbl.add_theme_color_override("font_outline_color", Color(0.2, 0.08, 0.0, 1.0))
+	title_lbl.add_theme_constant_override("outline_size", 4)
+	title_vb.add_child(title_lbl)
+
+	var sub_lbl = Label.new()
+	sub_lbl.text = "Live Guest Experience & Official Inspection Breakdown"
+	sub_lbl.add_theme_font_size_override("font_size", 10)
+	sub_lbl.add_theme_color_override("font_color", Color(0.72, 0.78, 0.88, 0.9))
+	title_vb.add_child(sub_lbl)
+	header_row.add_child(title_vb)
+
+	var h_spacer = Control.new()
+	h_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_row.add_child(h_spacer)
+
+	var close_b = Button.new()
+	close_b.name = "CloseBtn"
+	close_b.text = "✕"
+	close_b.custom_minimum_size = Vector2(28, 28)
+	close_b.add_theme_font_size_override("font_size", 13)
+	close_b.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
+	var c_sb = StyleBoxFlat.new()
+	c_sb.bg_color = Color(0.2, 0.24, 0.35, 0.85)
+	c_sb.set_corner_radius_all(14)
+	close_b.add_theme_stylebox_override("normal", c_sb)
+	var c_sb_h = c_sb.duplicate()
+	c_sb_h.bg_color = Color(0.35, 0.4, 0.55, 1.0)
+	close_b.add_theme_stylebox_override("hover", c_sb_h)
+	close_b.pressed.connect(close_review_drawer)
+	header_row.add_child(close_b)
+	main_vbox.add_child(header_row)
+
+	# ── Overall Rating & Sub-Scores Card ──
+	var rating_card = PanelContainer.new()
+	rating_card.name = "RatingSummaryCard"
+	var rc_sb = StyleBoxFlat.new()
+	rc_sb.bg_color = Color(0.06, 0.08, 0.13, 0.95)
+	rc_sb.set_corner_radius_all(12)
+	rc_sb.border_width_left = 1
+	rc_sb.border_width_top = 1
+	rc_sb.border_width_right = 1
+	rc_sb.border_width_bottom = 2
+	rc_sb.border_color = Color(0.25, 0.3, 0.45, 0.8)
+	rc_sb.content_margin_left = 12.0
+	rc_sb.content_margin_right = 12.0
+	rc_sb.content_margin_top = 10.0
+	rc_sb.content_margin_bottom = 10.0
+	rating_card.add_theme_stylebox_override("panel", rc_sb)
+
+	var rating_hbox = HBoxContainer.new()
+	rating_hbox.name = "RatingHBox"
+	rating_hbox.add_theme_constant_override("separation", 14)
+	rating_card.add_child(rating_hbox)
+
+	# Left Column: Big Overall Score
+	var left_vb = VBoxContainer.new()
+	left_vb.custom_minimum_size = Vector2(96, 0)
+	left_vb.alignment = BoxContainer.ALIGNMENT_CENTER
+
+	review_overall_score_label = Label.new()
+	review_overall_score_label.name = "OverallScoreLabel"
+	review_overall_score_label.text = "5.0 ★"
+	review_overall_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	review_overall_score_label.add_theme_font_size_override("font_size", 26)
+	review_overall_score_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.2, 1.0))
+	left_vb.add_child(review_overall_score_label)
+
+	review_overall_stars_label = Label.new()
+	review_overall_stars_label.name = "OverallStarsLabel"
+	review_overall_stars_label.text = "★★★★★"
+	review_overall_stars_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	review_overall_stars_label.add_theme_font_size_override("font_size", 12)
+	review_overall_stars_label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.25, 1.0))
+	left_vb.add_child(review_overall_stars_label)
+
+	review_status_label = Label.new()
+	review_status_label.name = "RatingStatusLabel"
+	review_status_label.text = "Exceptional"
+	review_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	review_status_label.add_theme_font_size_override("font_size", 10)
+	review_status_label.add_theme_color_override("font_color", Color(0.35, 0.9, 0.5, 1.0))
+	left_vb.add_child(review_status_label)
+	rating_hbox.add_child(left_vb)
+
+	# Vertical divider
+	var v_div = ColorRect.new()
+	v_div.custom_minimum_size = Vector2(1, 0)
+	v_div.color = Color(0.25, 0.3, 0.42, 0.6)
+	rating_hbox.add_child(v_div)
+
+	# Right Column: 4 Sub-Scores
+	var right_vb = VBoxContainer.new()
+	right_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_vb.add_theme_constant_override("separation", 6)
+
+	var f_row = _create_sub_score_ui_row("🍔 Food Quality", Color(1.0, 0.58, 0.15))
+	review_food_score_label = f_row["label"]
+	review_food_bar = f_row["bar"]
+	right_vb.add_child(f_row["root"])
+
+	var s_row = _create_sub_score_ui_row("⚡ Service Speed", Color(1.0, 0.85, 0.2))
+	review_service_score_label = s_row["label"]
+	review_service_bar = s_row["bar"]
+	right_vb.add_child(s_row["root"])
+
+	var a_row = _create_sub_score_ui_row("🎵 Ambience", Color(0.85, 0.4, 0.95))
+	review_ambience_score_label = a_row["label"]
+	review_ambience_bar = a_row["bar"]
+	right_vb.add_child(a_row["root"])
+
+	var c_row = _create_sub_score_ui_row("✨ Cleanliness", Color(0.25, 0.88, 0.45))
+	review_cleanliness_score_label = c_row["label"]
+	review_cleanliness_bar = c_row["bar"]
+	right_vb.add_child(c_row["root"])
+
+	rating_hbox.add_child(right_vb)
+	main_vbox.add_child(rating_card)
+
+	# ── Live Reviews Section Header ──
+	var feed_hdr = HBoxContainer.new()
+	var feed_title = Label.new()
+	feed_title.text = "💬 LIVE GUEST REVIEWS (Last 8 Diners)"
+	feed_title.add_theme_font_size_override("font_size", 11)
+	feed_title.add_theme_color_override("font_color", Color(0.9, 0.92, 0.98, 0.95))
+	feed_hdr.add_child(feed_title)
+
+	var f_sp = Control.new()
+	f_sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	feed_hdr.add_child(f_sp)
+
+	var live_pill = Label.new()
+	live_pill.text = "● LIVE FEED"
+	live_pill.add_theme_font_size_override("font_size", 9)
+	live_pill.add_theme_color_override("font_color", Color(0.3, 0.9, 0.45, 1.0))
+	feed_hdr.add_child(live_pill)
+	main_vbox.add_child(feed_hdr)
+
+	# ── Scrollable Review Cards Container ──
+	var scroll = ScrollContainer.new()
+	scroll.name = "ReviewFeedScroll"
+	scroll.custom_minimum_size = Vector2(0, 205)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+
+	review_feed_vbox = VBoxContainer.new()
+	review_feed_vbox.name = "ReviewFeedVBox"
+	review_feed_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	review_feed_vbox.add_theme_constant_override("separation", 6)
+	scroll.add_child(review_feed_vbox)
+	main_vbox.add_child(scroll)
+
+	hud_root.add_child(drawer)
+	review_drawer = drawer
+	_refresh_review_drawer()
+
+func _create_sub_score_ui_row(title_text: String, fill_col: Color) -> Dictionary:
+	var row_vb = VBoxContainer.new()
+	row_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row_vb.add_theme_constant_override("separation", 2)
+
+	var label_row = HBoxContainer.new()
+	var name_lbl = Label.new()
+	name_lbl.text = title_text
+	name_lbl.add_theme_font_size_override("font_size", 10)
+	name_lbl.add_theme_color_override("font_color", Color(0.85, 0.88, 0.94, 0.95))
+	label_row.add_child(name_lbl)
+
+	var sp = Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label_row.add_child(sp)
+
+	var val_lbl = Label.new()
+	val_lbl.text = "5.0 ★"
+	val_lbl.add_theme_font_size_override("font_size", 10)
+	val_lbl.add_theme_color_override("font_color", fill_col)
+	label_row.add_child(val_lbl)
+	row_vb.add_child(label_row)
+
+	var pb = ProgressBar.new()
+	pb.custom_minimum_size = Vector2(0, 6)
+	pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pb.show_percentage = false
+	pb.max_value = 1.0
+	pb.value = 1.0
+
+	var bg_sb = StyleBoxFlat.new()
+	bg_sb.bg_color = Color(0.12, 0.15, 0.22, 0.9)
+	bg_sb.set_corner_radius_all(3)
+	var fill_sb = StyleBoxFlat.new()
+	fill_sb.bg_color = fill_col
+	fill_sb.set_corner_radius_all(3)
+	pb.add_theme_stylebox_override("background", bg_sb)
+	pb.add_theme_stylebox_override("fill", fill_sb)
+	row_vb.add_child(pb)
+
+	return {"root": row_vb, "label": val_lbl, "bar": pb}
+
+func _refresh_review_drawer() -> void:
+	if review_drawer == null:
+		return
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+
+	var breakdown = gm.get_star_rating_breakdown() if gm.has_method("get_star_rating_breakdown") else {
+		"overall": 5.0,
+		"overall_formatted": "5.0",
+		"food_quality": 5.0,
+		"service_speed": 4.8,
+		"ambience": 5.0,
+		"cleanliness": 4.9
+	}
+
+	if review_overall_score_label != null:
+		review_overall_score_label.text = "%s ★" % breakdown.get("overall_formatted", "5.0")
+	if review_overall_stars_label != null:
+		var o_score: float = float(breakdown.get("overall", 5.0))
+		if o_score >= 4.8:
+			review_overall_stars_label.text = "★★★★★"
+		elif o_score >= 3.8:
+			review_overall_stars_label.text = "★★★★☆"
+		elif o_score >= 2.8:
+			review_overall_stars_label.text = "★★★☆☆"
+		else:
+			review_overall_stars_label.text = "★★☆☆☆"
+
+	if review_status_label != null:
+		var o_val: float = float(breakdown.get("overall", 5.0))
+		if o_val >= 4.8:
+			review_status_label.text = "Exceptional"
+			review_status_label.add_theme_color_override("font_color", Color(0.35, 0.92, 0.5))
+		elif o_val >= 4.2:
+			review_status_label.text = "Very Good"
+			review_status_label.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
+		else:
+			review_status_label.text = "Needs Upgrades"
+			review_status_label.add_theme_color_override("font_color", Color(1.0, 0.65, 0.2))
+
+	if review_food_bar != null:
+		review_food_bar.value = clampf(float(breakdown.get("food_quality", 5.0)) / 5.0, 0.0, 1.0)
+	if review_food_score_label != null:
+		review_food_score_label.text = "%.1f ★" % float(breakdown.get("food_quality", 5.0))
+
+	if review_service_bar != null:
+		review_service_bar.value = clampf(float(breakdown.get("service_speed", 5.0)) / 5.0, 0.0, 1.0)
+	if review_service_score_label != null:
+		review_service_score_label.text = "%.1f ★" % float(breakdown.get("service_speed", 5.0))
+
+	if review_ambience_bar != null:
+		review_ambience_bar.value = clampf(float(breakdown.get("ambience", 5.0)) / 5.0, 0.0, 1.0)
+	if review_ambience_score_label != null:
+		review_ambience_score_label.text = "%.1f ★" % float(breakdown.get("ambience", 5.0))
+
+	if review_cleanliness_bar != null:
+		review_cleanliness_bar.value = clampf(float(breakdown.get("cleanliness", 5.0)) / 5.0, 0.0, 1.0)
+	if review_cleanliness_score_label != null:
+		review_cleanliness_score_label.text = "%.1f ★" % float(breakdown.get("cleanliness", 5.0))
+
+	# Populate review cards list
+	if review_feed_vbox != null:
+		for c in review_feed_vbox.get_children():
+			review_feed_vbox.remove_child(c)
+			c.queue_free()
+
+		var reviews = gm.get_recent_guest_reviews() if gm.has_method("get_recent_guest_reviews") else []
+		for r in reviews:
+			var card = _create_guest_review_card(r)
+			if card != null:
+				review_feed_vbox.add_child(card)
+
+func _create_guest_review_card(r: Dictionary) -> PanelContainer:
+	var pc = PanelContainer.new()
+	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var is_neg = (r.get("stars", 5) <= 2 or r.get("fix_target", "") != "")
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.13, 0.16, 0.23, 0.95)
+	sb.set_corner_radius_all(10)
+	sb.border_width_left = 2 if is_neg else 1
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 2
+	sb.border_color = Color(0.95, 0.45, 0.15, 0.9) if is_neg else Color(0.24, 0.28, 0.38, 0.7)
+	sb.content_margin_left = 10.0
+	sb.content_margin_right = 10.0
+	sb.content_margin_top = 8.0
+	sb.content_margin_bottom = 8.0
+	pc.add_theme_stylebox_override("panel", sb)
+
+	var vb = VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 4)
+
+	# Top Row: Avatar, Name, Stars, Timestamp
+	var top_row = HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 6)
+
+	var av_lbl = Label.new()
+	av_lbl.text = r.get("avatar_icon", "👤")
+	av_lbl.add_theme_font_size_override("font_size", 15)
+	top_row.add_child(av_lbl)
+
+	var name_lbl = Label.new()
+	name_lbl.text = r.get("customer_name", "Diner Guest")
+	name_lbl.add_theme_font_size_override("font_size", 11)
+	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.95, 1.0, 1.0))
+	top_row.add_child(name_lbl)
+
+	var s_cnt: int = int(r.get("stars", 5))
+	var s_str = ""
+	for i in range(5):
+		s_str += "★" if i < s_cnt else "☆"
+	var stars_lbl = Label.new()
+	stars_lbl.text = s_str
+	stars_lbl.add_theme_font_size_override("font_size", 10)
+	stars_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2) if s_cnt >= 4 else Color(1.0, 0.35, 0.3))
+	top_row.add_child(stars_lbl)
+
+	var sp = Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_row.add_child(sp)
+
+	var time_lbl = Label.new()
+	time_lbl.text = r.get("timestamp", "Just now")
+	time_lbl.add_theme_font_size_override("font_size", 9)
+	time_lbl.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8, 0.75))
+	top_row.add_child(time_lbl)
+	vb.add_child(top_row)
+
+	# Comment Row & FIX NOW button
+	var bottom_row = HBoxContainer.new()
+	bottom_row.add_theme_constant_override("separation", 8)
+
+	var comment_lbl = Label.new()
+	comment_lbl.text = "\"%s\"" % r.get("comment", "Great meal!")
+	comment_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	comment_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	comment_lbl.add_theme_font_size_override("font_size", 10)
+	comment_lbl.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95, 0.92))
+	bottom_row.add_child(comment_lbl)
+
+	if is_neg:
+		var fix_btn = Button.new()
+		fix_btn.text = "FIX NOW ⚡"
+		fix_btn.custom_minimum_size = Vector2(74, 24)
+		fix_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		fix_btn.add_theme_font_size_override("font_size", 9)
+		fix_btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+		var f_sb = StyleBoxFlat.new()
+		f_sb.bg_color = Color(0.92, 0.42, 0.08, 1.0)
+		f_sb.set_corner_radius_all(6)
+		f_sb.set_border_width_all(1)
+		f_sb.border_color = Color(1.0, 0.78, 0.25, 1.0)
+		f_sb.content_margin_left = 6
+		f_sb.content_margin_right = 6
+		fix_btn.add_theme_stylebox_override("normal", f_sb)
+		var f_sb_h = f_sb.duplicate()
+		f_sb_h.bg_color = Color(1.0, 0.52, 0.15, 1.0)
+		fix_btn.add_theme_stylebox_override("hover", f_sb_h)
+
+		var target_key = r.get("fix_target", "waiter")
+		fix_btn.pressed.connect(func():
+			_on_review_fix_now_pressed(target_key)
+		)
+		bottom_row.add_child(fix_btn)
+
+	vb.add_child(bottom_row)
+	pc.add_child(vb)
+	return pc
+
+func _on_review_fix_now_pressed(fix_target: String) -> void:
+	close_review_drawer()
+	_play_click_sfx()
+	var gm = get_node_or_null("/root/GameManager")
+	match fix_target.to_lower():
+		"waiter", "staff":
+			_open_modal(staff_panel)
+		"stove", "kitchen":
+			_focus_camera("kitchen")
+			var lvl = gm.get_station_level("stove") if gm != null else 1
+			open_upgrade("stove", "Master Range Stoves", lvl)
+		"table", "dining":
+			_focus_camera("dining")
+			var lvl = gm.get_station_level("table_1") if gm != null else 1
+			open_upgrade("table_1", "Booth Table 1", lvl)
+		"milkshake", "ambience":
+			_focus_camera("milkshake")
+			var lvl = gm.get_station_level("milkshake_bar") if gm != null else 1
+			open_upgrade("milkshake_bar", "Bar Top Counter", lvl)
+		"cleanliness", "janitor":
+			_open_modal(staff_panel)
+		_:
+			_open_modal(staff_panel)
+
+func _on_star_bar_gui_input(event: InputEvent) -> void:
+	if (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) or (event is InputEventScreenTouch and event.pressed):
+		toggle_review_drawer()
+
+func _on_guest_review_received(_review: Dictionary) -> void:
+	_refresh_star_milestone_bar()
+	if is_review_drawer_open:
+		_refresh_review_drawer()
+
+func open_review_drawer() -> void:
+	if review_drawer == null:
+		_setup_review_drawer()
+	if review_drawer == null:
+		return
+	_play_click_sfx()
+	_refresh_review_drawer()
+
+	var vp = get_viewport()
+	var vp_size = vp.get_visible_rect().size if vp != null else Vector2(1080, 1920)
+	var drawer_w = min(vp_size.x - 24.0, 420.0)
+	review_drawer.custom_minimum_size = Vector2(drawer_w, 480.0)
+	review_drawer.size = Vector2(drawer_w, 480.0)
+	review_drawer.position.x = (vp_size.x - drawer_w) * 0.5
+	var resting_y: float = 24.0
+	review_drawer.position.y = -review_drawer.size.y - 30.0
+	review_drawer.visible = true
+
+	if review_scrim != null:
+		review_scrim.visible = true
+		review_scrim.modulate.a = 0.0
+
+	is_review_drawer_open = true
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_signal("review_drawer_toggled"):
+		gm.review_drawer_toggled.emit(true)
+
+	var tw = create_tween()
+	if review_scrim != null:
+		tw.parallel().tween_property(review_scrim, "modulate:a", 1.0, 0.22)
+	tw.parallel().tween_property(review_drawer, "position:y", resting_y, 0.30).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func close_review_drawer() -> void:
+	if not is_review_drawer_open:
+		return
+	is_review_drawer_open = false
+	_play_click_sfx()
+
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null and gm.has_signal("review_drawer_toggled"):
+		gm.review_drawer_toggled.emit(false)
+
+	var tw = create_tween()
+	if review_scrim != null:
+		tw.parallel().tween_property(review_scrim, "modulate:a", 0.0, 0.18)
+	if review_drawer != null:
+		tw.parallel().tween_property(review_drawer, "position:y", -review_drawer.size.y - 35.0, 0.20).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func():
+		if review_drawer != null and is_instance_valid(review_drawer):
+			review_drawer.visible = false
+		if review_scrim != null and is_instance_valid(review_scrim):
+			review_scrim.visible = false
+	)
+
+func toggle_review_drawer() -> void:
+	if is_review_drawer_open:
+		close_review_drawer()
+	else:
+		open_review_drawer()
+
 
 
 

@@ -1000,6 +1000,10 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 
 	# Part 13: Collectible Gear & Uniform Loadout System
 	print("\n--- [FRAME 20 Part 13] Asserting Collectible Gear & Uniform Loadout System ---")
+	gm.equipped_gear = {"head": "toque", "body": "apron", "tool": "skillet"}
+	if gm.gear_inventory.has("toque"):
+		gm.gear_inventory["toque"]["rarity"] = "common"
+		gm.gear_inventory["toque"]["count"] = 1
 	# 1. Equipped Gear & Inventory queries
 	var eq_gear = gm.get_equipped_gear()
 	_assert_test(eq_gear.has("head") and eq_gear.has("body") and eq_gear.has("tool"), "Equipped gear tracks head, body, and tool slots")
@@ -1121,9 +1125,91 @@ func _step_frame_20_customer_fsm_and_alerts() -> void:
 	dock_hud._update_screen_edge_indicators(0.016)
 	_assert_test(dock_hud.edge_indicators_root.visible == true, "Edge indicators restored when clean view mode ends")
 
+	# Part 15: Interactive Star Rating & Customer Review Drawer
+	print("\n--- [FRAME 20 Part 15] Asserting Star Rating & Customer Review Drawer ---")
+	gm._init_starter_guest_reviews()
+	
+	# 1. Star Rating Breakdown Calculations
+	var breakdown = gm.get_star_rating_breakdown()
+	_assert_test(breakdown.has("overall") and breakdown.has("food_quality") and breakdown.has("service_speed") and breakdown.has("ambience") and breakdown.has("cleanliness"), "get_star_rating_breakdown() returns all 4 sub-scores and overall composite")
+	_assert_test(breakdown["overall"] >= 3.5 and breakdown["overall"] <= 5.0, "Overall star rating clamped in [3.5, 5.0]")
+	_assert_test(breakdown["food_quality"] >= 3.0 and breakdown["food_quality"] <= 5.0, "Food quality sub-score clamped in [3.0, 5.0]")
+	_assert_test(breakdown["service_speed"] >= 3.0 and breakdown["service_speed"] <= 5.0, "Service speed sub-score clamped in [3.0, 5.0]")
+	_assert_test(breakdown["ambience"] >= 3.0 and breakdown["ambience"] <= 5.0, "Ambience sub-score clamped in [3.0, 5.0]")
+	_assert_test(breakdown["cleanliness"] >= 2.0 and breakdown["cleanliness"] <= 5.0, "Cleanliness sub-score clamped in [2.0, 5.0]")
+
+	# 2. Rolling Review Feed Initial State & Capacity
+	var reviews = gm.get_recent_guest_reviews()
+	_assert_test(reviews.size() == 8, "Rolling guest review feed maintains exactly 8 recent reviews")
+	_assert_test(reviews[0].has("customer_name") and reviews[0].has("stars") and reviews[0].has("comment") and reviews[0].has("avatar_icon") and reviews[0].has("fix_target"), "Review item contains customer_name, stars, comment, avatar_icon, and fix_target")
+
+	# 3. Customer Exit Review Generation
+	var cust_scn = load("res://scenes/customer.tscn")
+	var rev_cust = cust_scn.instantiate()
+	root.add_child(rev_cust)
+	rev_cust.customer_name = "Speedy Sam"
+	rev_cust.current_patience = 45.0
+	rev_cust.max_patience = 50.0
+	rev_cust._record_departing_review(false)
+	var latest_reviews = gm.get_recent_guest_reviews()
+	_assert_test(latest_reviews[0]["customer_name"] == "Speedy Sam", "High patience dining customer recorded on top of review feed")
+	_assert_test(latest_reviews[0]["stars"] == 5, "High patience diner awards 5-star rating")
+	_assert_test(latest_reviews[0]["comment"] == "Fastest burger in town! Left a 30% speedy tip!", "High patience diner leaves speedy tip comment")
+	_assert_test(latest_reviews.size() == 8, "Feed remains capped at 8 entries after new review")
+
+	# Customer Walkout Review
+	var walkout_cust = cust_scn.instantiate()
+	root.add_child(walkout_cust)
+	walkout_cust.customer_name = "Hungry Hank"
+	walkout_cust.current_patience = 0.0
+	walkout_cust.max_patience = 50.0
+	walkout_cust.current_state = walkout_cust.State.EATING
+	walkout_cust._record_departing_review(true)
+	latest_reviews = gm.get_recent_guest_reviews()
+	_assert_test(latest_reviews[0]["customer_name"] == "Hungry Hank", "Walkout customer recorded at head of review feed")
+	_assert_test(latest_reviews[0]["stars"] == 1, "Walkout customer leaves 1-star negative review")
+	_assert_test(latest_reviews[0]["comment"] == "Waited forever at the table and left hungry.", "Walkout customer leaves context-aware hungry comment")
+	_assert_test(latest_reviews[0]["fix_target"] == "stove", "Walkout dining customer provides stove fix_target")
+
+	# Customer Milkshake Bar Review
+	var shake_cust = cust_scn.instantiate()
+	root.add_child(shake_cust)
+	shake_cust.customer_name = "Retro Ruby"
+	shake_cust.sector_type = "milkshake"
+	shake_cust.current_patience = 30.0
+	shake_cust.max_patience = 40.0
+	shake_cust._record_departing_review(false)
+	latest_reviews = gm.get_recent_guest_reviews()
+	_assert_test(latest_reviews[0]["comment"] == "The 50s Milkshake Bar and Wurlitzer Jukebox vibe is unmatched!", "Milkshake guest leaves themed jukebox & shake comment")
+
+	rev_cust.queue_free()
+	walkout_cust.queue_free()
+	shake_cust.queue_free()
+
+	# 4. Interactive UI Review Drawer (hud.tscn)
+	_assert_test(dock_hud.review_drawer != null, "HUD instantiates Diner Reviews & Rating drawer")
+	_assert_test(dock_hud.is_review_drawer_open == false, "Review drawer is closed initially")
+
+	dock_hud.open_review_drawer()
+	_assert_test(dock_hud.is_review_drawer_open == true, "open_review_drawer() opens drawer")
+	_assert_test(dock_hud.review_drawer.visible == true, "Review drawer node is visible")
+	_assert_test(dock_hud.review_scrim.visible == true, "Review drawer scrim is visible")
+	_assert_test(dock_hud.review_feed_vbox != null and dock_hud.review_feed_vbox.get_child_count() == 8, "Review feed renders all 8 review cards")
+
+	# 5. Fix Now Action on Negative Review
+	dock_hud._on_review_fix_now_pressed("waiter")
+	_assert_test(dock_hud.staff_panel.visible == true, "Clicking Fix Now with 'waiter' opens staff_panel upgrade sheet")
+	_assert_test(dock_hud.is_review_drawer_open == false, "Opening fix sheet automatically closes review drawer")
+
+	# 6. Toggle and Close Drawer
+	dock_hud.toggle_review_drawer()
+	_assert_test(dock_hud.is_review_drawer_open == true, "toggle_review_drawer() opens review drawer when closed")
+	dock_hud.close_review_drawer()
+	_assert_test(dock_hud.is_review_drawer_open == false, "close_review_drawer() dismisses review drawer")
+
 	dock_hud.queue_free()
 
-	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, Blueprint Zones, Collapsible Dock, Pipeline Balance, Interactive Onboarding, Collectible Gear Wardrobe, Supply Drones, and Screen-Edge Indicators validated.")
+	print("✓ Frame 20 completed: Customer FSM, alerts, Kolibri manager skills, recipe progression, Golden Piggy Bank, VIP Investor, Callout Card, Quick-Upgrade Pill, Diner Fever, Character Inspector, Blueprint Zones, Collapsible Dock, Pipeline Balance, Interactive Onboarding, Collectible Gear Wardrobe, Supply Drones, Screen-Edge Indicators, and Star Rating & Customer Review Drawer validated.")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Frame 25: Teardown & Summary

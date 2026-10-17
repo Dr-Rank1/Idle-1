@@ -61,6 +61,8 @@ signal tutorial_step_changed(step_index: int)
 signal tutorial_completed_awarded(diamonds: int, cash: float)
 signal gear_updated()
 signal gear_merged(item_id: String, new_rarity: String)
+signal guest_review_added(review: Dictionary)
+signal review_drawer_toggled(is_open: bool)
 
 var restaurant_node: Node3D = null
 
@@ -167,6 +169,10 @@ var unlocked_star_tiers: Array = [1]
 var claimed_star_rewards: Array = []
 const PIGGY_BANK_CAP: int = 250
 var piggy_bank_diamonds: int = 0
+
+# ─── Live Customer Reviews & Star Rating System ─────────────────────────────
+var recent_guest_reviews: Array[Dictionary] = []
+const MAX_RECENT_REVIEWS: int = 8
 
 # ─── Diner Fever Combo State ────────────────────────────────────────────────
 var fever_charge: float = 0.0
@@ -1473,6 +1479,7 @@ func save_game() -> void:
 		"total_earned": total_earned,
 		"star_rating": star_rating,
 		"cleanliness": cleanliness,
+		"recent_guest_reviews": recent_guest_reviews,
 		"restaurant_name": restaurant_name,
 		"restaurant_level": restaurant_level,
 		"restaurant_xp": restaurant_xp,
@@ -1559,6 +1566,13 @@ func load_game() -> void:
 	total_earned = float(parsed.get("total_earned", total_earned))
 	star_rating = float(parsed.get("star_rating", star_rating))
 	cleanliness = float(parsed.get("cleanliness", cleanliness))
+	if parsed.has("recent_guest_reviews") and typeof(parsed["recent_guest_reviews"]) == TYPE_ARRAY:
+		recent_guest_reviews.clear()
+		for r in parsed["recent_guest_reviews"]:
+			if typeof(r) == TYPE_DICTIONARY:
+				recent_guest_reviews.append(r)
+	if recent_guest_reviews.is_empty():
+		_init_starter_guest_reviews()
 	prestige_level = int(parsed.get("prestige_level", prestige_level))
 	franchise_keys = int(parsed.get("franchise_keys", franchise_keys))
 	restaurant_name = str(parsed.get("restaurant_name", restaurant_name))
@@ -2486,6 +2500,143 @@ func award_critic_review(is_positive: bool, bounty: float = 0.0) -> void:
 		reputation_changed.emit(round(star_rating * 10))
 		critic_review_awarded.emit(star_rating, false)
 	save_game()
+
+# ─── Live Customer Reviews & Star Rating Breakdown ─────────────────────────
+func add_guest_review(review: Dictionary) -> void:
+	if review.is_empty():
+		return
+	if recent_guest_reviews.is_empty():
+		_init_starter_guest_reviews()
+	if not review.has("timestamp") or review["timestamp"] == "":
+		review["timestamp"] = "Just now"
+	recent_guest_reviews.push_front(review)
+	while recent_guest_reviews.size() > MAX_RECENT_REVIEWS:
+		recent_guest_reviews.pop_back()
+	guest_review_added.emit(review)
+
+func get_recent_guest_reviews() -> Array[Dictionary]:
+	if recent_guest_reviews.is_empty():
+		_init_starter_guest_reviews()
+	return recent_guest_reviews
+
+func _init_starter_guest_reviews() -> void:
+	recent_guest_reviews = [
+		{
+			"customer_name": "Henri Le Blanc",
+			"avatar_icon": "👑",
+			"stars": 5,
+			"comment": "A culinary marvel! Exceptional plating and impeccable flavor profile.",
+			"timestamp": "1m ago",
+			"experience_type": "critic",
+			"fix_target": ""
+		},
+		{
+			"customer_name": "Emily Watson",
+			"avatar_icon": "⚡",
+			"stars": 5,
+			"comment": "Fastest burger in town! Left a 30% speedy tip!",
+			"timestamp": "2m ago",
+			"experience_type": "speedy",
+			"fix_target": ""
+		},
+		{
+			"customer_name": "David Miller",
+			"avatar_icon": "🍨",
+			"stars": 5,
+			"comment": "The 50s Milkshake Bar and Wurlitzer Jukebox vibe is unmatched!",
+			"timestamp": "3m ago",
+			"experience_type": "ambience",
+			"fix_target": ""
+		},
+		{
+			"customer_name": "Warren Sterling",
+			"avatar_icon": "💼",
+			"stars": 5,
+			"comment": "Outstanding franchise potential! Generous returns on every burger flipped.",
+			"timestamp": "5m ago",
+			"experience_type": "investor",
+			"fix_target": ""
+		},
+		{
+			"customer_name": "Marcus Vance",
+			"avatar_icon": "✨",
+			"stars": 5,
+			"comment": "Sparkling clean dining room and spotless booths. A joy to eat here!",
+			"timestamp": "7m ago",
+			"experience_type": "cleanliness",
+			"fix_target": ""
+		},
+		{
+			"customer_name": "Chloe Bennett",
+			"avatar_icon": "🍔",
+			"stars": 4,
+			"comment": "Delicious food and cozy atmosphere, definitely coming back!",
+			"timestamp": "9m ago",
+			"experience_type": "normal",
+			"fix_target": ""
+		},
+		{
+			"customer_name": "Arthur Pendelton",
+			"avatar_icon": "⏳",
+			"stars": 2,
+			"comment": "Waited forever at the table and left hungry.",
+			"timestamp": "12m ago",
+			"experience_type": "walkout",
+			"fix_target": "waiter"
+		},
+		{
+			"customer_name": "Sophia Reynolds",
+			"avatar_icon": "😋",
+			"stars": 5,
+			"comment": "Crispy fries and juicy patties. Best lunch spot downtown!",
+			"timestamp": "15m ago",
+			"experience_type": "normal",
+			"fix_target": ""
+		}
+	]
+
+func get_star_rating_breakdown() -> Dictionary:
+	# 1. Food Quality (station levels + unlocked signature recipes)
+	var stove_lvl = get_station_level("stove")
+	var unlocked_recipes: int = unlocked_star_tiers.size()
+	var food_score = clampf(3.8 + min(0.7, (stove_lvl - 1) * 0.08) + min(0.5, (unlocked_recipes - 1) * 0.15), 3.0, 5.0)
+
+	# 2. Service Speed (waiter and chef roster staffing vs table load)
+	var hired_waiters: int = 0
+	var waiter_total_lvls: int = 0
+	if staff_roster is Dictionary:
+		for s_id in staff_roster.keys():
+			var member = staff_roster[s_id]
+			if member.get("role") == "waiter" and member.get("hired", false):
+				hired_waiters += 1
+				waiter_total_lvls += member.get("level", 1)
+	else:
+		hired_waiters = 2
+		waiter_total_lvls = 2
+	var service_score = clampf(3.5 + min(0.8, (hired_waiters - 1) * 0.4) + min(0.7, (waiter_total_lvls - 2) * 0.1), 3.0, 5.0)
+
+	# 3. Ambience (Cocktail Lounge, Jukebox, and Milkshake Bar levels)
+	var shake_lvl = get_station_level("milkshake_bar")
+	var lounge_lvl = get_station_level("lounge_bar")
+	var jukebox_unlocked: bool = get_station_level("jukebox") >= 1 or (research_perks is Dictionary and research_perks.get("jukebox", {}).get("unlocked", false))
+	var ambience_score = clampf(3.6 + min(0.6, (shake_lvl - 1) * 0.12) + min(0.5, (lounge_lvl - 1) * 0.1) + (0.3 if jukebox_unlocked else 0.0), 3.0, 5.0)
+
+	# 4. Cleanliness (table bussing & restroom upkeep)
+	var clean_score = clampf(cleanliness / 20.0, 2.0, 5.0)
+
+	# Overall composite rating
+	var composite_rating = (food_score + service_score + ambience_score + clean_score) / 4.0
+	composite_rating = clampf(composite_rating, 3.5, 5.0)
+	star_rating = composite_rating
+
+	return {
+		"overall": composite_rating,
+		"overall_formatted": "%.1f" % composite_rating,
+		"food_quality": food_score,
+		"service_speed": service_score,
+		"ambience": ambience_score,
+		"cleanliness": clean_score
+	}
 
 func get_station_tier_title(station_id: String, lvl: int) -> String:
 	if station_id.begins_with("table"):

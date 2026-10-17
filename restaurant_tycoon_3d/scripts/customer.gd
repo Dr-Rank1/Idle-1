@@ -119,6 +119,90 @@ const CUSTOMER_NAMES: Array[String] = [
 	"Leo", "Evelyn", "Alex", "Chloe"
 ]
 var customer_name: String = ""
+var review_recorded: bool = false
+
+func _record_departing_review(is_walkout: bool = false) -> void:
+	if review_recorded:
+		return
+	review_recorded = true
+	
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("add_guest_review"):
+		return
+		
+	var stars: int = 5
+	var comment: String = ""
+	var avatar_icon: String = "👤"
+	var fix_target: String = ""
+	var exp_type: String = "normal"
+	
+	var c_name = customer_name
+	if c_name == "":
+		c_name = "Diner Guest"
+		
+	if is_walkout or current_patience <= 0.0:
+		stars = 1
+		avatar_icon = "😡"
+		exp_type = "walkout"
+		if current_state == State.AT_HOST or current_state == State.WAITING_IN_LOBBY:
+			comment = "Waited forever in the lobby and left hungry. Need faster seating!"
+			fix_target = "waiter"
+		else:
+			comment = "Waited forever at the table and left hungry."
+			fix_target = "stove"
+	elif is_vip_critic:
+		avatar_icon = "👑"
+		exp_type = "critic"
+		if current_patience > max_patience * 0.35:
+			stars = 5
+			comment = "A culinary marvel! Exceptional plating and impeccable flavor profile."
+		else:
+			stars = 2
+			comment = "Disappointing execution on the entree and sluggish table service."
+			fix_target = "stove"
+	elif is_vip_investor:
+		stars = 5
+		avatar_icon = "💼"
+		exp_type = "investor"
+		comment = "Outstanding franchise potential! Generous returns on every burger flipped."
+	elif sector_type == "milkshake":
+		stars = 5
+		avatar_icon = "🍨"
+		exp_type = "ambience"
+		comment = "The 50s Milkshake Bar and Wurlitzer Jukebox vibe is unmatched!"
+	elif sector_type == "lounge":
+		stars = 5
+		avatar_icon = "🍸"
+		exp_type = "ambience"
+		comment = "Incredible craft cocktails and relaxing jazz lounge atmosphere."
+	elif current_patience >= max_patience * 0.50:
+		stars = 5
+		avatar_icon = "⚡"
+		exp_type = "speedy"
+		comment = "Fastest burger in town! Left a 30% speedy tip!"
+	elif current_patience <= max_patience * 0.20:
+		stars = 2
+		avatar_icon = "⏳"
+		exp_type = "slow"
+		comment = "Food was decent but the wait for service was nearly unbearable."
+		fix_target = "waiter"
+	else:
+		stars = 4
+		var pleasant_icons = ["🍔", "😋", "🍽️", "✨"]
+		avatar_icon = pleasant_icons[abs(get_instance_id()) % pleasant_icons.size()]
+		exp_type = "normal"
+		comment = "Delicious food and cozy atmosphere, definitely coming back!"
+
+	var review_entry = {
+		"customer_name": c_name,
+		"avatar_icon": avatar_icon,
+		"stars": stars,
+		"comment": comment,
+		"timestamp": "Just now",
+		"experience_type": exp_type,
+		"fix_target": fix_target
+	}
+	gm.add_guest_review(review_entry)
 
 const CHARACTER_MODELS: Array[String] = [
 	"res://assets/models/characters/character-male-a.glb",
@@ -714,6 +798,7 @@ func _handle_customer_walkout() -> void:
 		lobby_wait_timeout.emit(self)
 		
 	current_state = State.WALKING_TO_EXIT
+	_record_departing_review(true)
 	set_bubble_text("😡 Too Slow!", true)
 	
 	var am = get_node_or_null("/root/AudioManager")
@@ -1037,6 +1122,7 @@ func _on_timer_complete() -> void:
 				return
 			
 			current_state = State.WALKING_TO_EXIT
+			_record_departing_review(false)
 			set_bubble_text("")
 			status_bubble.visible = false
 			global_position.y = 0.0
@@ -1070,6 +1156,7 @@ func _on_timer_complete() -> void:
 			set_bubble_text("✨ 😊")
 			_play_anim("walk")
 			current_state = State.WALKING_TO_EXIT
+			_record_departing_review(false)
 			
 			var exit_pts = [
 				Vector3(0.0, 0.0, -7.0),
@@ -1245,6 +1332,7 @@ func on_lounge_drink_served(drink_id: String = "wine_merlot") -> void:
 	if not is_instance_valid(self):
 		return
 	current_state = State.WALKING_TO_EXIT
+	_record_departing_review(false)
 	set_bubble_text("")
 	if status_bubble != null:
 		status_bubble.visible = false
@@ -1287,6 +1375,7 @@ func on_milkshake_served(treat_id: String = "sundae") -> void:
 	if not is_instance_valid(self):
 		return
 	current_state = State.WALKING_TO_EXIT
+	_record_departing_review(false)
 	set_bubble_text("")
 	if status_bubble != null:
 		status_bubble.visible = false
