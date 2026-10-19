@@ -1,3 +1,0 @@
-@echo off
-echo Starting Hotel Resort Tycoon (Flutter Web)...
-flutter run -d chrome

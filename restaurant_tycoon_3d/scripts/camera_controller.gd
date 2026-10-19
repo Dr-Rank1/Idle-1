@@ -5,7 +5,7 @@ signal cinematic_reveal_completed
 @export var pan_speed: float = 0.025
 @export var key_pan_speed: float = 14.0
 @export var zoom_speed: float = 1.4
-@export var default_ortho_size: float = 12.0
+@export var default_ortho_size: float = 12.5
 @export var min_ortho_size: float = 9.0
 @export var max_ortho_size: float = 16.0
 @export var min_zoom_dist: float = 9.0
@@ -15,13 +15,13 @@ signal cinematic_reveal_completed
 @export var auto_start_cinematic_reveal: bool = true
 
 const SIGN_ENTRANCE_CAM_POS: Vector3 = Vector3(13.5, 15.0, 29.6)
-const STANDARD_GAMEPLAY_CAM_POS: Vector3 = Vector3(14.2, 15.0, 16.8)
+const STANDARD_GAMEPLAY_CAM_POS: Vector3 = Vector3(23.2, 15.0, 19.5)
 const SIGN_ENTRANCE_SIZE: float = 8.5
 
 var is_dragging: bool = false
 var is_performing_cinematic_reveal: bool = false
 var last_mouse_pos: Vector2 = Vector2.ZERO
-var target_position: Vector3 = Vector3(14.2, 15.0, 16.8)
+var target_position: Vector3 = STANDARD_GAMEPLAY_CAM_POS
 var initialized: bool = false
 
 # Touch and Drag Inertia / Momentum
@@ -203,10 +203,10 @@ func focus_zone(zone: String, offset_for_drawer: bool = true) -> void:
 		"reception", "lobby":
 			base_cam = Vector3(16.5, 15.0, 25.0)
 		"overview":
-			base_cam = Vector3(14.2, 15.0, 16.8)
+			base_cam = STANDARD_GAMEPLAY_CAM_POS
 			offset_for_drawer = false
 		_:
-			base_cam = Vector3(14.2, 15.0, 16.8)
+			base_cam = STANDARD_GAMEPLAY_CAM_POS
 			
 	pan_to_position(base_cam, 0.35, offset_for_drawer)
 

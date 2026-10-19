@@ -1131,7 +1131,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
 theme_override_font_sizes/font_size = 11
-text = "★ Star 1"
+text = "Star 1"
 horizontal_alignment = 1
 
 [node name="Star2" type="Label" parent="HUD/StarMilestoneBar/HBox"]
@@ -1139,7 +1139,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
 theme_override_font_sizes/font_size = 11
-text = "★ Star 2"
+text = "Star 2"
 horizontal_alignment = 1
 
 [node name="Star3" type="Label" parent="HUD/StarMilestoneBar/HBox"]
@@ -1147,7 +1147,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
 theme_override_font_sizes/font_size = 11
-text = "★ Star 3"
+text = "Star 3"
 horizontal_alignment = 1
 
 [node name="Star4" type="Label" parent="HUD/StarMilestoneBar/HBox"]
@@ -1155,7 +1155,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
 theme_override_font_sizes/font_size = 11
-text = "★ Star 4"
+text = "Star 4"
 horizontal_alignment = 1
 
 [node name="Star5" type="Label" parent="HUD/StarMilestoneBar/HBox"]
@@ -1163,10 +1163,11 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.85, 0.88, 0.92, 1)
 theme_override_font_sizes/font_size = 11
-text = "★ Grand Diner"
+text = "Grand Diner"
 horizontal_alignment = 1
 
 [node name="FeverComboBar" type="PanelContainer" parent="HUD"]
+visible = false
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -1187,7 +1188,7 @@ theme_override_colors/font_color = Color(1, 0.75, 0.15, 1)
 theme_override_colors/font_outline_color = Color(0.2, 0.08, 0, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 11
-text = "🔥 FEVER COMBO"
+text = "FEVER COMBO"
 vertical_alignment = 1
 
 [node name="FillBar" type="ProgressBar" parent="HUD/FeverComboBar/HBox"]
@@ -1222,7 +1223,7 @@ theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 10
 theme_override_styles/normal = SubResource("StyleBoxFlat_surge_btn")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_surge_btn_pressed")
-text = "⚡ SURGE (+2%)"
+text = "SURGE (+2%)"
 
 [node name="GoldenFeverVignette" type="Panel" parent="HUD"]
 visible = false
@@ -1256,6 +1257,7 @@ grow_horizontal = 2
 theme_override_constants/separation = 8
 
 [node name="ProfilePanel" type="PanelContainer" parent="HUD/TopBar"]
+visible = false
 custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_avatar_purple")
@@ -1267,7 +1269,7 @@ alignment = 1
 [node name="AvatarLabel" type="Label" parent="HUD/TopBar/ProfilePanel/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
-text = "👩‍🍳"
+text = ""
 horizontal_alignment = 1
 
 [node name="LevelLabel" type="Label" parent="HUD/TopBar/ProfilePanel/VBox"]
@@ -1288,7 +1290,7 @@ theme_override_constants/separation = 6
 [node name="Icon" type="Label" parent="HUD/TopBar/CashPanel/HBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
-text = "💵"
+text = ""
 
 [node name="VBox" type="VBoxContainer" parent="HUD/TopBar/CashPanel/HBox"]
 layout_mode = 2
@@ -1304,7 +1306,7 @@ text = "$119.8K"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65, 0.95, 0.75, 0.9)
 theme_override_font_sizes/font_size = 10
-text = "📈 +$6.22K/s"
+text = " +$6.22K/s"
 
 [node name="FeverCashBadge" type="Label" parent="HUD/TopBar/CashPanel/HBox/VBox"]
 visible = false
@@ -1316,6 +1318,7 @@ theme_override_font_sizes/font_size = 9
 text = "x2 FEVER SPEED & PROFIT"
 
 [node name="GoldCoinPanel" type="PanelContainer" parent="HUD/TopBar"]
+visible = false
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_pill_gold")
 
@@ -1326,7 +1329,7 @@ theme_override_constants/separation = 6
 [node name="Icon" type="Label" parent="HUD/TopBar/GoldCoinPanel/HBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "🪙"
+text = ""
 
 [node name="GoldCoinLabel" type="Label" parent="HUD/TopBar/GoldCoinPanel/HBox"]
 layout_mode = 2
@@ -1352,7 +1355,7 @@ theme_override_constants/separation = 6
 [node name="Icon" type="Label" parent="HUD/TopBar/EnergyPanel/HBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "⚡"
+text = ""
 
 [node name="EnergyLabel" type="Label" parent="HUD/TopBar/EnergyPanel/HBox"]
 layout_mode = 2
@@ -1378,7 +1381,7 @@ theme_override_constants/separation = 6
 [node name="Icon" type="Label" parent="HUD/TopBar/GemPanel/HBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "💎"
+text = ""
 
 [node name="GemLabel" type="Label" parent="HUD/TopBar/GemPanel/HBox"]
 layout_mode = 2
@@ -1394,6 +1397,7 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_btn_mini_plus")
 text = "+"
 
 [node name="ClockPanel" type="PanelContainer" parent="HUD/TopBar"]
+visible = false
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_pill_clock")
 
@@ -1404,7 +1408,7 @@ theme_override_constants/separation = 4
 [node name="Icon" type="Label" parent="HUD/TopBar/ClockPanel/HBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
-text = "🕒"
+text = ""
 
 [node name="ClockLabel" type="Label" parent="HUD/TopBar/ClockPanel/HBox"]
 layout_mode = 2
@@ -1413,6 +1417,7 @@ theme_override_font_sizes/font_size = 13
 text = "08:34 AM"
 
 [node name="LivePanel" type="PanelContainer" parent="HUD/TopBar"]
+visible = false
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_pill_live")
 
@@ -1424,7 +1429,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 theme_override_colors/font_color = Color(0.25, 0.95, 0.45, 1)
 theme_override_font_sizes/font_size = 12
-text = "●"
+text = ""
 
 [node name="LiveLabel" type="Label" parent="HUD/TopBar/LivePanel/HBox"]
 layout_mode = 2
@@ -1433,6 +1438,7 @@ theme_override_font_sizes/font_size = 12
 text = "Live"
 
 [node name="PipelineBalanceWidget" type="PanelContainer" parent="HUD"]
+visible = false
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
@@ -1452,33 +1458,34 @@ alignment = 1
 custom_minimum_size = Vector2(74, 28)
 layout_mode = 2
 theme_override_font_sizes/font_size = 11
-text = "🚗 14/m"
+text = "14/m"
 
 [node name="Arrow1" type="Label" parent="HUD/PipelineBalanceWidget/HBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 0.8)
 theme_override_font_sizes/font_size = 10
-text = "➔"
+text = "->"
 
 [node name="PipelineKitchenBtn" type="Button" parent="HUD/PipelineBalanceWidget/HBox"]
 custom_minimum_size = Vector2(74, 28)
 layout_mode = 2
 theme_override_font_sizes/font_size = 11
-text = "🍳 16/m"
+text = "16/m"
 
 [node name="Arrow2" type="Label" parent="HUD/PipelineBalanceWidget/HBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 0.8)
 theme_override_font_sizes/font_size = 10
-text = "➔"
+text = "->"
 
 [node name="PipelineSeatingBtn" type="Button" parent="HUD/PipelineBalanceWidget/HBox"]
 custom_minimum_size = Vector2(74, 28)
 layout_mode = 2
 theme_override_font_sizes/font_size = 11
-text = "🪑 20/m"
+text = "20/m"
 
 [node name="StatusRibbons" type="VBoxContainer" parent="HUD"]
+visible = false
 layout_mode = 0
 offset_left = 14.0
 offset_top = 84.0
@@ -1494,7 +1501,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_ribbon_red")
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.72, 0.72, 1)
 theme_override_font_sizes/font_size = 11
-text = "📉 - 50 Marketing"
+text = "-50 Marketing"
 
 [node name="RibbonParking" type="PanelContainer" parent="HUD/StatusRibbons"]
 layout_mode = 2
@@ -1504,7 +1511,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_ribbon_green")
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 1, 0.75, 1)
 theme_override_font_sizes/font_size = 11
-text = "📈 + 25,830 Parking"
+text = "+25,830 Parking"
 
 [node name="RibbonCleaning" type="PanelContainer" parent="HUD/StatusRibbons"]
 layout_mode = 2
@@ -1514,9 +1521,10 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_ribbon_red")
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.72, 0.72, 1)
 theme_override_font_sizes/font_size = 11
-text = "🧹 - 300 Cleaning"
+text = "-300 Cleaning"
 
 [node name="QuestBanner" type="PanelContainer" parent="HUD"]
+visible = false
 layout_mode = 0
 offset_left = 14.0
 offset_top = 186.0
@@ -1531,7 +1539,7 @@ theme_override_constants/separation = 10
 [node name="Icon" type="Label" parent="HUD/QuestBanner/HBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
-text = "🍽️"
+text = ""
 
 [node name="VBox" type="VBoxContainer" parent="HUD/QuestBanner/HBox"]
 layout_mode = 2
@@ -1593,7 +1601,7 @@ size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.45, 0.85, 1, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
-text = "🚗 PARKING"
+text = "PARKING"
 
 [node name="KitchenBtn" type="Button" parent="HUD/BottomDock/HBox"]
 layout_mode = 2
@@ -1601,7 +1609,7 @@ size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 0.88, 0.4, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
-text = "🍳 KITCHEN"
+text = "KITCHEN"
 
 [node name="DiningBtn" type="Button" parent="HUD/BottomDock/HBox"]
 layout_mode = 2
@@ -1609,7 +1617,7 @@ size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.4, 0.95, 0.65, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
-text = "🪑 DINING"
+text = "DINING"
 
 [node name="MilkshakeBtn" type="Button" parent="HUD/BottomDock/HBox"]
 layout_mode = 2
@@ -1617,7 +1625,7 @@ size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.35, 0.95, 0.9, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
-text = "🥤 MILKSHAKE"
+text = "MILKSHAKE"
 
 [node name="TerraceBtn" type="Button" parent="HUD/BottomDock/HBox"]
 layout_mode = 2
@@ -1625,7 +1633,7 @@ size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.3, 0.95, 0.5, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
-text = "🌿 TERRACE"
+text = "TERRACE"
 
 [node name="StaffBtn" type="Button" parent="HUD/BottomDock/HBox"]
 layout_mode = 2
@@ -1633,7 +1641,7 @@ size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.7, 0.8, 1, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
-text = "👥 STAFF"
+text = "STAFF"
 
 [node name="PromoBtn" type="Button" parent="HUD/BottomDock/HBox"]
 layout_mode = 2
@@ -1641,7 +1649,7 @@ size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 0.65, 0.4, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
-text = "📢 PROMO"
+text = "PROMO"
 
 [node name="CardsBtn" type="Button" parent="HUD/BottomDock/HBox"]
 layout_mode = 2
@@ -1649,9 +1657,10 @@ size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_dock_btn")
-text = "🃏 CARDS"
+text = "CARDS"
 
 [node name="LeftDock" type="VBoxContainer" parent="HUD"]
+visible = false
 layout_mode = 1
 anchors_preset = 4
 anchor_top = 0.5
@@ -1684,7 +1693,7 @@ offset_bottom = 12.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 28
-text = "🛒"
+text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -1730,7 +1739,7 @@ offset_bottom = 12.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 28
-text = "🌍"
+text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -1773,6 +1782,7 @@ theme_override_constants/separation = 16
 alignment = 1
 
 [node name="DockControlsRow" type="HBoxContainer" parent="HUD/RightDock"]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
@@ -1784,7 +1794,7 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.05, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 13
-text = "▼"
+text = "v"
 
 [node name="CleanViewBtn" type="Button" parent="HUD/RightDock/DockControlsRow"]
 custom_minimum_size = Vector2(34, 34)
@@ -1793,10 +1803,10 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.05, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 14
-text = "📸"
+text = ""
 
 [node name="SidePiggyBankBtn" type="Button" parent="HUD/RightDock"]
-custom_minimum_size = Vector2(72, 72)
+custom_minimum_size = Vector2(56, 56)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_circle_piggy")
 text = ""
@@ -1815,7 +1825,7 @@ offset_bottom = 12.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 28
-text = "🐷"
+text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -1867,6 +1877,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="SideAdBtn" type="Button" parent="HUD/RightDock"]
+visible = false
 custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_circle_boost")
@@ -1886,7 +1897,7 @@ offset_bottom = 12.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 28
-text = "⚡"
+text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -1913,7 +1924,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="SideStatsBtn" type="Button" parent="HUD/RightDock"]
-custom_minimum_size = Vector2(72, 72)
+custom_minimum_size = Vector2(56, 56)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_circle_stats")
 text = ""
@@ -1932,7 +1943,7 @@ offset_bottom = 12.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 28
-text = "📊"
+text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -1959,7 +1970,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="SideSpinBtn" type="Button" parent="HUD/RightDock"]
-custom_minimum_size = Vector2(72, 72)
+custom_minimum_size = Vector2(56, 56)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_circle_spin")
 text = ""
@@ -1978,7 +1989,7 @@ offset_bottom = 12.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 28
-text = "🎡"
+text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -2022,9 +2033,10 @@ theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.05, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 15
 theme_override_styles/normal = SubResource("StyleBoxFlat_floating_boost")
-text = "▶️  x2 BOOST!"
+text = "x2 BOOST!"
 
 [node name="ActivateAllManagersBtn" type="Button" parent="HUD"]
+visible = false
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -2037,15 +2049,16 @@ offset_right = 172.0
 offset_bottom = -18.0
 grow_horizontal = 2
 grow_vertical = 0
-tooltip_text = "Activate All Ready Manager Skills (⚡)"
+tooltip_text = "Activate All Ready Manager Skills"
 theme_override_colors/font_color = Color(1, 0.95, 0.4, 1)
 theme_override_colors/font_outline_color = Color(0.18, 0.10, 0.02, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("StyleBoxFlat_all_managers")
-text = "⚡"
+text = ""
 
 [node name="QuickUpgradePill" type="PanelContainer" parent="HUD"]
+visible = false
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -2085,7 +2098,7 @@ offset_bottom = 16.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 20
-text = "🪑"
+text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -2103,7 +2116,7 @@ offset_bottom = 2.0
 grow_horizontal = 0
 grow_vertical = 0
 theme_override_font_sizes/font_size = 10
-text = "🎥"
+text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -2127,7 +2140,7 @@ layout_mode = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.8, 0.7, 1)
 theme_override_font_sizes/font_size = 10
-text = "Lv. 1 ➔ 2"
+text = "Lv. 1 -> 2"
 
 [node name="MilestoneTag" type="Label" parent="HUD/QuickUpgradePill/HBox/InfoVBox/LevelHBox"]
 visible = false
@@ -2136,7 +2149,7 @@ theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
 theme_override_colors/font_outline_color = Color(0.2, 0.1, 0.0, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 9
-text = "⭐ MILESTONE NEXT!"
+text = "MILESTONE NEXT!"
 
 [node name="BuyBtn" type="Button" parent="HUD/QuickUpgradePill/HBox"]
 custom_minimum_size = Vector2(78, 42)
@@ -2186,7 +2199,7 @@ theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.05, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_active")
-text = "🔨 UPGRADES"
+text = "UPGRADES"
 
 [node name="TabStaffBtn" type="Button" parent="UpgradePanel/VBox/TopTabsHBox"]
 custom_minimum_size = Vector2(120, 34)
@@ -2196,7 +2209,7 @@ theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.05, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
-text = "👥 STAFF"
+text = "STAFF"
 
 [node name="Spacer" type="Control" parent="UpgradePanel/VBox/TopTabsHBox"]
 layout_mode = 2
@@ -2206,7 +2219,7 @@ size_flags_horizontal = 3
 custom_minimum_size = Vector2(34, 30)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕"
+text = "X"
 
 [node name="DragHandleContainer" type="CenterContainer" parent="UpgradePanel/VBox"]
 custom_minimum_size = Vector2(0, 6)
@@ -2228,7 +2241,7 @@ layout_mode = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 13
-text = "🥤 Retro Milkshake Bar"
+text = "Retro Milkshake Bar"
 
 [node name="Spacer" type="Control" parent="UpgradePanel/VBox/HeaderBar/HBox"]
 layout_mode = 2
@@ -2269,7 +2282,7 @@ text = "MAX"
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.88, 0.7, 1)
 theme_override_font_sizes/font_size = 11
-text = "🌙 Closes: 11:00 PM"
+text = "Closes: 11:00 PM"
 
 [node name="StationCard" type="PanelContainer" parent="UpgradePanel/VBox"]
 layout_mode = 2
@@ -2348,7 +2361,7 @@ theme_override_constants/separation = 10
 custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-text = "🥤"
+text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -2368,7 +2381,7 @@ autowrap_mode = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12, 0.65, 0.25, 1)
 theme_override_font_sizes/font_size = 12
-text = "💵 +$1,158/cust   ⚡ +15"
+text = " +$1,158/cust    +15"
 
 [node name="ControlsVBox" type="VBoxContainer" parent="UpgradePanel/VBox/StationCard/VBox/BodyHBox"]
 layout_mode = 2
@@ -2405,7 +2418,7 @@ theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.05, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_green_3d")
-text = "UPGRADE\n💵 $1.25M"
+text = "UPGRADE\n $1.25M"
 
 [node name="SubUpgradeGrid" type="GridContainer" parent="UpgradePanel/VBox"]
 layout_mode = 2
@@ -2436,7 +2449,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.95, 0.65, 1)
 theme_override_font_sizes/font_size = 20
-text = "🪑 DINING FLOOR MANAGEMENT"
+text = "DINING FLOOR MANAGEMENT"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="DiningPanel/VBox"]
@@ -2452,7 +2465,7 @@ theme_override_constants/separation = 8
 [node name="CloseBtn" type="Button" parent="DiningPanel/VBox"]
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕ Close Dining Floor"
+text = "Close Dining Floor"
 
 [node name="KitchenPanel" type="PanelContainer" parent="."]
 visible = false
@@ -2477,7 +2490,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.85, 0.4, 1)
 theme_override_font_sizes/font_size = 20
-text = "🍳 KITCHEN STATIONS"
+text = "KITCHEN STATIONS"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="KitchenPanel/VBox"]
@@ -2493,7 +2506,7 @@ theme_override_constants/separation = 8
 [node name="CloseBtn" type="Button" parent="KitchenPanel/VBox"]
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕ Close Kitchen"
+text = "Close Kitchen"
 
 [node name="TerracePanel" type="PanelContainer" parent="."]
 visible = false
@@ -2518,7 +2531,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(0.3, 0.95, 0.5, 1)
 theme_override_font_sizes/font_size = 20
-text = "🌿 OUTDOOR GARDEN TERRACE"
+text = "OUTDOOR GARDEN TERRACE"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="TerracePanel/VBox"]
@@ -2534,7 +2547,7 @@ theme_override_constants/separation = 8
 [node name="CloseBtn" type="Button" parent="TerracePanel/VBox"]
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕ Close Garden Terrace"
+text = "Close Garden Terrace"
 
 [node name="ParkingPanel" type="PanelContainer" parent="."]
 visible = false
@@ -2559,7 +2572,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.85, 1, 1)
 theme_override_font_sizes/font_size = 20
-text = "🚗 PARKING LOT & TRAFFIC"
+text = "PARKING LOT & TRAFFIC"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="ParkingPanel/VBox"]
@@ -2575,7 +2588,7 @@ theme_override_constants/separation = 8
 [node name="CloseBtn" type="Button" parent="ParkingPanel/VBox"]
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕ Close Parking Lot"
+text = "Close Parking Lot"
 
 [node name="MenuPanel" type="PanelContainer" parent="."]
 visible = false
@@ -2600,7 +2613,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.7, 0.85, 1)
 theme_override_font_sizes/font_size = 20
-text = "🍽️ CHEF'S SIGNATURE MENU"
+text = "CHEF'S SIGNATURE MENU"
 horizontal_alignment = 1
 
 [node name="ItemsScroll" type="ScrollContainer" parent="MenuPanel/VBox"]
@@ -2616,7 +2629,7 @@ theme_override_constants/separation = 8
 [node name="CloseMenuBtn" type="Button" parent="MenuPanel/VBox"]
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕ Close Menu"
+text = "Close Menu"
 
 [node name="StaffPanel" type="PanelContainer" parent="."]
 visible = false
@@ -2646,7 +2659,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
-text = "← UPGRADES"
+text = "< UPGRADES"
 
 [node name="TabCategoryBtn" type="Button" parent="StaffPanel/VBox/TopTabsHBox"]
 layout_mode = 2
@@ -2654,13 +2667,13 @@ size_flags_horizontal = 3
 theme_override_colors/font_color = Color(1, 0.95, 0.85, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_active")
-text = "👥 RESTAURANT STAFF  •  🌙 Closes 11:45 PM"
+text = "RESTAURANT STAFF - Closes 11:45 PM"
 
 [node name="CloseStaffBtn" type="Button" parent="StaffPanel/VBox/TopTabsHBox"]
 custom_minimum_size = Vector2(34, 30)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕"
+text = "X"
 
 [node name="StaffScroll" type="ScrollContainer" parent="StaffPanel/VBox"]
 layout_mode = 2
@@ -2695,7 +2708,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.65, 0.4, 1)
 theme_override_font_sizes/font_size = 20
-text = "📢 MARKETING & CAMPAIGNS"
+text = "MARKETING & CAMPAIGNS"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="MarketingPanel/VBox"]
@@ -2711,7 +2724,7 @@ theme_override_constants/separation = 8
 [node name="CloseBtn" type="Button" parent="MarketingPanel/VBox"]
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕ Close Marketing"
+text = "Close Marketing"
 
 [node name="QuestsPanel" type="PanelContainer" parent="."]
 visible = false
@@ -2736,7 +2749,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
 theme_override_font_sizes/font_size = 20
-text = "🎯 TYCOON QUESTS & OBJECTIVES"
+text = "TYCOON QUESTS & OBJECTIVES"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="QuestsPanel/VBox"]
@@ -2752,7 +2765,7 @@ theme_override_constants/separation = 8
 [node name="CloseBtn" type="Button" parent="QuestsPanel/VBox"]
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕ Close Quests"
+text = "Close Quests"
 
 [node name="WorldMapPanel" type="PanelContainer" parent="."]
 visible = false
@@ -2780,7 +2793,7 @@ theme_override_constants/separation = 12
 [node name="Avatar" type="Label" parent="WorldMapPanel/VBox/TopHBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-text = "👨‍🍳"
+text = ""
 
 [node name="VBoxTitle" type="VBoxContainer" parent="WorldMapPanel/VBox/TopHBox"]
 layout_mode = 2
@@ -2791,7 +2804,7 @@ theme_override_constants/separation = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.88, 0.35, 1)
 theme_override_font_sizes/font_size = 20
-text = "🌍 RESTAURANT EMPIRE MAP"
+text = "RESTAURANT EMPIRE MAP"
 
 [node name="SubtitleLabel" type="Label" parent="WorldMapPanel/VBox/TopHBox/VBoxTitle"]
 layout_mode = 2
@@ -2805,7 +2818,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕"
+text = "X"
 
 [node name="Scroll" type="ScrollContainer" parent="WorldMapPanel/VBox"]
 layout_mode = 2
@@ -2850,7 +2863,7 @@ theme_override_constants/separation = 12
 [node name="Icon" type="Label" parent="ShopPanel/VBox/HeaderBanner/BannerHBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-text = "🏪"
+text = ""
 
 [node name="TitleVBox" type="VBoxContainer" parent="ShopPanel/VBox/HeaderBanner/BannerHBox"]
 layout_mode = 2
@@ -2867,13 +2880,13 @@ text = "TYCOON SUPERSTORE"
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.8, 0.75, 0.85)
 theme_override_font_sizes/font_size = 11
-text = "★ Premium Boosters • Time Warps • Treasury Chests ★"
+text = "Premium Boosters - Time Warps - Treasury Chests"
 
 [node name="CloseShopBtn" type="Button" parent="ShopPanel/VBox/HeaderBanner/BannerHBox"]
 custom_minimum_size = Vector2(34, 34)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕"
+text = "X"
 
 [node name="TabsScroll" type="ScrollContainer" parent="ShopPanel/VBox"]
 layout_mode = 2
@@ -2889,35 +2902,35 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.12, 0.08, 0.02, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_active")
-text = "⭐ Featured"
+text = "Featured"
 
 [node name="TabBoosts" type="Button" parent="ShopPanel/VBox/TabsScroll/TabsHBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.9, 1, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
-text = "⚡ Boosts"
+text = "Boosts"
 
 [node name="TabTimeSkips" type="Button" parent="ShopPanel/VBox/TabsScroll/TabsHBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.9, 1, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
-text = "⏱️ Time Skips"
+text = "Time Skips"
 
 [node name="TabChests" type="Button" parent="ShopPanel/VBox/TabsScroll/TabsHBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.9, 1, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
-text = "📦 Chests"
+text = "Chests"
 
 [node name="TabCurrencies" type="Button" parent="ShopPanel/VBox/TabsScroll/TabsHBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.9, 1, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
-text = "💎 Currencies"
+text = "Currencies"
 
 [node name="Scroll" type="ScrollContainer" parent="ShopPanel/VBox"]
 layout_mode = 2
@@ -2952,7 +2965,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(0.35, 0.85, 1, 1)
 theme_override_font_sizes/font_size = 20
-text = "📊 FINANCIAL ANALYTICS & CASH FLOW"
+text = "FINANCIAL ANALYTICS & CASH FLOW"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="AnalyticsPanel/VBox"]
@@ -2968,7 +2981,7 @@ theme_override_constants/separation = 8
 [node name="CloseBtn" type="Button" parent="AnalyticsPanel/VBox"]
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕ Close Analytics"
+text = "Close Analytics"
 
 [node name="PerksPanel" type="PanelContainer" parent="."]
 visible = false
@@ -2993,7 +3006,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.88, 0.35, 1)
 theme_override_font_sizes/font_size = 20
-text = "💡 GLOBAL PERKS & MENU BOOK"
+text = "GLOBAL PERKS & MENU BOOK"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="PerksPanel/VBox"]
@@ -3009,7 +3022,7 @@ theme_override_constants/separation = 8
 [node name="CloseBtn" type="Button" parent="PerksPanel/VBox"]
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕ Close Perks & Menu"
+text = "Close Perks & Menu"
 
 [node name="CardsPanel" type="PanelContainer" parent="."]
 visible = false
@@ -3041,7 +3054,7 @@ theme_override_constants/separation = 12
 [node name="Icon" type="Label" parent="CardsPanel/VBox/HeaderBanner/BannerHBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-text = "🃏"
+text = ""
 
 [node name="TitleVBox" type="VBoxContainer" parent="CardsPanel/VBox/HeaderBanner/BannerHBox"]
 layout_mode = 2
@@ -3063,7 +3076,7 @@ text = "Collect duplicate cards from Chests & level them up using Golden Coins!"
 custom_minimum_size = Vector2(36, 36)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕"
+text = "X"
 
 [node name="Scroll" type="ScrollContainer" parent="CardsPanel/VBox"]
 layout_mode = 2
@@ -3080,7 +3093,7 @@ columns = 2
 [node name="CloseBtn" type="Button" parent="CardsPanel/VBox"]
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕ Close Cards Roster"
+text = "Close Cards Roster"
 
 [node name="ChestRewardModal" type="PanelContainer" parent="."]
 visible = false
@@ -3105,7 +3118,7 @@ theme_override_constants/separation = 12
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.85, 0.25, 1)
 theme_override_font_sizes/font_size = 22
-text = "🎁 CHEST UNLOCKED!"
+text = "CHEST UNLOCKED!"
 horizontal_alignment = 1
 
 [node name="Subtitle" type="Label" parent="ChestRewardModal/VBox"]
@@ -3135,7 +3148,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.12, 0.08, 0.02, 1)
 theme_override_font_sizes/font_size = 15
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_boost")
-text = "CLAIM ALL REWARDS ✨"
+text = "CLAIM ALL REWARDS"
 
 [node name="SpinWheelModal" type="PanelContainer" parent="."]
 visible = false
@@ -3167,7 +3180,7 @@ theme_override_constants/separation = 10
 [node name="Icon" type="Label" parent="SpinWheelModal/VBox/HeaderBanner/BannerHBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-text = "🎡"
+text = ""
 
 [node name="TitleVBox" type="VBoxContainer" parent="SpinWheelModal/VBox/HeaderBanner/BannerHBox"]
 layout_mode = 2
@@ -3189,7 +3202,7 @@ text = "Spin daily for epic rewards & claim streak prizes!"
 custom_minimum_size = Vector2(36, 36)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕"
+text = "X"
 
 [node name="TabsHBox" type="HBoxContainer" parent="SpinWheelModal/VBox"]
 layout_mode = 2
@@ -3201,14 +3214,14 @@ custom_minimum_size = Vector2(160, 36)
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_active")
-text = "🎡 Lucky Spin"
+text = "Lucky Spin"
 
 [node name="TabDailyBtn" type="Button" parent="SpinWheelModal/VBox/TabsHBox"]
 custom_minimum_size = Vector2(160, 36)
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
-text = "📅 7-Day Login"
+text = "7-Day Login"
 
 [node name="SpinView" type="VBoxContainer" parent="SpinWheelModal/VBox"]
 layout_mode = 2
@@ -3231,7 +3244,7 @@ theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
 theme_override_constants/shadow_offset_y = 2
 theme_override_font_sizes/font_size = 32
-text = "▼"
+text = "v"
 horizontal_alignment = 1
 
 [node name="SpinStatusLabel" type="Label" parent="SpinWheelModal/VBox/SpinView"]
@@ -3248,14 +3261,14 @@ size_flags_horizontal = 4
 theme_override_colors/font_color = Color(0.1, 0.08, 0.02, 1)
 theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_boost")
-text = "SPIN (FREE) 🎡"
+text = "SPIN (FREE)"
 
 [node name="SpinResultLabel" type="Label" parent="SpinWheelModal/VBox/SpinView"]
 visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.9, 0.3, 1)
 theme_override_font_sizes/font_size = 14
-text = "🎉 You won 10 Diamonds!"
+text = "You won 10 Diamonds!"
 horizontal_alignment = 1
 
 [node name="DailyView" type="VBoxContainer" parent="SpinWheelModal/VBox"]
@@ -3268,7 +3281,7 @@ theme_override_constants/separation = 8
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
 theme_override_font_sizes/font_size = 14
-text = "🔥 Streak: Day 1 / 7 Days"
+text = "Streak: Day 1 / 7 Days"
 horizontal_alignment = 1
 
 [node name="DailyScroll" type="ScrollContainer" parent="SpinWheelModal/VBox/DailyView"]
@@ -3290,12 +3303,12 @@ size_flags_horizontal = 4
 theme_override_colors/font_color = Color(0.1, 0.08, 0.02, 1)
 theme_override_font_sizes/font_size = 15
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_boost")
-text = "CLAIM TODAY'S REWARD 🎁"
+text = "CLAIM TODAY'S REWARD"
 
 [node name="CloseSpinBtn" type="Button" parent="SpinWheelModal/VBox"]
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_close")
-text = "✕ Close"
+text = "Close"
 
 [node name="StationCalloutCard" type="Control" parent="."]
 visible = false
@@ -3331,7 +3344,7 @@ text = "Booth #4"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.95, 0.65, 0.1, 1)
 theme_override_font_sizes/font_size = 11
-text = "⭐"
+text = ""
 
 [node name="LevelLabel" type="Label" parent="StationCalloutCard/CardPanel/VBox/TopRow"]
 layout_mode = 2
@@ -3363,14 +3376,14 @@ layout_mode = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.15, 0.5, 0.2, 1)
 theme_override_font_sizes/font_size = 10
-text = "💰 +$28 / dish"
+text = " +$28 / dish"
 
 [node name="DurationLabel" type="Label" parent="StationCalloutCard/CardPanel/VBox/StatsRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.4, 0.4, 0.45, 1)
 theme_override_font_sizes/font_size = 10
-text = "⏱️ 10.5s"
+text = "10.5s"
 horizontal_alignment = 2
 
 [node name="BottomRow" type="HBoxContainer" parent="StationCalloutCard/CardPanel/VBox"]
@@ -3395,7 +3408,7 @@ tooltip_text = "Open Sector Management Drawer"
 theme_override_colors/font_color = Color(0.2, 0.15, 0.08, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_callout_btn_expand")
-text = "⚙️"
+text = ""
 
 [node name="PointerTriangle" type="Polygon2D" parent="StationCalloutCard"]
 color = Color(0.99, 0.98, 0.93, 1)
@@ -3446,7 +3459,7 @@ mouse_filter = 2
 theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.05, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 34
-text = "👆"
+text = ""
 
 [node name="TutorialCard" type="PanelContainer" parent="TutorialOverlay"]
 custom_minimum_size = Vector2(280, 96)
@@ -3466,7 +3479,7 @@ theme_override_colors/font_color = Color(1, 0.85, 0.22, 1)
 theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.04, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 11
-text = "⭐ STEP 1 / 4  •  FIRST BOOTH"
+text = "STEP 1 / 4 - FIRST BOOTH"
 
 [node name="InstructionLabel" type="Label" parent="TutorialOverlay/TutorialCard/VBox"]
 layout_mode = 2
@@ -3500,7 +3513,7 @@ theme_override_colors/font_outline_color = Color(0.12, 0.08, 0.04, 1)
 theme_override_constants/outline_size = 3
 theme_override_font_sizes/font_size = 11
 theme_override_styles/normal = SubResource("StyleBoxFlat_tutorial_skip")
-text = "SKIP ✕"
+text = "SKIP X"
 
 
 
